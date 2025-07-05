@@ -1,0 +1,449 @@
+<script>
+	document.addEventListener("DOMContentLoaded", function(event) {
+		if (window.location.hash.length && !window.location.hash.startsWith('#!') && document.querySelector(window.location.hash)) {
+			console.log('goto '+window.location.hash);
+			setTimeout(function() {
+				gsap.to(window, {duration:1, scrollTo:{y:window.location.hash, offsetY:80, autoKill:false}})
+			},1000);
+		}
+	});
+</script><!DOCTYPE html>
+<!--[if lt IE 7]><html class="no-js lt-ie9 lt-ie8 lt-ie7"><![endif]-->
+<!--[if IE 7]><html class="no-js lt-ie9 lt-ie8"><![endif]-->
+<!--[if IE 8]><html class="no-js lt-ie9"><![endif]-->
+<!--[if gt IE 8]><!--><html class="no-js age-gate-enabled"><!--<![endif]--><head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+		<title>Stoup Ballard - Brewery & Taproom</title>
+	<meta name="description" content="We have plenty of options for everyone in our Ballard taproom. Our main bar flows out to ample, covered seating in front of a large garage door. We also have a spacious beer garden with fire-pit seating. Many of our outside areas have overhead heating.">
+	<meta name="viewport" content="width=device-width">
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<meta name="msapplication-TileColor" content="#da532c">
+	<meta name="theme-color" content="#ffffff">
+			<style>
+			#loading-mask {background:#fff;position:absolute;top:0;height:300%;width:100%;z-index:999999;opacity: 1;transition: opacity 1s;}
+		</style>
+		<script>
+			document.addEventListener("DOMContentLoaded", function() {
+				setTimeout(function (){
+					document.getElementById("loading-mask").style.opacity = 0;
+					setTimeout(function (){
+						document.getElementById("loading-mask").style.display = "none";
+					}, 1000);
+				}, 1000);
+			});
+		</script>
+				<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@800&display=swap" rel="stylesheet">
+	<script src="/js/js_redirects.js?u=1743608212"></script>
+</head>
+<body class="page-menu-color-black template-page-2023-design variation- page-id-4298 parent-id-1" data-page-name="Ballard">
+<div id="loading-mask"></div>
+<div id="blocking-background"></div>
+<div id="page-border-left"></div>
+<div id="page-border-right"></div>
+<div id="page-border-bottom"></div>
+<div id="age-gate" style='opacity:0;'>
+	<div class='prompt'>
+		<h1 id="age-gate-header">Are you<br />over 21?</h1><br /><button id="age-gate-yes">Yes</button><button id="age-gate-no">No</button>
+	</div>
+	<img id="age-gate-img" src='/img/Stoup-CircleBadge-Grey.png'>
+</div>
+<header>
+	<a href="/contact/" class="contact-link" id="contact-icon"><img src="/img/icon-email.webp" alt="Contact"></a>
+	<a href="#" class="search-link" id="search-icon"><img src="/img/icon-search.webp" alt="Search"></a>
+	<a class='cart-link snipcart-checkout grayed-out-cart' href='#' id="cart-icon"><i class='icon-bag'></i></a>
+	<div id="logo"><a href="/" id="logolink"><img class="logo" src="/img/Stoup-Wordmark-White.png"></a></div>
+	<div class="hamburger hamburger--squeeze" id="menuHamburger" onclick="openAndCloseNav()"><div class="hamburger-box"><div class="hamburger-inner"></div></div></div>
+</header>
+<div id="mainNav" class="overlay">
+	<div class="overlay-content">
+		<div class="locations">
+			<a href="/ballard/"><img src="/img/icon-ballard.webp"></a>
+			<a href="/capitol-hill/"><img src="/img/icon-capitol-hill.webp"></a>
+			<a href="/kenmore/"><img src="/img/icon-kenmore.webp"></a>
+		</div>
+		<ul>
+			<li><a href="/beers/">Beer</a></li>
+			<li><a href="/book-a-party/">Book a Party</a></li>
+			<li><a href="/stoup-events/">Stoup Events</a></li>
+			<li><a href="/about/">Our Story</a></li>
+			<li><a href="/news/">News</a></li>
+			<li><a href="/contact/">Contact</a></li>
+			<li><a target="_blank" href="https://stoup.brist.store/">Merch</a></li>
+			<li><a target="_blank" href="https://www.toasttab.com/stoup-brewing-ballard-1108-nw-52nd-st/giftcards">Gift Cards</a></li>
+			</ul>
+	</div>
+</div>
+<div id='smooth-wrapper'>
+<div id='smooth-content'>
+<section class="  template-fixed-hero-image-section-2023 desktop-height-large mobile-height-half" data-section-count="1" id="section-4327"><a id='slug-46'></a><div class="bg" style="--background-img:url(https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202403/20/192824_815/img1.webp);"></div>
+</section><section class="  template-title-section-2023 padding-bottom-only" data-section-count="2" id="section-4328"><a id='stoup-ballard'></a><h2>Stoup Ballard</h2><h3>Brewery & Taproom</h3></section><section class="  template-button-group-section-2023 padding-bottom-only" data-section-count="3" id="section-4329"><a id='slug-47'></a><div class="button-group">
+<a onClick='gsap.to(window, { duration: 1, scrollTo:{y:"#whats-on-tap-ballard", offsetY:80, autoKill:false}})' class='btn btn-bw'>What's On Tap</a><a href='/events/' class='btn btn-bw'>Book a Party</a><a onClick='gsap.to(window, { duration: 1, scrollTo:{y:"#upcoming-events-in-ballard", offsetY:80, autoKill:false}})' class='btn btn-bw'>Stoup Events</a><a onClick='gsap.to(window, { duration: 1, scrollTo:{y:"#food-truck-schedule-ballard", offsetY:80, autoKill:false}})' class='btn btn-bw'>Food Trucks</a></div></section><section class="  template-hours-button-text-image-section padding-bottom-only" data-section-count="4" id="section-4336"><a id='slug-45'></a><div class='grid'><div class='slideshow' data-slide-count='2'><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202403/20/115358_642/img1.webp'><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202311/11/145506_709/img1.webp'></div><div class='copy-area'><h2>Current Hours</h2>Open 7 days a week<br />Noon-10pm<h2>Welcome</h2>We have plenty of options for everyone&nbsp;in our Ballard taproom. Our main bar&nbsp;flows out to ample, covered seating in&nbsp;front of a large garage door. We also have a spacious&nbsp;beer garden with fire-pit seating. Many of our outside areas have overhead heating. Kids and well behaved dogs are welcome in the main taproom, out front and in the beer garden. All seating&nbsp;is first-come/first serve with the exception of private events. Upstairs at Stoup&nbsp;is reserved for 21+ humans only.<br><a href='/beers-to-go/' class='btn btn-orange'>Kegs To-Go Order + Pay</a></div></div></section><section class="ballard  template-food-truck-schedule-2023 no-padding" data-section-count="5" id="section-4340"><a id='food-truck-schedule-ballard'></a><section class='food-trucks'><h2>Food Truck Schedule</h2><div style='display:none;' class='slide-left'><i class='icon-angle-down'></i></div><div class='slide-right'><i class='icon-angle-down'></i></div><div class='days-container'><div class='food-trucks-grid' data-days='0'><div style='position:relative;'><div data-truck-id='1573' class='days0 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/202109/03/101926_452/img1.png'><div class='lunch-truck-info'><h4>Sat 07.05</h4><div class='hrs'>1 &mdash; 8pm</div>Woodshop BBQ<br></div></div></div></div><div style='position:relative;'><div data-truck-id='282' class='days1 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/201912/02/151109_656/upload.jpg'><div class='lunch-truck-info'><h4>Sun 07.06</h4><div class='hrs'>1 &mdash; 7pm</div>Burger Planet<br></div></div></div></div><div style='position:relative;'><div data-truck-id='2000' class='days2 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/202201/10/102315_552/img1.png'><div class='lunch-truck-info'><h4>Mon 07.07</h4><div class='hrs'>5 &mdash; 8pm</div>Where Ya At Matt<br></div></div></div></div><div style='position:relative;'><div data-truck-id='4595' class='days3 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202401/08/124911_746/img1.png'><div class='lunch-truck-info'><h4>Tue 07.08</h4><div class='hrs'>5 &mdash; 8pm</div>Poke Me<br></div></div></div></div><div style='position:relative;'><div data-truck-id='1215' class='days4 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/202010/05/095807_417/img1.png'><div class='lunch-truck-info'><h4>Wed 07.09</h4><div class='hrs'>4:30 &mdash; 8:30pm</div>Paparepas<br></div></div></div></div><div style='position:relative;'><div data-truck-id='1542' class='days5 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/202201/10/102930_739/img1.png'><div class='lunch-truck-info'><h4>Thu 07.10</h4><div class='hrs'>noon &mdash; 4pm</div>Birrieria Pepe El Toro<br></div></div></div></div><div style='position:relative;'><div data-truck-id='2500' class='days6 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/202209/15/105231_714/img1.png'><div class='lunch-truck-info'><h4>Fri 07.11</h4><div class='hrs'>5 &mdash; 9pm</div>Georgia's Greek<br></div></div></div></div><div style='position:relative;'><div style='position:absolute;' data-truck-id='1600' class='days7 food-truck-day lunch-truck'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/202110/14/143403_952/img1.png'><div class='lunch-truck-info'><h4>Sat 07.12</h4><div class='hrs'> &mdash; </div><div class='truck'>Don Luchos</div></div></div></div><div style='position:absolute;' data-truck-id='276' class='days7 food-truck-day evening-truck'><div style=''><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/202008/06/104221_137/img1.png'><div class='lunch-truck-info'><h4>Sat 07.12</h4><div class='hrs'>1 &mdash; 8pm</div>Tat's Truck<br></div></div></div></div><div style='position:relative;'><div data-truck-id='6395' class='days8 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202503/19/191255_274/img1.png'><div class='lunch-truck-info'><h4>Sun 07.13</h4><div class='hrs'>1 &mdash; 7pm</div>El Pirata Tortas Y Burritos / Now Make Me A Sandwich<br></div></div></div></div><div style='position:relative;'><div data-truck-id='3373' class='days9 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/202305/15/135129_656/img1.png'><div class='lunch-truck-info'><h4>Mon 07.14</h4><div class='hrs'>5 &mdash; 8pm</div>Russo Pizzarium<br></div></div></div></div><div style='position:relative;'><div data-truck-id='2001' class='days10 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202406/11/125445_199/img1.png'><div class='lunch-truck-info'><h4>Tue 07.15</h4><div class='hrs'>5 &mdash; 8pm</div>Tacos & Beer<br></div></div></div></div><div style='position:relative;'><div data-truck-id='6452' class='days11 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202503/12/171958_702/img1.webp'><div class='lunch-truck-info'><h4>Wed 07.16</h4><div class='hrs'>5 &mdash; 8pm</div>The Marigold Wood Fired Pizza<br></div></div></div></div><div style='position:relative;'><div data-truck-id='6293' class='days12 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202503/10/160109_879/img1.webp'><div class='lunch-truck-info'><h4>Thu 07.17</h4><div class='hrs'>5 &mdash; 8pm</div>La Costenita<br></div></div></div></div><div style='position:relative;'><div data-truck-id='277' class='days13 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/201912/02/144242_856/upload.jpg'><div class='lunch-truck-info'><h4>Fri 07.18</h4><div class='hrs'>5 &mdash; 9pm</div>Off the Rez<br></div></div></div></div><div style='position:relative;'><div data-truck-id='1573' class='days14 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/202109/03/101926_452/img1.png'><div class='lunch-truck-info'><h4>Sat 07.19</h4><div class='hrs'>1 &mdash; 8pm</div>Woodshop BBQ<br></div></div></div></div><div style='position:relative;'><div data-truck-id='282' class='days15 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/201912/02/151109_656/upload.jpg'><div class='lunch-truck-info'><h4>Sun 07.20</h4><div class='hrs'>1 &mdash; 7pm</div>Burger Planet<br></div></div></div></div><div style='position:relative;'><div data-truck-id='2000' class='days16 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/202201/10/102315_552/img1.png'><div class='lunch-truck-info'><h4>Mon 07.21</h4><div class='hrs'>5 &mdash; 8pm</div>Where Ya At Matt<br></div></div></div></div><div style='position:relative;'><div data-truck-id='4595' class='days17 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202401/08/124911_746/img1.png'><div class='lunch-truck-info'><h4>Tue 07.22</h4><div class='hrs'>5 &mdash; 8pm</div>Poke Me<br></div></div></div></div><div style='position:relative;'><div data-truck-id='1215' class='days18 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/202010/05/095807_417/img1.png'><div class='lunch-truck-info'><h4>Wed 07.23</h4><div class='hrs'>4:30 &mdash; 8:30pm</div>Paparepas<br></div></div></div></div><div style='position:relative;'><div data-truck-id='1542' class='days19 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/202201/10/102930_739/img1.png'><div class='lunch-truck-info'><h4>Thu 07.24</h4><div class='hrs'>noon &mdash; 4pm</div>Birrieria Pepe El Toro<br></div></div></div></div><div style='position:relative;'><div data-truck-id='2500' class='days20 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/202209/15/105231_714/img1.png'><div class='lunch-truck-info'><h4>Fri 07.25</h4><div class='hrs'>5 &mdash; 9pm</div>Georgia's Greek<br></div></div></div></div><div style='position:relative;'><div style='position:absolute;' data-truck-id='1600' class='days21 food-truck-day lunch-truck'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/202110/14/143403_952/img1.png'><div class='lunch-truck-info'><h4>Sat 07.26</h4><div class='hrs'> &mdash; </div><div class='truck'>Don Luchos</div></div></div></div><div style='position:absolute;' data-truck-id='276' class='days21 food-truck-day evening-truck'><div style=''><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/202008/06/104221_137/img1.png'><div class='lunch-truck-info'><h4>Sat 07.26</h4><div class='hrs'>1 &mdash; 8pm</div>Tat's Truck<br></div></div></div></div><div style='position:relative;'><div data-truck-id='6395' class='days22 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202503/19/191255_274/img1.png'><div class='lunch-truck-info'><h4>Sun 07.27</h4><div class='hrs'>1 &mdash; 7pm</div>El Pirata Tortas Y Burritos / Now Make Me A Sandwich<br></div></div></div></div><div style='position:relative;'><div data-truck-id='3373' class='days23 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/202305/15/135129_656/img1.png'><div class='lunch-truck-info'><h4>Mon 07.28</h4><div class='hrs'>5 &mdash; 8pm</div>Russo Pizzarium<br></div></div></div></div><div style='position:relative;'><div data-truck-id='2001' class='days24 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202406/11/125445_199/img1.png'><div class='lunch-truck-info'><h4>Tue 07.29</h4><div class='hrs'>5 &mdash; 8pm</div>Tacos & Beer<br></div></div></div></div><div style='position:relative;'><div data-truck-id='6452' class='days25 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202503/12/171958_702/img1.webp'><div class='lunch-truck-info'><h4>Wed 07.30</h4><div class='hrs'>5 &mdash; 8pm</div>The Marigold Wood Fired Pizza<br></div></div></div></div><div style='position:relative;'><div data-truck-id='6293' class='days26 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202503/10/160109_879/img1.webp'><div class='lunch-truck-info'><h4>Thu 07.31</h4><div class='hrs'>5 &mdash; 8pm</div>La Costenita<br></div></div></div></div><div style='position:relative;'><div data-truck-id='277' class='days27 food-truck-day'><div><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/201912/02/144242_856/upload.jpg'><div class='lunch-truck-info'><h4>Fri 08.01</h4><div class='hrs'>5 &mdash; 9pm</div>Off the Rez<br></div></div></div></div><dialog class="food-truck-modal"><div class="modal-body"><div class="food-truck-content"></div></div></dialog></div></div></section></section><section class="  template-divider no-padding" data-section-count="6" id="section-4344"><a id='slug-49'></a><div class='grid'></div></section><section class="  template-text-section-2023 padding-top-only    none no-fade" data-section-count="7" id="section-6239"><a id='slug-22'></a><div class='box-of-copy'><strong>What Else do we offer?</strong> In addition to the beers&nbsp;listed below, we also have a wider variety of non-beer options from Hop Water and Jones Soda to alcohol free beers and Kombucha to cider and wine.</div></section><section class="ballard  template-whats-on-tap-2023-design" data-section-count="8" id="section-4300"><a id='whats-on-tap-ballard'></a><div class="wrap">
+	<h2>What's on Tap</h2>
+	<div class="grid">
+		<a class="reveal-toggle" href="#beer-detail21" data-beer-id="21" style="--beer-bg-color: #f4f630;--beer-font-color: #3d4543;"><span class="title">German Style Pilsner</span><span class="abv-stuff"><span class="abv-label"><strong>ABV:</strong></span><span class="abv"> 5.20%</span></span></a>
+<a class="reveal-toggle" href="#beer-detail61" data-beer-id="61" style="--beer-bg-color: #00af9a;--beer-font-color: #3d4543;"><span class="title">Bavarian Hefeweizen</span><span class="abv-stuff"><span class="abv-label"><strong>ABV:</strong></span><span class="abv"> 5.00%</span></span></a>
+<a class="reveal-toggle" href="#beer-detail22" data-beer-id="22" style="--beer-bg-color: #f7be00;--beer-font-color: #3d4543;"><span class="title">Mosaic Pale Ale</span><span class="abv-stuff"><span class="abv-label"><strong>ABV:</strong></span><span class="abv"> 5.30%</span></span></a>
+<a class="reveal-toggle" href="#beer-detail17" data-beer-id="17" style="--beer-bg-color: #ff6c0e;--beer-font-color: #3d4543;"><span class="title">Citra IPA</span><span class="abv-stuff"><span class="abv-label"><strong>ABV:</strong></span><span class="abv"> 5.90%</span></span></a>
+<a class="reveal-toggle" href="#beer-detail235" data-beer-id="235" style="--beer-bg-color: #ff8399;--beer-font-color: #3d4543;"><span class="title">Easy A IPA</span><span class="abv-stuff"><span class="abv-label"><strong>ABV:</strong></span><span class="abv"> 6.40%</span></span></a>
+<a class="reveal-toggle" href="#beer-detail1473" data-beer-id="1473" style="--beer-bg-color: #00af9a;--beer-font-color: #3d4543;"><span class="title">Sandals & Flannels Hazy IPA</span><span class="abv-stuff"><span class="abv-label"><strong>ABV:</strong></span><span class="abv"> 6.40%</span></span></a>
+<a class="reveal-toggle" href="#beer-detail1161" data-beer-id="1161" style="--beer-bg-color: #ff8399;--beer-font-color: #3d4543;"><span class="title">Rainbow Bubbles IPA</span><span class="abv-stuff"><span class="abv-label"><strong>ABV:</strong></span><span class="abv"> 6.30%</span></span></a>
+<a class="reveal-toggle" href="#beer-detail1647" data-beer-id="1647" style="--beer-bg-color: #ff8399;--beer-font-color: #3d4543;"><span class="title">Paraderade IPA</span><span class="abv-stuff"><span class="abv-label"><strong>ABV:</strong></span><span class="abv"> 6.70%</span></span></a>
+<a class="reveal-toggle" href="#beer-detail6399" data-beer-id="6399" style="--beer-bg-color: #f7be00;--beer-font-color: #3d4543;"><span class="title">RoseYay Raspberry Sour</span><span class="abv-stuff"><span class="abv-label"><strong>ABV:</strong></span><span class="abv"> 5.20%</span></span></a>
+<a class="reveal-toggle" href="#beer-detail1341" data-beer-id="1341" style="--beer-bg-color: #e79953;--beer-font-color: #3d4543;"><span class="title">Good Times Machine IPA</span><span class="abv-stuff"><span class="abv-label"><strong>ABV:</strong></span><span class="abv"> 7.20%</span></span></a>
+<a class="reveal-toggle" href="#beer-detail25" data-beer-id="25" style="--beer-bg-color: #ff6c0e;--beer-font-color: #3d4543;"><span class="title">NW Red</span><span class="abv-stuff"><span class="abv-label"><strong>ABV:</strong></span><span class="abv"> 5.00%</span></span></a>
+<a class="reveal-toggle" href="#beer-detail1550" data-beer-id="1550" style="--beer-bg-color: #f7be00;--beer-font-color: #3d4543;"><span class="title">Cervecita Mexican Lager</span><span class="abv-stuff"><span class="abv-label"><strong>ABV:</strong></span><span class="abv"> 4.80%</span></span></a>
+<a class="reveal-toggle" href="#beer-detail28" data-beer-id="28" style="--beer-bg-color: #ff8399;--beer-font-color: #3d4543;"><span class="title">Robust Porter</span><span class="abv-stuff"><span class="abv-label"><strong>ABV:</strong></span><span class="abv"> 6.20%</span></span></a>
+<a class="reveal-toggle" href="#beer-detail6505" data-beer-id="6505" style="--beer-bg-color: #FF6C0E;--beer-font-color: #3d4543;"><span class="title">Sole Fresco</span><span class="abv-stuff"><span class="abv-label"><strong>ABV:</strong></span><span class="abv"> 6.42%</span></span></a>
+<a class="reveal-toggle" href="#beer-detail5721" data-beer-id="5721" style="--beer-bg-color: #FF6C0E;--beer-font-color: #3d4543;"><span class="title">American Stout</span><span class="abv-stuff"><span class="abv-label"><strong>ABV:</strong></span><span class="abv"> 6.60%</span></span></a>
+<a class="reveal-toggle" href="#beer-detail5108" data-beer-id="5108" style="--beer-bg-color: #ff8399;--beer-font-color: #3d4543;"><span class="title">Black is Beautiful Baltic Porter</span><span class="abv-stuff"><span class="abv-label"><strong>ABV:</strong></span><span class="abv"> 7.50%</span></span></a>
+<a class="reveal-toggle" href="#beer-detail6528" data-beer-id="6528" style="--beer-bg-color: #FF6C0E;--beer-font-color: #3d4543;"><span class="title">Fuzz Buster Hazy IPA</span><span class="abv-stuff"><span class="abv-label"><strong>ABV:</strong></span><span class="abv"> 7.30%</span></span></a>
+	</div>
+	<div class="reveal">
+		<div class="beer-detail brewer-stoup" id="beer-detail21" data-beer-imgs="2"><div class="beer-imgs"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/123245_576/upload.webp"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/122141_315/upload.webp"></div><div class="beer-info"><h3>German Style Pilsner</h3><table class="abv-info"><tr><td><strong>ABV:</strong> 5.20&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>IBU:</strong> 37.00&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>SRM:</strong> 3.00</td></tr></table><div class="desc">Imported German 2-row barley and Roy Farms Adeena hops give this German-style pils its crisp, clean character. Warning: this beer's subtle grain sweetness, spicy hop aroma and refreshingly dry, hop-forward finish may elicit a spontaneous Prost!<br /><strong>AWARDS:</strong> <em>2017 Silver Medal-SIP NW Best of the NW</em></div><span class="cat">Categories: German, Lager, Pilsner, Water Driven, Malt Driven</span></div></div>
+<div class="beer-detail brewer-stoup" id="beer-detail61" data-beer-imgs="2"><div class="beer-imgs"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/123245_730/upload.webp"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/05/134522_855/upload.webp"></div><div class="beer-info"><h3>Bavarian Hefeweizen</h3><table class="abv-info"><tr><td><strong>ABV:</strong> 5.00&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>IBU:</strong> 13.00&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>SRM:</strong> 4.00</td></tr></table><div class="desc">Close your eyes, take a sip of this beer and you&rsquo;re sure to be transported to a tree-lined, sun-speckled biergarten in Munich. We honor tradition by brewing this beer using decoction mashing techniques and fermenting with a German yeast strain that imparts prominent banana and clove notes. The wheat gives this beer a crisp, slightly tart, refreshing finish. <strong>AWARDS:</strong>&nbsp;<em>2019 Gold Medal</em>-North American Brewers Association,&nbsp;<em>2016 Gold Medal-WA Beer Awards, 2015 Silver Medal-WA Beer Awards, 2014 Gold Medal-WA Beer Awards</em></div><span class="cat">Categories: Bavarian, Wheat, Traditionally Spring, Traditionally Summer, Yeast Driven, Malt Driven</span></div></div>
+<div class="beer-detail brewer-stoup" id="beer-detail22" data-beer-imgs="2"><div class="beer-imgs"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/123250_203/upload.webp"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/122214_167/upload.webp"></div><div class="beer-info"><h3>Mosaic Pale Ale</h3><table class="abv-info"><tr><td><strong>ABV:</strong> 5.30&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>IBU:</strong> 39.00&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>SRM:</strong> 5.00</td></tr></table><div class="desc">A highly drinkable, hop forward beer with a classic American Pale Ale malt bill. Heavy handed Mosaic dry hopping gives this beer a nose packed full of citrus and mango. Up front aroma, balanced bittering and a moderate body just beg for another taste...and another...and another...<br /><strong>AWARDS:</strong>&nbsp;<em>2021 Silver Medal-</em>Great American Beer Festival,&nbsp;<em>2019 Silver Medal</em>-SIP NW Best of the Northwest,&nbsp;<em>2019 Bronze Medal</em>-Best of Craft Beer Awards, 2018 Silver Medal-WA Beer Awards,&nbsp;<em>2017 Judges Pick-SIP NW Best of the NW</em></div><span class="cat">Categories: Northwest, Pale, Hop Driven</span></div></div>
+<div class="beer-detail brewer-stoup" id="beer-detail17" data-beer-imgs="2"><div class="beer-imgs"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/122807_647/upload.webp"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/05/145621_937/upload.webp"></div><div class="beer-info"><h3>Citra IPA</h3><table class="abv-info"><tr><td><strong>ABV:</strong> 5.90&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>IBU:</strong> 50.00&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>SRM:</strong> 3.00</td></tr></table><div class="desc">We like to call this one Sunshine In a Glass ... or Sunshine In Your Belly because it won't stay in that glass long. Our Citra&reg; IPA is designed to be light and bright in both color and body. Your first sniff will elicit images of tropical fruit and citrus thanks to a healthy dose of Citra&reg; hops. Enjoy a pint of this and you might just find yourself gazing skyward, pondering how in the heck sunshine made its way into your glass.<br /><strong>AWARDS:</strong>&nbsp;<em>2019 Silver Medal</em>-WA Beer Awards, <em>2019 Bronze Medal</em>-Best of Craft Beer Awards,&nbsp;<em>Silver Medal- SIP NW Best of the NW, 2015 Silver Medal-WA Beer Awards</em></div><span class="cat">Categories: IPA, Northwest, Hop Driven</span></div></div>
+<div class="beer-detail brewer-stoup" id="beer-detail235" data-beer-imgs="2"><div class="beer-imgs"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/122807_647/upload.webp"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/114817_948/upload.webp"></div><div class="beer-info"><h3>Easy A IPA</h3><table class="abv-info"><tr><td><strong>ABV:</strong> 6.40&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>IBU:</strong> 56.00&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>SRM:</strong> 4.00</td></tr></table><div class="desc">We didn't even study for this one, Galaxy and Simcoe hops make this one an Easy A. The aroma and flavor is chock-full of Guava, citrus &amp; a bit of pine. The fruit carries to the finish begging another taste.</div><span class="cat">Categories: IPA, Northwest, Hop Driven</span></div></div>
+<div class="beer-detail brewer-stoup" id="beer-detail1473" data-beer-imgs="2"><div class="beer-imgs"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/123255_285/upload.webp"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202403/20/144022_389/upload.webp"></div><div class="beer-info"><h3>Sandals & Flannels Hazy IPA</h3><table class="abv-info"><tr><td><strong>ABV:</strong> 6.40&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>IBU:</strong> 47.00&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>SRM:</strong> 4.00</td></tr></table><div class="desc">You know the story. We're nostalgic for 90's Seattle when the sound of grunge music and the smells of patchouli filled the air. Sometimes we like to relive the good ole days while reveling in new trends like Hazy IPA. So we brew a batch of this beer, pack it with the brightest, berriest, peachiest, tropical fruitiest hops we can find, like Cryo POP!, El Dorado and Mosaic Cryo. And then we sit back, sip, and trip on down memory lane.</div><span class="cat">Categories: Hazy, IPA, Hop Driven</span></div></div>
+<div class="beer-detail brewer-stoup" id="beer-detail1161" data-beer-imgs="2"><div class="beer-imgs"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/122807_647/upload.webp"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/120932_856/upload.webp"></div><div class="beer-info"><h3>Rainbow Bubbles IPA</h3><table class="abv-info"><tr><td><strong>ABV:</strong> 6.30&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>IBU:</strong> 52.00&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>SRM:</strong> 3.00</td></tr></table><div class="desc"><p>Our Stoup Pride month IPA is simply joy in a glass. Feast your eyes on a giddy dance of bubbles in every color of the rainbow while enjoying the aromas of Hallertau Blanc, Nelson Sauvin and HBC 630. So as not to overpower the delicate aromas of gooseberry, white grape and tropical fruit, we kept the malt bill soft with additions of wheat and pilsner malt. It's moderately dry and extremely crushable. We raise a glass of Rainbow Bubbles IPA to equality, compassion, and the incredible gift of loving people for who they are. (Disclaimer: the bubbles are NOT rainbow colored. That's impossible, silly). Proceeds from this beer support a local organization that lifts our LGBT community. See our social media channels for this year's recipient.</p></div><span class="cat">Categories: IPA, Northwest, Traditionally Summer, Hop Driven</span></div></div>
+<div class="beer-detail brewer-stoup" id="beer-detail1647" data-beer-imgs="2"><div class="beer-imgs"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/122807_647/upload.webp"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/120529_919/upload.webp"></div><div class="beer-info"><h3>Paraderade IPA</h3><table class="abv-info"><tr><td><strong>ABV:</strong> 6.70&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>IBU:</strong> 60.00&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>SRM:</strong> 4.00</td></tr></table><div class="desc"><div>
+<div>Our LGBTQIA+ friends and allies are coming together to celebrate a vibrant, beautiful community. We brewed this beer to help fuel the passion for equality and acceptance and also to just have some fun together. While Pride is much more than a parade, we still love a good march down the street. Think of this beer as fuel for your Pride parade! Hops: Enigma, Chinook and Comet. This is our second Pride beer. Hops: Citra Cryo, Comet, Mosaic Cryo.</div>
+</div></div><span class="cat">Categories: IPA, Northwest, Hop Driven</span></div></div>
+<div class="beer-detail brewer-stoup" id="beer-detail6399" data-beer-imgs="1"><div class="beer-imgs"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/123239_837/upload.webp"></div><div class="beer-info"><h3>RoseYay Raspberry Sour</h3><table class="abv-info"><tr><td><strong>ABV:</strong> 5.20&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>IBU:</strong> 4.00&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>SRM:</strong> 8.00</td></tr></table><div class="desc">Pink, spritzy and tart with prominent raspberry presence. Kind of like a rose with raspberries. RoseYay!</div><span class="cat">Categories: Sour</span></div></div>
+<div class="beer-detail brewer-stoup" id="beer-detail1341" data-beer-imgs="2"><div class="beer-imgs"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/122807_647/upload.webp"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/115422_413/upload.webp"></div><div class="beer-info"><h3>Good Times Machine IPA</h3><table class="abv-info"><tr><td><strong>ABV:</strong> 7.20&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>IBU:</strong> 60.00&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>SRM:</strong> 4.00</td></tr></table><div class="desc"><div>
+<div>Sometimes a van is more than a vehicle. It can rise above and become a party on wheels, a symbol of freedom, a carpet-walled sanctuary. A GOOD TIMES MACHINE. Sometimes a beer can follow suit. It's not just barley, water, yeast and hops. It's a magical elixir. A party in a pint glass. A GOOD TIMES MACHINE IPA. To reach this pinnacle of carefree and cool, a beer's got to be loaded with some pretty groovy hops.&nbsp;These hops deliver the essence of tropical fruit, citrus and berry. This is no regular day IPA, this is a Good Times Machine IPA!</div>
+</div></div><span class="cat">Categories: IPA, Northwest, Hop Driven</span></div></div>
+<div class="beer-detail brewer-stoup" id="beer-detail25" data-beer-imgs="2"><div class="beer-imgs"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/123253_805/upload.webp"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/122255_683/upload.webp"></div><div class="beer-info"><h3>NW Red</h3><table class="abv-info"><tr><td><strong>ABV:</strong> 5.00&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>IBU:</strong> 40.00&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>SRM:</strong> 12.00</td></tr></table><div class="desc">Our Northwest Red Ale provides a distinctly Northwest hop character balanced with a restrained malt sweetness. We use 2 Row barley along with Best Maltz Red X to create a rich, red color and a smooth, satisfying taste. A hint of chocolate seals the deal.<br /><strong>AWARDS:</strong>&nbsp;<em>2021 Silver Medal-</em>Great American Beer Festival</div><span class="cat">Categories: Northwest, Hop Driven, Malt Driven</span></div></div>
+<div class="beer-detail brewer-stoup" id="beer-detail1550" data-beer-imgs="2"><div class="beer-imgs"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/123239_699/upload.webp"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202403/12/111742_181/upload.webp"></div><div class="beer-info"><h3>Cervecita Mexican Lager</h3><table class="abv-info"><tr><td><strong>ABV:</strong> 4.80&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>IBU:</strong> 14.00&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>SRM:</strong> 2.00</td></tr></table><div class="desc">Our Mexican Lager is perfect for sunny days on the patio or the beach...preferably in flip flops. Since we can't guarantee sunny days in Seattle, we kept this lager light and bright and irresistibly crushable, sunshine not required. Salud!</div><span class="cat">Categories: Lager, Traditionally Summer, Water Driven, Malt Driven</span></div></div>
+<div class="beer-detail brewer-stoup" id="beer-detail28" data-beer-imgs="2"><div class="beer-imgs"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/123255_770/upload.webp"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/122330_759/upload.webp"></div><div class="beer-info"><h3>Robust Porter</h3><table class="abv-info"><tr><td><strong>ABV:</strong> 6.20&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>IBU:</strong> 45.00&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>SRM:</strong> 31.00</td></tr></table><div class="desc">Rich in color and character, our robust porter conjures up memories of decadent chocolate treats dipped in coffee. Hints of dark chocolate, roasted coffee and light malty sweetness are the result of a complex malt profile including chocolate malt, roasted wheat and roasted rye.<br />
+<p><strong>AWARDS:</strong>&nbsp;<em>2019 Judges Pick</em>-SIP NW Best of the Northwest,&nbsp;<em>2019 Silver Medal</em> - North American Brewers Association, <em>2018 Silver Medal</em>-WA Beer Awards,&nbsp;<em>2017 Double Gold Medal-Sip NW Best of the NW,</em> <em>2017 Gold Medal-WA Beer Awards, </em><em>2016 Silver Medal-WA Beer Awards, </em><em>2014 Silver Medal World Beer Cup &amp; WA Beer Awards</em></p></div><span class="cat">Categories: Northwest, Porter, Malt Driven</span></div></div>
+<div class="beer-detail brewer-stoup" id="beer-detail6505" data-beer-imgs="1"><div class="beer-imgs"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202506/06/195649_277/img1.png"></div><div class="beer-info"><h3>Sole Fresco</h3><h4>Lemon Selz</h4><table class="abv-info"><tr><td><strong>ABV:</strong> 6.42&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>IBU:</strong> 0.00&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>SRM:</strong> 0.00</td></tr></table><div class="desc">Lemon Seltzer&nbsp;/ Descriptors: Tart Lemon. Refreshing. Effervescent.<br />A tart, limoncello spritz inspired refresher with just enough sweetness to balance it all out. It's lemon. It's effervescent. It's fun!</div></div></div>
+<div class="beer-detail brewer-stoup" id="beer-detail5721" data-beer-imgs="1"><div class="beer-imgs"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/123255_770/upload.webp"></div><div class="beer-info"><h3>American Stout</h3><table class="abv-info"><tr><td><strong>ABV:</strong> 6.60&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>IBU:</strong> 74.00&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>SRM:</strong> 47.00</td></tr></table><div class="desc"><br />This beer is built on 2-row, Black Patent, Chocolate and Crystal malts and some roasted barley for a touch of roast. It's robust in flavor but moderate in ABV. Additions of Citra, Simcoe and Cascade Cryo add subtle notes of pine and citrus.<br /><br /><em>Silver Medal Winner: 2024 GABF</em></div><span class="cat">Categories: Stout</span></div></div>
+<div class="beer-detail brewer-stoup" id="beer-detail5108" data-beer-imgs="2"><div class="beer-imgs"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/123255_770/upload.webp"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202502/21/162702_446/upload.png"></div><div class="beer-info"><h3>Black is Beautiful Baltic Porter</h3><table class="abv-info"><tr><td><strong>ABV:</strong> 7.50&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>IBU:</strong> 35.00&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>SRM:</strong> 36.00</td></tr></table><div class="desc"><div>Our Baltic Porter was built on a base of 2-row, Munich and Mild malts for a malt forward, rich flavor. It was made smooth through fermentation with lager yeast and extended cold fermentation. We brewed this to continue the tradition of Black is Beautiful, a campaign to celebrate the contributions of black brewers in the craft beer industry. A portion of proceeds from this beer will be donated to The National Black Brewers Association.</div></div><span class="cat">Categories: Lager, Porter, Malt Driven</span></div></div>
+<div class="beer-detail brewer-stoup" id="beer-detail6528" data-beer-imgs="1"><div class="beer-imgs"><img src="https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202402/06/123255_285/upload.webp"></div><div class="beer-info"><h3>Fuzz Buster Hazy IPA</h3><table class="abv-info"><tr><td><strong>ABV:</strong> 7.30&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>IBU:</strong> 58.00&nbsp;&nbsp;&nbsp;&nbsp;</td><td><strong>SRM:</strong> 4.00</td></tr></table><div class="desc">This beer is on the fast track to delicious. Nothing is gonna slow it down. Hazy with a soft malt bill and loads of Krush, Krush Cryo, Nelson Sauvin, Citra Cryo and Citra Spectrum, this beer brings passionfruit, citrus and sweet fruit aromas at speeds that will make your head spin.</div><span class="cat">Categories: Hazy, IPA</span></div></div>	</div>
+</div>
+<dialog class="onTapDialog">
+	<button class="close">X</button>
+	<div class="inner"></div>
+	<div class="loadanim"><img src="/img/hops-pavement.webp"></div>
+</dialog>
+</section><section class="ballard  template-google-ticket-events padding-bottom-only" data-section-count="9" id="section-5059"><a id='featured-events'></a><style>#section-5059 {padding:0;}</style></section><section class="ballard 5 template-google-upcoming-events padding-bottom-only" data-section-count="10" id="section-4436"><a id='upcoming-events-in-ballard'></a><h2>Upcoming Events in Ballard</h2><div class='event-links'><a data-id='kenmore'>Kenmore</a><a data-id='ballard'>Ballard</a><a data-id='capitol-hill'>Capitol&nbsp;Hill</a><a id='show-all-events-button' style='display:none;' data-id='all'>All</a></div><div class='location-events ' data-id='kenmore' data-location='kenmore' data-offset='0' data-total=''><a class="event visible" data-event-id="2477" href="/stoup-event/-stoupkenmorebeerrunners-2477.html"><div class='event-date'><img class='date-img' src='/img/sun.png'><span class='dow'>Sun</span><span class='date-date'>7/6</span></div><div class='event-time'>11:45am - 1pm</div><div class='event-start-time'>11:45a</div><div class='event-title'>#StoupKenmoreBeerRunners</div></a><a class="event visible" data-event-id="2479" href="/stoup-event/-stoupkenmorebeerrunners-2479.html"><div class='event-date'><img class='date-img' src='/img/sun.png'><span class='dow'>Sun</span><span class='date-date'>7/20</span></div><div class='event-time'>11:45am - 1pm</div><div class='event-start-time'>11:45a</div><div class='event-title'>#StoupKenmoreBeerRunners</div></a><a class="event visible" data-event-id="2481" href="/stoup-event/-stoupkenmorebeerrunners-2481.html"><div class='event-date'><img class='date-img' src='/img/sun.png'><span class='dow'>Sun</span><span class='date-date'>8/3</span></div><div class='event-time'>11:45am - 1pm</div><div class='event-start-time'>11:45a</div><div class='event-title'>#StoupKenmoreBeerRunners</div></a><a class="event visible" data-event-id="2483" href="/stoup-event/-stoupkenmorebeerrunners-2483.html"><div class='event-date'><img class='date-img' src='/img/sun.png'><span class='dow'>Sun</span><span class='date-date'>8/17</span></div><div class='event-time'>11:45am - 1pm</div><div class='event-start-time'>11:45a</div><div class='event-title'>#StoupKenmoreBeerRunners</div></a><a class="event visible" data-event-id="2487" href="/stoup-event/-stoupkenmorebeerrunners-2487.html"><div class='event-date'><img class='date-img' src='/img/sun.png'><span class='dow'>Sun</span><span class='date-date'>8/31</span></div><div class='event-time'>11:45am - 1pm</div><div class='event-start-time'>11:45a</div><div class='event-title'>#StoupKenmoreBeerRunners</div></a></div><div class='location-events ' data-id='all' data-location='all' data-offset='0' data-total=''><a class="event visible" data-event-id="2477" href="/stoup-event/-stoupkenmorebeerrunners-2477.html"><div class='event-date'><img class='date-img' src='/img/sun.png'><span class='dow'>Sun</span><span class='date-date'>7/6</span></div><div class='event-time'>11:45am - 1pm</div><div class='event-start-time'>11:45a</div><div class='event-title'>#StoupKenmoreBeerRunners</div></a><a class="event visible" data-event-id="3925" href="/stoup-event/board-gayme-night-3925.html"><div class='event-date'><img class='date-img' src='/img/mon.png'><span class='dow'>Mon</span><span class='date-date'>7/7</span></div><div class='event-time'>6:30 - 9:30pm</div><div class='event-start-time'>6:30p</div><div class='event-title'>Board Gayme Night</div></a><a class="event visible" data-event-id="4208" href="/stoup-event/trivia-at-stoup-brewing-ballard-with-head-in-the-clouds-4208.html"><div class='event-date'><img class='date-img' src='/img/mon.png'><span class='dow'>Mon</span><span class='date-date'>7/7</span></div><div class='event-time'>7:30 - 9pm</div><div class='event-start-time'>7:30p</div><div class='event-title'>Trivia at Stoup Brewing Ballard with Head in the Clouds</div></a><a class="event visible" data-event-id="4031" href="/stoup-event/trivia-at-stoup-capitol-hill-with-head-in-the-clouds-4031.html"><div class='event-date'><img class='date-img' src='/img/mon.png'><span class='dow'>Mon</span><span class='date-date'>7/7</span></div><div class='event-time'>7:30 - 9pm</div><div class='event-start-time'>7:30p</div><div class='event-title'>Trivia at Stoup Capitol Hill with Head in the Clouds</div></a><a class="event visible" data-event-id="6476" href="/stoup-event/sex-trivia-6476.html"><div class='event-date'><img class='date-img' src='/img/wed.png'><span class='dow'>Wed</span><span class='date-date'>7/9</span></div><div class='event-time'>7 - 9:30pm</div><div class='event-start-time'>7:00p</div><div class='event-title'>Sex Trivia</div></a></div><div class='location-events ' data-id='capitol-hill' data-location='capitol-hill' data-offset='0' data-total=''><a class="event visible" data-event-id="3925" href="/stoup-event/board-gayme-night-3925.html"><div class='event-date'><img class='date-img' src='/img/mon.png'><span class='dow'>Mon</span><span class='date-date'>7/7</span></div><div class='event-time'>6:30 - 9:30pm</div><div class='event-start-time'>6:30p</div><div class='event-title'>Board Gayme Night</div></a><a class="event visible" data-event-id="4031" href="/stoup-event/trivia-at-stoup-capitol-hill-with-head-in-the-clouds-4031.html"><div class='event-date'><img class='date-img' src='/img/mon.png'><span class='dow'>Mon</span><span class='date-date'>7/7</span></div><div class='event-time'>7:30 - 9pm</div><div class='event-start-time'>7:30p</div><div class='event-title'>Trivia at Stoup Capitol Hill with Head in the Clouds</div></a><a class="event visible" data-event-id="6476" href="/stoup-event/sex-trivia-6476.html"><div class='event-date'><img class='date-img' src='/img/wed.png'><span class='dow'>Wed</span><span class='date-date'>7/9</span></div><div class='event-time'>7 - 9:30pm</div><div class='event-start-time'>7:00p</div><div class='event-title'>Sex Trivia</div></a><a class="event visible" data-event-id="6513" href="/stoup-event/brewing-hope-city-fruit-paint-sip-and-bid-6513.html"><div class='event-date'><img class='date-img' src='/img/thu.png'><span class='dow'>Thu</span><span class='date-date'>7/10</span></div><div class='event-time'>5:30 - 8:30pm</div><div class='event-start-time'>5:30p</div><div class='event-title'>Brewing Hope: City Fruit Paint, Sip and Bid</div></a><a class="event visible" data-event-id="3926" href="/stoup-event/board-gayme-night-3926.html"><div class='event-date'><img class='date-img' src='/img/mon.png'><span class='dow'>Mon</span><span class='date-date'>7/14</span></div><div class='event-time'>6:30 - 9:30pm</div><div class='event-start-time'>6:30p</div><div class='event-title'>Board Gayme Night</div></a></div><div class='location-events active' data-id='ballard' data-location='ballard' data-offset='0' data-total=''><a class="event visible" data-event-id="4208" href="/stoup-event/trivia-at-stoup-brewing-ballard-with-head-in-the-clouds-4208.html"><div class='event-date'><img class='date-img' src='/img/mon.png'><span class='dow'>Mon</span><span class='date-date'>7/7</span></div><div class='event-time'>7:30 - 9pm</div><div class='event-start-time'>7:30p</div><div class='event-title'>Trivia at Stoup Brewing Ballard with Head in the Clouds</div></a><a class="event visible" data-event-id="2478" href="/stoup-event/-stoupbeerrunners-2478.html"><div class='event-date'><img class='date-img' src='/img/sun.png'><span class='dow'>Sun</span><span class='date-date'>7/13</span></div><div class='event-time'>11:45am - 1pm</div><div class='event-start-time'>11:45a</div><div class='event-title'>#StoupBeerRunners</div></a><a class="event visible" data-event-id="4209" href="/stoup-event/trivia-at-stoup-brewing-ballard-with-head-in-the-clouds-4209.html"><div class='event-date'><img class='date-img' src='/img/mon.png'><span class='dow'>Mon</span><span class='date-date'>7/14</span></div><div class='event-time'>7:30 - 9pm</div><div class='event-start-time'>7:30p</div><div class='event-title'>Trivia at Stoup Brewing Ballard with Head in the Clouds</div></a><a class="event visible" data-event-id="6514" href="/stoup-event/brewing-hope-pints-for-public-lands-with-washington-wild-and-npca-6514.html"><div class='event-date'><img class='date-img' src='/img/thu.png'><span class='dow'>Thu</span><span class='date-date'>7/17</span></div><div class='event-time'>5 - 9pm</div><div class='event-start-time'>5:00p</div><div class='event-title'>Brewing Hope: Pints for Public Lands with Washington Wild and NPCA</div></a><a class="event visible" data-event-id="4210" href="/stoup-event/trivia-at-stoup-brewing-ballard-with-head-in-the-clouds-4210.html"><div class='event-date'><img class='date-img' src='/img/mon.png'><span class='dow'>Mon</span><span class='date-date'>7/21</span></div><div class='event-time'>7:30 - 9pm</div><div class='event-start-time'>7:30p</div><div class='event-title'>Trivia at Stoup Brewing Ballard with Head in the Clouds</div></a></div><div class="calendar-pagination"><a href="#" class="inactive" data-toggle="load" data-id="prev"><span class="icon-down-open-big"></span> Prev</a><a href="#" class="" data-toggle="load" data-id="next">Next <span class="icon-down-open-big"></span></a></div>
+<dialog class="event-dialog" >
+	<button class="close">X</button>
+	<div class="inner"></div>
+	<div class="loadanim"><img src="/img/beer-loading.gif"></div>
+</dialog>
+<script>
+let calendarSection = document.querySelector(".template-google-upcoming-events");
+const calendarSectionLimit = 5;
+let eventDialog = document.querySelector("dialog.event-dialog");
+let calendarBaseLocation = "/ballard/";
+let calendarPagination = document.querySelector(".calendar-pagination");
+let calendarPaginationPrev = calendarPagination.querySelector("a[data-toggle='load'][data-id='prev']");
+let calendarPaginationNext = calendarPagination.querySelector("a[data-toggle='load'][data-id='next']");
+//let calendarMetaTitle = document.querySelector("head title");
+//calendarMetaTitle.dataset.origTitle = calendarMetaTitle.innerText;
+//let calendarMetaDesc = document.querySelector("meta[name='description']");
+//calendarMetaDesc.dataset.origDesc = calendarMetaDesc.getAttribute("content");
+document.addEventListener("DOMContentLoaded", function(event) {
+	calendarSection.querySelectorAll('.event-links a').forEach(link => {
+		link.addEventListener('mouseout', function() {
+			this.classList.toggle('inactive',false);
+		});
+		link.addEventListener('touchend', function() {
+			this.classList.toggle('inactive',false);
+		});
+		link.addEventListener('click', function() {
+			const dataId = this.getAttribute('data-id');
+			if (this.classList.contains("active")){
+				document.getElementById("show-all-events-button").click();
+				this.classList.toggle("active",false);
+				this.classList.toggle("inactive",true);
+				return;
+			}
+			const locationEvents = calendarSection.querySelectorAll('.location-events');
+			calendarSection.querySelectorAll('.event-links a').forEach(link => {
+				link.classList.remove('active');
+			});
+			this.classList.add('active');
+			locationEvents.forEach(event => {
+				if (event.getAttribute('data-id') === dataId) {
+					event.style.display = 'block';
+					event.classList.toggle("active", true);
+				} else {
+					event.style.display = 'none';
+					event.classList.toggle("active", false);
+				}
+			});
+			const location = this.getAttribute("data-id");
+			calendarPaginationUpdate(location);
+		});
+	});
+
+	calendarSection.addEventListener("click", function(e) {
+		if (e.target.closest("a.event")) {
+			e.preventDefault();
+			const link = e.target.closest("a.event");
+			const id = link.getAttribute("data-event-id");
+			console.log(id);
+			//history.pushState(null, "", link.getAttribute("href"));
+			dialogEvent(id);
+		}
+	});
+
+	calendarSection.addEventListener("click", function(e) {
+		if (e.target.closest("button.close")) {
+			e.preventDefault();
+			eventDialogClose();
+		}
+	});
+
+	calendarPagination.addEventListener("click", function(e) {
+		e.preventDefault();
+		if (e.target.closest("a[data-id='next']:not(.inactive)")) {
+			e.preventDefault();
+			const locationEvents = calendarSection.querySelector(".location-events.active");
+			const location = locationEvents.getAttribute("data-location");
+			const total = locationEvents.getAttribute("data-total");
+			const offset = parseInt(locationEvents.getAttribute("data-offset"));
+			calendarLoadEvents(location, total, (offset+calendarSectionLimit));
+		}
+		else if (e.target.closest("a[data-id='prev']:not(.inactive)")) {
+			const locationEvents = calendarSection.querySelector(".location-events.active");
+			const location = locationEvents.getAttribute("data-location");
+			const total = locationEvents.getAttribute("data-total");
+			const offset = parseInt(locationEvents.getAttribute("data-offset"));
+			calendarLoadEvents(location, total, (offset-calendarSectionLimit));
+		}
+	});
+});
+
+if (typeof window.dialogEvent === 'undefined') {
+	window.dialogEvent = function(event_id) {
+		var qstr = new URLSearchParams({
+			event_id: event_id
+		});
+		eventDialog.classList.toggle("loading", true);
+		eventDialog.showModal();
+		if (eventDialog.getAttribute("data-event-id") == event_id) {
+			window.setTimeout(function() {
+				eventDialog.classList.toggle("loading", false);
+			}, 300);
+		}
+		else {
+			fetch("/templates/sections/google-upcoming-events.event-detail.php?"+qstr).then(function (response) {
+				if (response.ok) {
+					return response.json();
+				}
+				else {
+					throw new Error('Non 200s response');
+				}
+			}).then(function (json) {
+				eventDialog.querySelector(".inner").innerHTML = json.html;
+				eventDialog.setAttribute("data-event-id", event_id);
+				//calendarMetaTitle.innerText = json.meta_title;
+				//calendarMetaDesc.setAttribute("content", json.meta_desc);
+				window.setTimeout(function() {
+					eventDialog.classList.toggle("loading", false);
+				}, 300);
+			}).catch(function (err) {
+				console.log('Something went wrong.', err);
+				eventDialog.innerHTML = 'Something went wrong.';
+				eventDialog.classList.toggle("loading", false);
+			});
+		}
+	}
+}
+if (typeof window.eventDialogClose === 'undefined') {
+	window.eventDialogClose = function() {
+		//history.pushState(null, "", calendarBaseLocation);
+		//calendarMetaTitle.innerText = calendarMetaTitle.dataset.origTitle;
+		//calendarMetaDesc.setAttribute("content", calendarMetaDesc.dataset.origDesc);
+		eventDialog.close();
+	}
+}
+
+if (typeof window.sleeper === 'undefined') {
+	window.sleeper = function(ms) {
+		return function(x) {
+			return new Promise(resolve => setTimeout(() => resolve(x), ms));
+		};
+	}
+}
+
+if (typeof window.calendarLoadEvents === 'undefined') {
+	window.calendarLoadEvents = function(location, total, offset = 0, mode = 'pagination') {
+		let limit = calendarSectionLimit;
+		let delay = 0;
+		let locationEvents = calendarSection.querySelector(".location-events[data-location='"+location+"']");
+		locationEvents.setAttribute("data-offset", offset);
+		locationEvents.classList.toggle("loading", true);
+
+		//fetch events
+		var qstr = new URLSearchParams({
+				location: location,
+				offset: offset,
+				limit: limit
+		});
+		fetch("/templates/sections/google-upcoming-events.ajax.php?"+qstr).then(function (response) {
+			if (response.ok) {
+				return response.json();
+			}
+			else {
+				throw new Error('Non 200s response');
+			}
+		}).then(sleeper(delay)).then(function (json) {
+			if (mode == 'pagination') {
+				locationEvents.querySelectorAll(".event").forEach(function(el) {
+					el.classList.toggle("visible", false);
+				});
+				locationEvents.querySelectorAll(".event").forEach(function(el) {
+					locationEvents.removeChild(el);
+				});
+			}
+			//add new events
+			locationEvents.insertAdjacentHTML('beforeend', json.html);
+			locationEvents.setAttribute("data-total", json.total);
+			//display events
+			locationEvents.querySelectorAll(".event").forEach(function(el) {
+				el.classList.toggle("visible", true);
+			});
+			if (mode == 'pagination') {
+				calendarPaginationUpdate(location);
+			}
+			locationEvents.classList.toggle("loading", false);
+		}).catch(function (err) {
+			console.log('Something went wrong.', err);
+		});
+	}
+}
+
+if (typeof window.calendarPaginationUpdate === 'undefined') {
+	window.calendarPaginationUpdate = function(location) {
+		let locationEvents = calendarSection.querySelector(".location-events[data-location='"+location+"']");
+		let offset = locationEvents.getAttribute("data-offset");
+		let total = locationEvents.getAttribute("data-total");
+		calendarPaginationPrev.classList.toggle("inactive", true);
+		calendarPaginationNext.classList.toggle("inactive", true);
+		if (parseInt(offset) > 0) {
+			calendarPaginationPrev.classList.toggle("inactive", false);
+		}
+		if (total == '' || parseInt(offset) < parseInt(total)) {
+			calendarPaginationNext.classList.toggle("inactive", false);
+		}
+	}
+}
+</script></section><section class="  template-text-image-section-2023 no-padding teal split-50-50 text-left teal-background" data-section-count="11" id="section-4346"><a id='slug-50'></a><div class='grid'><div class='box-of-copy'><h2>Upstairs at Stoup Ballard</h2>Learn more about hosting your next engagement party, wedding welcome, work presentation, or other party in&nbsp;our private event space!<br /><br /><a href="/events/" class="btn-white-on-teal btn">Learn More</a></div><div class='image-area'><img src='https://s3.us-west-2.amazonaws.com/stoupbrewing.com/uploads/202403/15/150830_517/img1.webp'></div></div></section><footer>
+	<div class="inner">
+		<div class='contact-row'>
+			<div>
+				<h3>Stay in Touch</h3>
+				<p>Join our mailing list and be our drinking buddy!</p>
+				<a id='newsletter-clicker' class='btn btn-orange-on-orange'>Sign Me Up</a>
+			</div>
+			<div>
+				<h3>Contact Us</h3>
+				<p>Questions? Feedback? We want to hear from you!</p>
+				<a href="/contact/" class='btn btn-orange-on-orange'>Send a Message</a>
+			</div>
+			<img class="icon-hops" src="/img/hops-white-footer.webp">
+		</div>
+		<div class='locations'>
+			<div class='ballard'>
+				<h3><a href='/ballard/'>BALLARD</a></h3>
+				<ul>
+<li><a href="https://goo.gl/maps/LAj6LUXHkgiykkyN6" target="_blank">1108 NW 52nd St.</a></li>
+</ul>
+<a href="https://goo.gl/maps/LAj6LUXHkgiykkyN6" target="_blank">Seattle, WA 98107</a><br /><br />(206) 457-5524<br /><br />HOURS<br />Open 7 Days/Week <br />12pm-10pm<br /><br />
+				<a href="https://www.facebook.com/StoupBrewing/" target="_blank"><i class="icon icon-facebook-square"></i></a>				<a href="https://www.instagram.com/stoupbrewing/" target="_blank"><i class="icon icon-instagram"></i></a>			</div>
+			<div class='capitol-hill'>
+				<h3><a href='/capitol-hill/'>CAPITOL HILL</a></h3>
+				<a href="https://goo.gl/maps/dvtahcRsJ6um49oEA" target="blank">1158 Broadway<br />Seattle, WA 98122</a><br /><br />(206)&nbsp;659-8962<br /><br />HOURS<br />M-W 2pm-11pm<br />TH-SAT 12pm-12am<br />SUN 12pm-10pm<br /><br />
+				<a href="https://facebook.com/stoupbrewing_capitolhill" target="_blank"><i class="icon icon-facebook-square"></i></a>				<a href="https://instagram.com/stoupbrewing_capitolhill" target="_blank"><i class="icon icon-instagram"></i></a>			</div>
+			<div class='kenmore'>
+				<h3><a href='/kenmore/'>KENMORE</a></h3>
+				<p><a href="https://goo.gl/maps/4C3NxiP1gDU8PfH29" target="blank">6704 NE 181st St.<br />Kenmore, WA 98028</a><br /><br />(425) 298-6516<br /><br />HOURS<br />MON: Closed<br />T-W: 4&ndash;9pm<br />TH-SUN: 12pm&ndash;9pm<br /><strong><br /></strong>HAPPY HOUR<br />Every Day 4&ndash;5pm</p><br /><br />
+				<a href="https://facebook.com/stoupbrewingkenmore" target="_blank"><i class="icon icon-facebook-square"></i></a>				<a href="https://instagram.com/stoupbrewing_kenmore" target="_blank"><i class="icon icon-instagram"></i></a>			</div>
+		</div>
+	</div>
+</footer>
+</div> </div> <link href="/css/sections-2023.min.css?u=1743608210" rel="stylesheet">
+<link href="/css/style-2023.css?u=1743608210" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-modal/0.9.1/jquery.modal.min.css" />
+<link href="/css/fontastic.css?u=1743608210" rel="stylesheet">
+<style>.template-google-upcoming-events .event-links {display:none;}</style><script src="//cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/gsap.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/ScrollTrigger.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/ScrollToPlugin.min.js"></script>
+<script src="/js/ScrollSmoother.min.js"></script>
+<script src="//unpkg.com/imagesloaded@5/imagesloaded.pkgd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+<script src="/js/jquery.form.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.3/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/nodep-date-input-polyfill@5.2.0/nodep-date-input-polyfill.dist.min.js"></script>
+<script src="//cdn.jsdelivr.net/npm/details-polyfill@1/index.min.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-modal/0.9.1/jquery.modal.min.js"></script>
+<script src="/js/section-fixed-hero-image-section-2023.js?u=1743608212"></script><script src="/js/section-food-truck-schedule-2023.js?u=1743608212"></script><script src="/js/text-section-2023.js?u=1743608212"></script><script src="/js/section-whats-on-tap-2023-design.js?u=1743608212"></script><script src="/js/text-image-section-2023.js"></script><script src="https://www.google.com/recaptcha/api.js?render=6LfEFLMUAAAAAGRnWEQ2DTUvVCseFqlSc1RHV4d4"></script>
+	<script type="text/javascript">
+	var _gaq = _gaq || [];_gaq.push(['_setAccount', 'UA-48261656-1'],['_trackPageview']);(function() {var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);})();
+	</script>
+	<script async src="https://www.googletagmanager.com/gtag/js?id=UA-155639125-1"></script>
+	<script>
+		window.dataLayer = window.dataLayer || [];
+		function gtag(){dataLayer.push(arguments);}
+		gtag('js', new Date());
+		gtag('config', 'UA-155639125-1');
+	</script>
+<script id="snipcart" data-api-key="NWIwYjFlNzYtZDUwMi00OTM2LWFkN2EtZjFmZDE3OWE3YmYzNjM3MTk5OTY3Njg0NDAzMDkz" data-cart-custom1-name="Name (Must match ID of individual receiving alcohol.)" data-cart-custom1-required="true" data-cart-custom2-name="Birthday (Must match ID of individual receiving alcohol.)" data-cart-custom2-required="true" src="https://cdn.snipcart.com/scripts/2.0/snipcart.js?v=20200326" type="text/javascript"></script>
+<script src="/js/scripts-2023.js?u=1743608212"></script>
+<link href="https://cdn.snipcart.com/themes/2.0/base/snipcart.min.css" rel="stylesheet" type="text/css" />
+<span style="display:none;" class="snipcart-summary"><span class="snipcart-total-price"></span></span>
+<script>
+document.addEventListener("DOMContentLoaded", function(event) {
+	document.getElementById('age-gate-yes').addEventListener('click', function() {
+		ageGateAccept();
+	});
+	document.getElementById('age-gate-no').addEventListener('click', function() {
+		document.getElementById('age-gate-header').innerHTML = 'Nice try french fry. See ya when you turn 21!';
+		document.getElementById('age-gate-yes').style.display = 'none';
+		document.getElementById('age-gate-no').style.display = 'none';
+		document.getElementById('age-gate-img').src = '/img/frenchfry.jpg';
+	});
+});
+function ageGateAccept() {
+	setCookie("age_check","1",90);
+	document.documentElement.classList.remove('age-gate-enabled');
+	gsap.registerPlugin(ScrollTrigger, ScrollSmoother);
+	let smoother;
+	function smootherSetup() {
+		smoother = ScrollSmoother.create({
+			smooth: 2,
+			effects: true,
+			normalizeScroll: true
+		});
+	}
+	smootherSetup();
+}
+</script>
+<dialog id="newsletter-modal">
+	<div class="modal-body">
+		<div class="newsletter-modal-content">
+			Stay up to date on our new beer releases and events in all of our taprooms
+			<br /><br />
+			Where's your home base?<br /><br />
+			<a class="btn-orange-on-white btn" href="https://www.toasttab.com/stoup-brewing-ballard-1108-nw-52nd-st/marketing-signup" target="_blank">Ballard</a><br /><br />
+			<a class="btn-orange-on-white btn" href="https://www.toasttab.com/stoup-brewing-cap-hill-1158-broadway/marketing-signup" target="_blank">Capitol Hill</a><br /><br />
+			<a class="btn-orange-on-white btn" href="https://www.toasttab.com/stoupkenmore/marketing-signup" target="_blank">Kenmore</a><br /><br />
+		</div>
+	</div>
+</dialog>
+<div id="search-popup" class="modal">
+	<h2>Search Beers, Events, and More</h2><div id="search-input"><form method="GET" action="/search/"><input id="search-q" type="text" name="q" tabindex="1"><button type="submit" class="button">Search</button></form></div>
+</div>
+</body>
+</html>

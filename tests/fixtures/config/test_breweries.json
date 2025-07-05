@@ -1,0 +1,22 @@
+{
+  "breweries": [
+    {
+      "key": "test-stoup",
+      "name": "Test Stoup Brewing",
+      "url": "https://example.com/stoup",
+      "parser_config": {
+        "selectors": {
+          "food_truck_entry": ".food-truck-entry",
+          "date": "h4",
+          "time": "p"
+        }
+      }
+    },
+    {
+      "key": "test-balebreaker",
+      "name": "Test Bale Breaker",
+      "url": "https://example.com/balebreaker",
+      "parser_config": {}
+    }
+  ]
+}

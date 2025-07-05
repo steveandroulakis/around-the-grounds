@@ -1,0 +1,26 @@
+{
+  "breweries": [
+    {
+      "key": "stoup-ballard",
+      "name": "Stoup Brewing - Ballard",
+      "url": "https://www.stoupbrewing.com/ballard/",
+      "parser_config": {
+        "selectors": {
+          "food_truck_entry": ".food-truck-entry",
+          "date": "h4",
+          "time": "p",
+          "truck_name": "p:last-child"
+        }
+      }
+    },
+    {
+      "key": "yonder-balebreaker",
+      "name": "Yonder Cider & Bale Breaker - Ballard",
+      "url": "https://www.bbycballard.com/food-trucks-1-1",
+      "parser_config": {
+        "note": "Food truck schedule not available on website - check Instagram @BaleBreaker",
+        "instagram": "@BaleBreaker"
+      }
+    }
+  ]
+}
