@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv
+# Install uv globally
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:$PATH"
 
@@ -32,6 +32,10 @@ RUN useradd -m -u 1000 worker && \
 # Configure git defaults (as root)
 RUN git config --global user.name "steveandroulakis" && \
     git config --global user.email "steve.androulakis@gmail.com"
+
+# Make uv accessible to worker user by copying it to /usr/local/bin
+RUN cp /root/.local/bin/uv /usr/local/bin/uv && \
+    chmod +x /usr/local/bin/uv
 
 # Switch to worker user
 USER worker

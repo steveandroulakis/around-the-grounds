@@ -112,71 +112,71 @@ class DeploymentActivities:
     @activity.defn
     async def deploy_to_git(self, web_data: Dict[str, Any]) -> bool:
         """Deploy web data to git repository."""
-        # Write the web data to public/data.json
+        import tempfile
+        import shutil
+        from around_the_grounds.utils.github_auth import GitHubAppAuth
+        
         try:
-            # Set up GitHub App authentication
-            setup_github_auth()
+            activity.logger.info(f"Starting deployment with {web_data.get('total_events', 0)} events")
             
-            # Ensure public directory exists
-            public_dir = Path("public")
-            public_dir.mkdir(exist_ok=True)
-            
-            # Write JSON file
-            json_path = public_dir / "data.json"
-            with open(json_path, 'w') as f:
-                json.dump(web_data, f, indent=2)
-            
-            activity.logger.info(f"Generated web data: {web_data.get('total_events', 0)} events")
-            
-            # Check if we're in a git repository
-            result = subprocess.run(['git', 'status'], capture_output=True, text=True)
-            if result.returncode != 0:
-                activity.logger.warning("Not in a git repository - skipping deployment")
-                return False
-            
-            # Add and commit the data file
-            subprocess.run(['git', 'add', str(json_path)], check=True)
-            
-            # Check if there are changes to commit
-            result = subprocess.run(['git', 'diff', '--staged', '--quiet'], capture_output=True)
-            if result.returncode == 0:
-                activity.logger.info("No changes to deploy")
-                return True
-            
-            # Commit changes
-            commit_msg = f"🚚 Update food truck data - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-            subprocess.run(['git', 'commit', '-m', commit_msg], check=True)
-            
-            # Push to origin (handle upstream branch issues)
-            try:
-                result = subprocess.run(['git', 'push'], capture_output=True, text=True, check=True)
-                activity.logger.info("Deployed to git! Changes will be live shortly.")
-            except subprocess.CalledProcessError as e:
-                # Capture the actual stderr to check for upstream branch issues
-                error_output = e.stderr.strip() if e.stderr else str(e)
+            # Create temporary directory for git operations
+            with tempfile.TemporaryDirectory() as temp_dir:
+                repo_dir = Path(temp_dir) / "repo"
                 
-                # If push fails due to no upstream branch, try to set upstream and push again
-                if "no upstream branch" in error_output or "has no upstream branch" in error_output:
-                    try:
-                        # Get current branch name
-                        branch_result = subprocess.run(['git', 'branch', '--show-current'], capture_output=True, text=True, check=True)
-                        current_branch = branch_result.stdout.strip()
-                        
-                        # Set upstream and push
-                        subprocess.run(['git', 'push', '--set-upstream', 'origin', current_branch], capture_output=True, text=True, check=True)
-                        activity.logger.info("Set upstream branch and deployed to git! Changes will be live shortly.")
-                    except subprocess.CalledProcessError as upstream_error:
-                        activity.logger.error(f"Git push failed: {upstream_error.stderr if upstream_error.stderr else upstream_error}")
-                        raise ValueError(f"Failed to push to git repository: {upstream_error.stderr if upstream_error.stderr else upstream_error}")
-                else:
-                    activity.logger.error(f"Git push failed: {error_output}")
-                    raise ValueError(f"Failed to push to git repository: {error_output}")
-            
-            return True
-            
+                # Clone the repository
+                repo_url = "https://github.com/steveandroulakis/around-the-grounds.git"
+                activity.logger.info(f"Cloning repository to {repo_dir}")
+                subprocess.run(['git', 'clone', repo_url, str(repo_dir)], check=True, capture_output=True)
+                
+                # Configure git user in the cloned repository
+                subprocess.run(['git', 'config', 'user.email', 'steve.androulakis@gmail.com'], 
+                             cwd=repo_dir, check=True, capture_output=True)
+                subprocess.run(['git', 'config', 'user.name', 'Steve Androulakis'], 
+                             cwd=repo_dir, check=True, capture_output=True)
+                
+                # Ensure public directory exists in cloned repo
+                public_dir = repo_dir / "public"
+                public_dir.mkdir(exist_ok=True)
+                
+                # Write JSON file to cloned repo
+                json_path = public_dir / "data.json"
+                with open(json_path, 'w') as f:
+                    json.dump(web_data, f, indent=2)
+                
+                activity.logger.info(f"Generated web data file: {json_path}")
+                
+                # Check if there are changes to commit
+                result = subprocess.run(['git', 'diff', '--quiet', 'HEAD', str(json_path)], 
+                                      cwd=repo_dir, capture_output=True)
+                if result.returncode == 0:
+                    activity.logger.info("No changes to deploy")
+                    return True
+                
+                # Add and commit the data file
+                subprocess.run(['git', 'add', str(json_path)], cwd=repo_dir, check=True, capture_output=True)
+                
+                # Commit changes
+                commit_msg = f"🚚 Update food truck data - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+                subprocess.run(['git', 'commit', '-m', commit_msg], cwd=repo_dir, check=True, capture_output=True)
+                
+                # Set up GitHub App authentication and configure remote
+                auth = GitHubAppAuth()
+                access_token = auth.get_access_token()
+                
+                authenticated_url = f"https://x-access-token:{access_token}@github.com/steveandroulakis/around-the-grounds.git"
+                subprocess.run(['git', 'remote', 'set-url', 'origin', authenticated_url], 
+                             cwd=repo_dir, check=True, capture_output=True)
+                
+                # Push to origin
+                subprocess.run(['git', 'push', 'origin', 'main'], cwd=repo_dir, check=True, capture_output=True)
+                activity.logger.info("Deployed to git! Changes will be live shortly.")
+                
+                return True
+                
         except subprocess.CalledProcessError as e:
-            activity.logger.error(f"Deployment failed: {e}")
-            return False
+            error_msg = e.stderr.decode('utf-8') if e.stderr else str(e)
+            activity.logger.error(f"Git operation failed: {error_msg}")
+            raise ValueError(f"Failed to deploy to git: {error_msg}")
         except Exception as e:
             activity.logger.error(f"Error during deployment: {e}")
-            return False
+            raise ValueError(f"Failed to deploy to git: {e}")
