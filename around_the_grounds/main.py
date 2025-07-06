@@ -7,7 +7,7 @@ import logging
 import os
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, List
 
@@ -125,7 +125,7 @@ def generate_web_data(events: List[FoodTruckEvent]) -> dict:
     
     return {
         "events": web_events,
-        "updated": datetime.now().isoformat(),
+        "updated": datetime.now(timezone.utc).isoformat(),
         "total_events": len(web_events)
     }
 
