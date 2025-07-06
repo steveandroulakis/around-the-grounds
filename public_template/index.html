@@ -290,8 +290,8 @@ Unable to load food truck data. Please try again later.
             // Group events by date
             const eventsByDate = {};
             data.events.forEach(event => {
-                const date = new Date(event.date);
-                const dateKey = date.toISOString().split('T')[0];
+                // Extract date portion directly from the date string to avoid timezone issues
+                const dateKey = event.date.split('T')[0];
                 if (!eventsByDate[dateKey]) {
                     eventsByDate[dateKey] = [];
                 }
