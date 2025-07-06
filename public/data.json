@@ -25,11 +25,11 @@
       "vendor": "Kaosamia"
     },
     {
-      "date": "2025-07-06T13:00:00.516000",
+      "date": "2025-07-06T20:00:00.516000",
       "description": null,
-      "end_time": "09:00 PM",
+      "end_time": "04:00 AM",
       "location": "Yonder Cider & Bale Breaker - Ballard",
-      "start_time": "01:00 PM",
+      "start_time": "08:00 PM",
       "vendor": "Tacos &amp; Beer"
     },
     {
@@ -67,11 +67,11 @@
       "vendor": "Poke Me"
     },
     {
-      "date": "2025-07-08T16:30:00.531000",
+      "date": "2025-07-08T23:30:00.531000",
       "description": null,
-      "end_time": "08:00 PM",
+      "end_time": "03:00 AM",
       "location": "Yonder Cider & Bale Breaker - Ballard",
-      "start_time": "04:30 PM",
+      "start_time": "11:30 PM",
       "vendor": "Tolu Modern Fijian Cuisine"
     },
     {
@@ -91,11 +91,11 @@
       "vendor": "Paparepas"
     },
     {
-      "date": "2025-07-09T16:00:00.616000",
+      "date": "2025-07-09T23:00:00.616000",
       "description": null,
-      "end_time": "08:00 PM",
+      "end_time": "03:00 AM",
       "location": "Yonder Cider & Bale Breaker - Ballard",
-      "start_time": "04:00 PM",
+      "start_time": "11:00 PM",
       "vendor": "Georgia\u2019s Greek"
     },
     {
@@ -113,14 +113,14 @@
       "extraction_method": "vision",
       "location": "Urban Family Brewing",
       "start_time": "04:00 PM",
-      "vendor": "Whateke \ud83d\uddbc\ufe0f\ud83e\udd16"
+      "vendor": "Whatake \ud83d\uddbc\ufe0f\ud83e\udd16"
     },
     {
-      "date": "2025-07-10T16:00:00.835000",
+      "date": "2025-07-10T23:00:00.835000",
       "description": null,
-      "end_time": "08:00 PM",
+      "end_time": "03:00 AM",
       "location": "Yonder Cider & Bale Breaker - Ballard",
-      "start_time": "04:00 PM",
+      "start_time": "11:00 PM",
       "vendor": "Impeckable Chicken"
     },
     {
@@ -132,11 +132,11 @@
       "vendor": "Georgia's Greek"
     },
     {
-      "date": "2025-07-11T15:00:00.167000",
+      "date": "2025-07-11T22:00:00.167000",
       "description": null,
-      "end_time": "09:00 PM",
+      "end_time": "04:00 AM",
       "location": "Yonder Cider & Bale Breaker - Ballard",
-      "start_time": "03:00 PM",
+      "start_time": "10:00 PM",
       "vendor": "Now Make Me A Sandwich"
     },
     {
@@ -164,11 +164,11 @@
       "vendor": "Oskar"
     },
     {
-      "date": "2025-07-12T13:00:00.646000",
+      "date": "2025-07-12T20:00:00.646000",
       "description": null,
-      "end_time": "09:00 PM",
+      "end_time": "04:00 AM",
       "location": "Yonder Cider & Bale Breaker - Ballard",
-      "start_time": "01:00 PM",
+      "start_time": "08:00 PM",
       "vendor": "Georgia\u2019s Greek"
     },
     {
@@ -189,14 +189,14 @@
       "vendor": "BURGER PLANET \ud83d\uddbc\ufe0f\ud83e\udd16"
     },
     {
-      "date": "2025-07-13T13:00:00.797000",
+      "date": "2025-07-13T20:00:00.797000",
       "description": null,
-      "end_time": "09:00 PM",
+      "end_time": "04:00 AM",
       "location": "Yonder Cider & Bale Breaker - Ballard",
-      "start_time": "01:00 PM",
+      "start_time": "08:00 PM",
       "vendor": "Tacos &amp; Beer"
     }
   ],
   "total_events": 24,
-  "updated": "2025-07-06T00:50:12.470094"
+  "updated": "2025-07-06T09:01:47.226114"
 }
