@@ -11,6 +11,7 @@ Around the Grounds is a robust Python CLI tool for tracking food truck schedules
 - **Auto-deployment** with git integration for seamless web updates
 - **Extensible parser system** with custom parsers for different brewery website structures
 - **Comprehensive error handling** with retry logic, isolation, and graceful degradation
+- **Temporal workflow integration** for reliable scheduled execution and monitoring
 - **Extensive test suite** with 205+ tests covering unit, integration, vision analysis, and error scenarios
 - **Modern Python tooling** with uv for dependency management and packaging
 
@@ -48,6 +49,24 @@ uv run around-the-grounds --deploy
 
 # For Temporal workflows
 uv run around-the-grounds --deploy --verbose  # Recommended for scheduled runs
+```
+
+### Temporal Workflow Execution
+```bash
+# Start Temporal worker (run in separate terminal)
+uv run python -m around_the_grounds.temporal.worker
+
+# Execute workflow manually
+uv run python -m around_the_grounds.temporal.starter --deploy --verbose
+
+# Execute workflow with custom configuration
+uv run python -m around_the_grounds.temporal.starter --config /path/to/config.json --deploy
+
+# Execute workflow with custom ID for tracking
+uv run python -m around_the_grounds.temporal.starter --workflow-id daily-update-2025 --deploy
+
+# Connect to different Temporal server
+uv run python -m around_the_grounds.temporal.starter --temporal-address production:7233 --deploy
 ```
 
 ### Testing
@@ -98,6 +117,14 @@ around_the_grounds/
 │   └── registry.py             # Parser registry/factory
 ├── scrapers/
 │   └── coordinator.py          # Async scraping coordinator with error isolation
+├── temporal/                   # Temporal workflow integration
+│   ├── __init__.py             # Module initialization
+│   ├── workflows.py            # FoodTruckWorkflow definition
+│   ├── activities.py           # ScrapeActivities and DeploymentActivities
+│   ├── shared.py               # WorkflowParams and WorkflowResult data classes
+│   ├── worker.py               # Production-ready worker with error handling
+│   ├── starter.py              # CLI workflow execution client
+│   └── README.md               # Temporal-specific documentation
 ├── utils/
 │   ├── date_utils.py           # Date/time utilities with validation
 │   └── vision_analyzer.py      # AI vision analysis for vendor identification
@@ -131,6 +158,12 @@ tests/                          # Comprehensive test suite
   - `UrbanFamilyParser`: Hivey API integration with AI vision analysis fallback for vendor identification
 - **Registry**: Dynamic parser registration and retrieval with error handling
 - **Scrapers**: Async coordinator with concurrent processing, retry logic, and error isolation
+- **Temporal**: Workflow orchestration for reliable execution and scheduling
+  - `FoodTruckWorkflow`: Main workflow orchestrating scraping and deployment
+  - `ScrapeActivities`: Activities wrapping existing scraping functionality
+  - `DeploymentActivities`: Activities for web data generation and git operations
+  - `FoodTruckWorker`: Production-ready worker with thread pool and signal handling
+  - `FoodTruckStarter`: CLI client for manual workflow execution
 - **Config**: JSON-based configuration with validation and error reporting
 - **Utils**: Date/time utilities with comprehensive parsing and validation, plus AI vision analysis
 - **Web Interface**: Mobile-responsive HTML/CSS/JS frontend with automatic data fetching
@@ -145,6 +178,7 @@ tests/                          # Comprehensive test suite
 - `lxml` - Fast XML/HTML parser backend  
 - `requests` - HTTP library (legacy support)
 - `anthropic` - Claude Vision API for AI-powered image analysis
+- `temporalio` - Temporal Python SDK for workflow orchestration
 
 **Development & Testing:**
 - `pytest` - Test framework with async support
@@ -415,11 +449,15 @@ When updating or maintaining the web interface:
 
 ### Scheduled Updates (Temporal)
 ```python
-# Recommended Temporal workflow command
-@workflow.run
-async def update_food_trucks():
-    # This runs the full pipeline: scrape → generate JSON → commit → deploy
-    subprocess.run(['uv', 'run', 'around-the-grounds', '--deploy', '--verbose'])
+# Recommended Temporal workflow execution
+# The workflow runs the full pipeline: scrape → generate JSON → commit → deploy
+# Execute via worker/starter pattern for reliability and monitoring
+
+# Manual execution
+uv run python -m around_the_grounds.temporal.starter --deploy --verbose
+
+# Scheduled execution (configured via Temporal schedules)
+# See around_the_grounds/temporal/README.md for schedule configuration
 ```
 
 ### Troubleshooting Web Deployment
