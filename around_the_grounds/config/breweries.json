@@ -41,6 +41,17 @@
         "api_endpoint": "https://hivey-api-prod-pineapple.onrender.com/urbanfamily/public-calendar",
         "api_type": "hivey_calendar"
       }
+    },
+    {
+      "key": "wheelie-pop",
+      "name": "Wheelie Pop Brewing",
+      "url": "https://www.wheeliepopbrewing.com/seattle-ballard/",
+      "parser_config": {
+        "note": "Simple text format with dates and food truck names",
+        "selectors": {
+          "food_truck_text": "UPCOMING FOOD TRUCKS"
+        }
+      }
     }
   ]
 }

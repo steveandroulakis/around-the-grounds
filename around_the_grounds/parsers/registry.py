@@ -4,6 +4,7 @@ from .stoup_ballard import StoupBallardParser
 from .bale_breaker import BaleBreakerParser
 from .obec_brewing import ObecBrewingParser
 from .urban_family import UrbanFamilyParser
+from .wheelie_pop import WheeliePopParser
 
 
 class ParserRegistry:
@@ -12,6 +13,7 @@ class ParserRegistry:
         'yonder-balebreaker': BaleBreakerParser,
         'obec-brewing': ObecBrewingParser,
         'urban-family': UrbanFamilyParser,
+        'wheelie-pop': WheeliePopParser,
     }
     
     @classmethod
