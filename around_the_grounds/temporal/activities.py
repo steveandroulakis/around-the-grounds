@@ -110,7 +110,7 @@ class DeploymentActivities:
         return generate_web_data(reconstructed_events)
     
     @activity.defn
-    async def deploy_to_git(self, web_data: Dict[str, Any]) -> bool:
+    async def deploy_to_git(self, web_data: Dict[str, Any], repository_url: str) -> bool:
         """Deploy web data to git repository."""
         import tempfile
         import shutil
@@ -124,9 +124,8 @@ class DeploymentActivities:
                 repo_dir = Path(temp_dir) / "repo"
                 
                 # Clone the repository
-                repo_url = "https://github.com/steveandroulakis/around-the-grounds.git"
-                activity.logger.info(f"Cloning repository to {repo_dir}")
-                subprocess.run(['git', 'clone', repo_url, str(repo_dir)], check=True, capture_output=True)
+                activity.logger.info(f"Cloning repository {repository_url} to {repo_dir}")
+                subprocess.run(['git', 'clone', repository_url, str(repo_dir)], check=True, capture_output=True)
                 
                 # Configure git user in the cloned repository
                 subprocess.run(['git', 'config', 'user.email', 'steve.androulakis@gmail.com'], 
@@ -160,10 +159,10 @@ class DeploymentActivities:
                 subprocess.run(['git', 'commit', '-m', commit_msg], cwd=repo_dir, check=True, capture_output=True)
                 
                 # Set up GitHub App authentication and configure remote
-                auth = GitHubAppAuth()
+                auth = GitHubAppAuth(repository_url)
                 access_token = auth.get_access_token()
                 
-                authenticated_url = f"https://x-access-token:{access_token}@github.com/steveandroulakis/around-the-grounds.git"
+                authenticated_url = f"https://x-access-token:{access_token}@github.com/{auth.repo_owner}/{auth.repo_name}.git"
                 subprocess.run(['git', 'remote', 'set-url', 'origin', authenticated_url], 
                              cwd=repo_dir, check=True, capture_output=True)
                 

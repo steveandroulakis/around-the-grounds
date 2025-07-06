@@ -9,6 +9,7 @@ from typing import Optional
 from around_the_grounds.temporal.workflows import FoodTruckWorkflow
 from around_the_grounds.temporal.shared import WorkflowParams
 from around_the_grounds.temporal.config import get_temporal_client, TEMPORAL_TASK_QUEUE, validate_configuration
+from around_the_grounds.config.settings import get_git_repository_url
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,8 @@ class FoodTruckStarter:
         self,
         config_path: Optional[str] = None,
         deploy: bool = False,
-        workflow_id: Optional[str] = None
+        workflow_id: Optional[str] = None,
+        git_repository_url: Optional[str] = None
     ):
         """Execute the food truck workflow."""
         if not self.client:
@@ -57,10 +59,15 @@ class FoodTruckStarter:
             logger.info(f"📂 Config path: {config_path or 'default'}")
             logger.info(f"🚀 Deploy: {deploy}")
             
+            # Get repository URL with fallback chain
+            repository_url = get_git_repository_url(git_repository_url)
+            logger.info(f"📍 Repository: {repository_url}")
+            
             # Create workflow parameters
             params = WorkflowParams(
                 config_path=config_path,
-                deploy=deploy
+                deploy=deploy,
+                git_repository_url=repository_url
             )
             
             handle = await self.client.start_workflow(
@@ -89,6 +96,7 @@ async def main():
     parser.add_argument("--config", "-c", help="Path to brewery configuration JSON file")
     parser.add_argument("--deploy", "-d", action="store_true", help="Deploy results to web")
     parser.add_argument("--workflow-id", help="Custom workflow ID")
+    parser.add_argument("--git-repo", help="Git repository URL for deployment (default: ballard-food-trucks)")
     parser.add_argument("--temporal-address", default="localhost:7233", help="Temporal server address (deprecated - use TEMPORAL_ADDRESS env var)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
     
@@ -112,7 +120,8 @@ async def main():
         result = await starter.run_workflow(
             config_path=args.config,
             deploy=args.deploy,
-            workflow_id=args.workflow_id
+            workflow_id=args.workflow_id,
+            git_repository_url=args.git_repo
         )
         
         if result.success:

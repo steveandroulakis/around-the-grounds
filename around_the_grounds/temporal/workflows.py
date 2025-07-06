@@ -49,7 +49,7 @@ class FoodTruckWorkflow:
                 
                 deployed = await workflow.execute_activity_method(
                     deploy_activities.deploy_to_git,
-                    web_data,
+                    args=(web_data, params.git_repository_url),
                     schedule_to_close_timeout=timedelta(minutes=2),
                 )
                 

@@ -14,15 +14,24 @@ logger = logging.getLogger(__name__)
 class GitHubAppAuth:
     """Handle GitHub App authentication for git operations."""
     
-    def __init__(self):
+    def __init__(self, repository_url: str):
         self.app_id = os.getenv("GITHUB_APP_ID", "1531147")
         self.client_id = os.getenv("GITHUB_CLIENT_ID", "Iv23lihIZ0x4zfmWyUPe")
         self.private_key_b64 = os.getenv("GITHUB_APP_PRIVATE_KEY_B64")
-        self.repo_owner = "steveandroulakis"
-        self.repo_name = "around-the-grounds"
+        self.repository_url = repository_url
+        self.repo_owner, self.repo_name = self._parse_repository_url(repository_url)
         
         if not self.private_key_b64:
             raise ValueError("GITHUB_APP_PRIVATE_KEY_B64 environment variable is required")
+    
+    def _parse_repository_url(self, repository_url: str) -> tuple[str, str]:
+        """Parse GitHub repository URL to extract owner and repo name."""
+        # Handle both https://github.com/owner/repo.git and https://github.com/owner/repo formats
+        url = repository_url.replace("https://github.com/", "").replace(".git", "")
+        parts = url.split("/")
+        if len(parts) != 2:
+            raise ValueError(f"Invalid GitHub repository URL: {repository_url}")
+        return parts[0], parts[1]
     
     def _get_private_key(self) -> str:
         """Decode the base64-encoded private key."""

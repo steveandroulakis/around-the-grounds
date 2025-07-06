@@ -11,8 +11,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, List
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv(override=True)
+except ImportError:
+    # dotenv is optional, fall back to os.environ
+    pass
+
 from .models import Brewery, FoodTruckEvent
 from .scrapers import ScraperCoordinator
+from .config.settings import get_git_repository_url
 
 
 def load_brewery_config(config_path: Optional[str] = None) -> List[Brewery]:
@@ -130,9 +139,12 @@ def generate_web_data(events: List[FoodTruckEvent]) -> dict:
     }
 
 
-def deploy_to_web(events: List[FoodTruckEvent]) -> bool:
+def deploy_to_web(events: List[FoodTruckEvent], git_repo_url: Optional[str] = None) -> bool:
     """Generate web data and deploy to Vercel via git."""
     try:
+        # Get repository URL with fallback chain
+        repository_url = get_git_repository_url(git_repo_url)
+        
         # Ensure public directory exists
         public_dir = Path("public")
         public_dir.mkdir(exist_ok=True)
@@ -146,34 +158,84 @@ def deploy_to_web(events: List[FoodTruckEvent]) -> bool:
             json.dump(web_data, f, indent=2)
         
         print(f"✅ Generated web data: {len(events)} events")
+        print(f"📍 Target repository: {repository_url}")
         
-        # Check if we're in a git repository
-        result = subprocess.run(['git', 'status'], capture_output=True, text=True)
-        if result.returncode != 0:
-            print("⚠️  Not in a git repository - skipping deployment")
-            return False
-        
-        # Add and commit the data file
-        subprocess.run(['git', 'add', str(json_path)], check=True)
-        
-        # Check if there are changes to commit
-        result = subprocess.run(['git', 'diff', '--staged', '--quiet'], capture_output=True)
-        if result.returncode == 0:
-            print("ℹ️  No changes to deploy")
-            return True
-        
-        # Commit changes
-        commit_msg = f"🚚 Update food truck data - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-        subprocess.run(['git', 'commit', '-m', commit_msg], check=True)
-        
-        # Push to origin
-        subprocess.run(['git', 'push'], check=True)
-        
-        print("🚀 Deployed to Vercel! Changes will be live shortly.")
-        return True
+        # Use GitHub App authentication for deployment (like Temporal workflow)
+        return _deploy_with_github_auth(web_data, repository_url)
         
     except subprocess.CalledProcessError as e:
         print(f"❌ Deployment failed: {e}")
+        return False
+    except Exception as e:
+        print(f"❌ Error during deployment: {e}")
+        return False
+
+
+def _deploy_with_github_auth(web_data: dict, repository_url: str) -> bool:
+    """Deploy web data to git repository using GitHub App authentication."""
+    import tempfile
+    import shutil
+    from .utils.github_auth import GitHubAppAuth
+    
+    try:
+        print(f"🔐 Using GitHub App authentication for deployment...")
+        
+        # Create temporary directory for git operations
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_dir = Path(temp_dir) / "repo"
+            
+            # Clone the repository
+            print(f"📥 Cloning repository {repository_url}...")
+            subprocess.run(['git', 'clone', repository_url, str(repo_dir)], check=True, capture_output=True)
+            
+            # Configure git user in the cloned repository
+            subprocess.run(['git', 'config', 'user.email', 'steve.androulakis@gmail.com'], 
+                         cwd=repo_dir, check=True, capture_output=True)
+            subprocess.run(['git', 'config', 'user.name', 'Around the Grounds Bot'], 
+                         cwd=repo_dir, check=True, capture_output=True)
+            
+            # Ensure public directory exists in cloned repo
+            public_dir = repo_dir / "public"
+            public_dir.mkdir(exist_ok=True)
+            
+            # Write web data to cloned repository
+            json_path = public_dir / "data.json"
+            with open(json_path, 'w') as f:
+                json.dump(web_data, f, indent=2)
+            
+            print(f"📝 Updated data.json with {web_data.get('total_events', 0)} events")
+            
+            # Add and check for changes
+            subprocess.run(['git', 'add', str(json_path)], cwd=repo_dir, check=True, capture_output=True)
+            
+            # Check if there are changes to commit
+            result = subprocess.run(['git', 'diff', '--staged', '--quiet'], cwd=repo_dir, capture_output=True)
+            if result.returncode == 0:
+                print("ℹ️  No changes to deploy")
+                return True
+            
+            # Commit changes
+            commit_msg = f"🚚 Update food truck data - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            subprocess.run(['git', 'commit', '-m', commit_msg], cwd=repo_dir, check=True, capture_output=True)
+            
+            # Set up GitHub App authentication and configure remote
+            auth = GitHubAppAuth(repository_url)
+            access_token = auth.get_access_token()
+            
+            authenticated_url = f"https://x-access-token:{access_token}@github.com/{auth.repo_owner}/{auth.repo_name}.git"
+            subprocess.run(['git', 'remote', 'set-url', 'origin', authenticated_url], 
+                         cwd=repo_dir, check=True, capture_output=True)
+            
+            # Push to origin
+            print(f"🚀 Pushing to {repository_url}...")
+            subprocess.run(['git', 'push', 'origin', 'main'], cwd=repo_dir, check=True, capture_output=True)
+            print("✅ Deployed successfully! Changes will be live shortly.")
+            
+            return True
+            
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr.decode('utf-8') if e.stderr else str(e)
+        print(f"❌ Git operation failed: {error_msg}")
         return False
     except Exception as e:
         print(f"❌ Error during deployment: {e}")
@@ -217,6 +279,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         action="store_true",
         help="Deploy results to web (generate JSON and push to git)"
     )
+    parser.add_argument(
+        "--git-repo",
+        help="Git repository URL for deployment (default: ballard-food-trucks)"
+    )
     
     args = parser.parse_args(argv)
     
@@ -237,7 +303,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         
         # Deploy to web if requested
         if args.deploy and events:
-            deploy_to_web(events)
+            deploy_to_web(events, args.git_repo)
         
         # Return appropriate exit code
         if errors and not events:
