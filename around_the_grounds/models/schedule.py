@@ -12,6 +12,7 @@ class FoodTruckEvent:
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     description: Optional[str] = None
+    ai_generated_name: bool = False
     
     def __str__(self) -> str:
         date_str = self.date.strftime("%Y-%m-%d") if self.date else "None"

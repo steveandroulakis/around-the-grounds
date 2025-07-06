@@ -23,8 +23,9 @@ class TestVisionIntegration:
             "applicantVendors": []
         }
         
-        result = parser._extract_food_truck_name(test_item)
+        result, ai_generated = parser._extract_food_truck_name(test_item)
         assert result == "Georgia's"
+        assert ai_generated == True
         mock_vision.assert_called_once_with("https://example.com/logo_main_updated.jpg")
     
     @pytest.mark.asyncio
@@ -40,8 +41,9 @@ class TestVisionIntegration:
             "applicantVendors": []
         }
         
-        result = parser._extract_food_truck_name(test_item)
+        result, ai_generated = parser._extract_food_truck_name(test_item)
         assert result == "Marination"
+        assert ai_generated == False
         # Vision analysis should not be called when text extraction succeeds
         mock_vision.assert_not_called()
     
@@ -57,8 +59,9 @@ class TestVisionIntegration:
             "applicantVendors": []
         }
         
-        result = parser._extract_food_truck_name(test_item)
+        result, ai_generated = parser._extract_food_truck_name(test_item)
         assert result is None
+        assert ai_generated == False
         mock_vision.assert_called_once_with("https://example.com/logo_main_updated.jpg")
     
     @pytest.mark.asyncio
@@ -70,8 +73,9 @@ class TestVisionIntegration:
             "applicantVendors": []
         }
         
-        result = parser._extract_food_truck_name(test_item)
+        result, ai_generated = parser._extract_food_truck_name(test_item)
         assert result is None
+        assert ai_generated == False
         # Vision analysis should not be called when no image is available
         mock_vision.assert_not_called()
     
@@ -88,8 +92,9 @@ class TestVisionIntegration:
         }
         
         # Should handle exception gracefully and fall back to TBD
-        result = parser._extract_food_truck_name(test_item)
+        result, ai_generated = parser._extract_food_truck_name(test_item)
         assert result is None
+        assert ai_generated == False
         mock_vision.assert_called_once_with("https://example.com/logo_main_updated.jpg")
     
     @pytest.mark.asyncio
@@ -105,8 +110,9 @@ class TestVisionIntegration:
             "applicantVendors": []
         }
         
-        result = parser._extract_food_truck_name(test_item)
+        result, ai_generated = parser._extract_food_truck_name(test_item)
         assert result == "Vision Extracted Name"
+        assert ai_generated == True
         mock_vision.assert_called_once_with("https://example.com/logo_updated_main.jpg")
     
     @pytest.mark.asyncio
@@ -122,9 +128,10 @@ class TestVisionIntegration:
             "applicantVendors": []
         }
         
-        result = parser._extract_food_truck_name(test_item)
+        result, ai_generated = parser._extract_food_truck_name(test_item)
         # Should extract from filename, not use vision
         assert result == "Georgias Greek Food"
+        assert ai_generated == False
         mock_vision.assert_not_called()
     
     def test_vision_analyzer_lazy_initialization(self, parser):

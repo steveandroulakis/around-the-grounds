@@ -288,15 +288,21 @@ class TestUrbanFamilyParser:
         """Test food truck name extraction from event title."""
         # Test explicit name in title
         item1 = {"eventTitle": "FOOD TRUCK - Awesome Tacos"}
-        assert parser._extract_food_truck_name(item1) == "Awesome Tacos"
+        result, ai_generated = parser._extract_food_truck_name(item1)
+        assert result == "Awesome Tacos"
+        assert ai_generated == False
         
         # Test title that's not just "FOOD TRUCK"
         item2 = {"eventTitle": "Special Event - Pizza Night"}
-        assert parser._extract_food_truck_name(item2) == "Special Event - Pizza Night"
+        result, ai_generated = parser._extract_food_truck_name(item2)
+        assert result == "Special Event - Pizza Night"
+        assert ai_generated == False
         
         # Test generic "FOOD TRUCK" title (should return None for this test)
         item3 = {"eventTitle": "FOOD TRUCK"}
-        assert parser._extract_food_truck_name(item3) is None
+        result, ai_generated = parser._extract_food_truck_name(item3)
+        assert result is None
+        assert ai_generated == False
     
     def test_extract_food_truck_name_from_image_url(self, parser):
         """Test food truck name extraction from image URL."""
@@ -304,8 +310,9 @@ class TestUrbanFamilyParser:
             "eventTitle": "FOOD TRUCK",
             "eventImage": "https://hivey-1.s3.us-east-1.amazonaws.com/uploads/awesome_tacos_logo.jpg"
         }
-        result = parser._extract_food_truck_name(item)
+        result, ai_generated = parser._extract_food_truck_name(item)
         assert result == "Awesome Tacos Logo"
+        assert ai_generated == False
     
     def test_extract_food_truck_name_no_valid_name(self, parser):
         """Test when no valid food truck name can be extracted."""
@@ -313,7 +320,9 @@ class TestUrbanFamilyParser:
             "eventTitle": "FOOD TRUCK",
             "eventImage": "https://example.com/logo.png"
         }
-        assert parser._extract_food_truck_name(item) is None
+        result, ai_generated = parser._extract_food_truck_name(item)
+        assert result is None
+        assert ai_generated == False
     
     def test_parse_urban_family_date_formats(self, parser):
         """Test parsing various date formats."""

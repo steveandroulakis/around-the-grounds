@@ -69,7 +69,11 @@ def format_events_output(events: List[FoodTruckEvent], errors: list = None) -> s
                 if event.description:
                     output.append(f"     {event.description}")
             else:
-                output.append(f"  🚚 {event.food_truck_name} @ {event.brewery_name}{time_str}")
+                # Add AI vision indicator for AI-generated names
+                if event.ai_generated_name:
+                    output.append(f"  🚚 {event.food_truck_name} 🖼️🤖 @ {event.brewery_name}{time_str}")
+                else:
+                    output.append(f"  🚚 {event.food_truck_name} @ {event.brewery_name}{time_str}")
                 if event.description:
                     output.append(f"     {event.description}")
     

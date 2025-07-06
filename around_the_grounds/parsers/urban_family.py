@@ -1,7 +1,7 @@
 import json
 import asyncio
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 import aiohttp
 
 from .base import BaseParser
@@ -128,11 +128,12 @@ class UrbanFamilyParser(BaseParser):
         """
         try:
             # Extract food truck name from various possible fields
-            food_truck_name = self._extract_food_truck_name(item)
+            food_truck_name, ai_generated = self._extract_food_truck_name(item)
             if not food_truck_name:
                 # For Urban Family, many events don't have specific vendor names yet
                 # Return "TBD" instead of skipping to show the time slot is reserved
                 food_truck_name = "TBD"
+                ai_generated = False
             
             # Extract date information
             date = self._extract_date(item)
@@ -153,22 +154,25 @@ class UrbanFamilyParser(BaseParser):
                 date=date,
                 start_time=start_time,
                 end_time=end_time,
-                description=description
+                description=description,
+                ai_generated_name=ai_generated
             )
             
         except Exception as e:
             self.logger.debug(f"Error parsing event item: {str(e)}, item: {item}")
             return None
     
-    def _extract_food_truck_name(self, item: Dict[str, Any]) -> Optional[str]:
+    def _extract_food_truck_name(self, item: Dict[str, Any]) -> Tuple[Optional[str], bool]:
         """
         Extract food truck name with vision analysis fallback.
-        Returns the extracted name or None if no valid name can be determined.
+        Returns a tuple of (extracted_name, ai_generated) where:
+        - extracted_name: The vendor name or None if no valid name found
+        - ai_generated: True if name was extracted using AI vision analysis
         """
         # Try existing text-based extraction methods first
         name = self._extract_name_from_text_fields(item)
         if name:
-            return name
+            return name, False
         
         # If no name found from text, try image analysis
         if 'eventImage' in item and item['eventImage']:
@@ -179,10 +183,10 @@ class UrbanFamilyParser(BaseParser):
                 cached_name = self._vision_cache[image_url]
                 if cached_name:
                     self.logger.debug(f"Using cached vision result for {image_url}: {cached_name}")
-                    return cached_name
+                    return cached_name, True
                 else:
                     self.logger.debug(f"Cached vision result for {image_url} was None, skipping")
-                    return None
+                    return None, False
             
             self.logger.debug(f"Attempting vision analysis for image: {image_url}")
             
@@ -210,14 +214,14 @@ class UrbanFamilyParser(BaseParser):
                 
                 if vision_name:
                     self.logger.info(f"Vision analysis extracted name: {vision_name}")
-                    return vision_name
+                    return vision_name, True
             except Exception as e:
                 self.logger.debug(f"Vision analysis failed: {str(e)}")
                 # Cache the failure
                 self._vision_cache[image_url] = None
         
         # Return None if no valid name found
-        return None
+        return None, False
     
     def _extract_name_from_text_fields(self, item: Dict[str, Any]) -> Optional[str]:
         """Extract name from text fields (existing logic moved here)."""

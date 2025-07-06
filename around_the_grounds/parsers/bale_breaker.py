@@ -154,7 +154,8 @@ class BaleBreakerParser(BaseParser):
                 date=start_date,
                 start_time=start_date,
                 end_time=end_date,
-                description=None  # Don't show generic description to users
+                description=None,  # Don't show generic description to users
+                ai_generated_name=False
             )
             
             self.logger.debug(f"Parsed event: {title} on {start_date}")
@@ -171,6 +172,7 @@ class BaleBreakerParser(BaseParser):
             brewery_name=self.brewery.name,
             food_truck_name="Check Instagram @BaleBreaker",
             date=datetime.now(),
-            description="Food truck schedule not available - check Instagram or website directly"
+            description="Food truck schedule not available - check Instagram or website directly",
+            ai_generated_name=False
         )
         return [placeholder_event]

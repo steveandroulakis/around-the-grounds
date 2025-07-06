@@ -89,7 +89,8 @@ class StoupBallardParser(BaseParser):
                         food_truck_name=line,
                         date=current_date,
                         start_time=start_time,
-                        end_time=end_time
+                        end_time=end_time,
+                        ai_generated_name=False
                     )
                     events.append(event)
         
@@ -141,7 +142,8 @@ class StoupBallardParser(BaseParser):
             food_truck_name=truck_name,
             date=date,
             start_time=start_time,
-            end_time=end_time
+            end_time=end_time,
+            ai_generated_name=False
         )
     
     def _parse_old_format_entry(self, entry) -> FoodTruckEvent:
@@ -170,7 +172,8 @@ class StoupBallardParser(BaseParser):
             food_truck_name=truck_name,
             date=date,
             start_time=start_time,
-            end_time=end_time
+            end_time=end_time,
+            ai_generated_name=False
         )
     
     def _parse_date(self, date_str: str) -> datetime:

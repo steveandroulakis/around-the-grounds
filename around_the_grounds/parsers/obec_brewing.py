@@ -40,7 +40,8 @@ class ObecBrewingParser(BaseParser):
                     food_truck_name=truck_name,
                     date=today,
                     start_time=start_time,
-                    end_time=end_time
+                    end_time=end_time,
+                    ai_generated_name=False
                 )
                 events.append(event)
             
