@@ -7,13 +7,13 @@ A Python CLI tool for tracking food truck schedules across multiple breweries. S
 This repository contains the **scraping and scheduling engine**. When run with `--deploy`, it:
 
 1. **Scrapes** brewery websites for food truck schedules
-2. **Generates** static site data (`data.json`) 
-3. **Pushes** data to a separate **target repository**
+2. **Copies** web templates from `public_template/` to target repository
+3. **Generates** static site data (`data.json`) in target repository
 4. **Target repo** is automatically deployed by platforms like Vercel
 
 **Two-Repository Architecture:**
-- **Source repo** (this one): Contains scraping code, runs workers
-- **Target repo** (e.g., `ballard-food-trucks`): Receives data, served as website
+- **Source repo** (this one): Contains scraping code, runs workers, web templates
+- **Target repo** (e.g., `ballard-food-trucks`): Receives complete website, served as static site
 
 ## Quick Start
 
@@ -76,7 +76,7 @@ To deploy a live website, you need a **target repository** and **GitHub App** fo
    uv run around-the-grounds --deploy
    ```
 
-This will scrape fresh data and push it to your target repository, triggering automatic deployment.
+This will copy web templates and generate fresh data in your target repository, triggering automatic deployment.
 
 ## Scheduled Updates
 
@@ -178,7 +178,7 @@ See [CLAUDE.md](CLAUDE.md) for detailed development documentation.
 - **Parsers**: Extensible system for different brewery websites
 - **Scrapers**: Async coordinator with error handling and retries
 - **Temporal**: Workflow orchestration for reliable scheduling  
-- **Web Interface**: Static files in `public/` (deployed to target repo)
+- **Web Interface**: Template files in `public_template/` (copied to target repo)
 - **Tests**: 196 tests covering unit, integration, and error scenarios
 
 ## Requirements

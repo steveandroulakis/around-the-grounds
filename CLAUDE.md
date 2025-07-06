@@ -52,11 +52,12 @@ uv run around-the-grounds --deploy
 
 # This command will:
 # 1. Scrape all brewery websites for fresh data
-# 2. Generate web-friendly JSON data in public/data.json
-# 3. Authenticate using GitHub App credentials
-# 4. Clone target repository, commit changes, and push
-# 5. Trigger automatic deployment (Vercel/Netlify/etc.)
-# 6. Website updates live within minutes
+# 2. Copy web templates from public_template/ to target repository
+# 3. Generate web-friendly JSON data in target repository
+# 4. Authenticate using GitHub App credentials
+# 5. Commit and push complete website to target repository
+# 6. Trigger automatic deployment (Vercel/Netlify/etc.)
+# 7. Website updates live within minutes
 
 # For Temporal workflows
 uv run around-the-grounds --deploy --verbose  # Recommended for scheduled runs
@@ -102,11 +103,11 @@ ANTHROPIC_API_KEY=your-anthropic-api-key
 
 #### 4. Target Repository Setup
 
-The system pushes static site data to a **separate target repository** which is then deployed by platforms like Vercel:
+The system pushes a complete static website to a **separate target repository** which is then deployed by platforms like Vercel:
 
 **Two-Repository Architecture**:
-- **Source repo** (this one): Contains scraping code, runs workers
-- **Target repo** (e.g., `ballard-food-trucks`): Receives data, served as website
+- **Source repo** (this one): Contains scraping code, runs workers, web templates
+- **Target repo** (e.g., `ballard-food-trucks`): Receives complete website, served as static site
 
 **Configuration Options**:
 
@@ -136,11 +137,12 @@ uv run around-the-grounds --deploy
 
 When you run `--deploy`, the system:
 1. **Scrapes** all brewery websites for fresh data
-2. **Generates** web-friendly JSON data in `public/data.json`
-3. **Authenticates** using GitHub App credentials
-4. **Clones** target repository, commits changes, and pushes
-5. **Triggers** automatic deployment (Vercel/Netlify/etc.)
-6. **Website** updates live within minutes
+2. **Copies** web templates from `public_template/` to target repository
+3. **Generates** web-friendly JSON data in target repository
+4. **Authenticates** using GitHub App credentials
+5. **Commits** and pushes complete website to target repository
+6. **Triggers** automatic deployment (Vercel/Netlify/etc.)
+7. **Website** updates live within minutes
 
 ### Temporal Workflow Execution
 
@@ -309,10 +311,12 @@ around_the_grounds/
 │   └── vision_analyzer.py      # AI vision analysis for vendor identification
 └── main.py                     # CLI entry point with web deployment support
 
-public/                         # Web interface files (deployed to Vercel)
-├── index.html                  # Mobile-responsive web interface
-├── data.json                   # Generated web data (auto-updated by --deploy)
+public_template/                # Web interface templates (copied to target repo)
+├── index.html                  # Mobile-responsive web interface template
 └── vercel.json                 # Vercel deployment configuration
+
+public/                         # Generated files (git ignored)
+└── data.json                   # Generated web data (not committed to source repo)
 
 tests/                          # Comprehensive test suite
 ├── conftest.py                 # Shared test fixtures
@@ -617,13 +621,13 @@ When updating or maintaining the web interface:
 
 ### Development & Testing
 1. **Test locally**: Ensure `uv run around-the-grounds` works correctly
-2. **Test web data generation**: Run `uv run around-the-grounds --deploy` (will create/update `public/data.json`)
-3. **Test web interface**: Open `public/index.html` in browser to verify display
+2. **Test web templates**: Verify `public_template/` contains latest web interface files
+3. **Test deployment**: Run `uv run around-the-grounds --deploy` (copies templates + generates data in target repo)
 4. **Check responsive design**: Test on mobile viewport sizes
 
 ### Deployment Process
 1. **Run deployment command**: `uv run around-the-grounds --deploy`
-2. **Verify git commit**: Check that `public/data.json` was committed with fresh data
+2. **Verify target repo**: Check that complete website was pushed to target repository
 3. **Monitor Vercel deployment**: Changes should deploy automatically within minutes
 4. **Test live site**: Verify website shows updated data and functions correctly
 
@@ -643,10 +647,10 @@ uv run python -m around_the_grounds.temporal.starter --deploy --verbose
 ```
 
 ### Troubleshooting Web Deployment
-- **No changes deployed**: Check if `public/data.json` actually changed
-- **Website not updating**: Check Vercel deployment logs and ensure git push succeeded
-- **Mobile display issues**: Test responsive CSS and ensure viewport meta tag is present
-- **Data fetching errors**: Verify `public/data.json` is valid JSON and accessible at `/data.json`
+- **No changes deployed**: Check if data actually changed or templates were updated
+- **Website not updating**: Check Vercel deployment logs and ensure git push to target repo succeeded
+- **Mobile display issues**: Test responsive CSS and ensure viewport meta tag is present in `public_template/`
+- **Data fetching errors**: Verify `data.json` was generated correctly in target repository
 
 ## Troubleshooting Common Issues
 
