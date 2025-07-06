@@ -12,10 +12,10 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Courier New', monospace;
+            line-height: 1.4;
+            color: #2c2c2c;
+            background: #f8f9f8;
             min-height: 100vh;
             padding: 20px;
         }
@@ -24,22 +24,23 @@
             max-width: 800px;
             margin: 0 auto;
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
+            border: 1px solid #ddd;
+            padding: 20px;
         }
 
         .header {
-            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-            color: white;
-            padding: 30px 20px;
-            text-align: center;
+            background: none;
+            color: #2c2c2c;
+            padding: 0 0 20px 0;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
         }
 
         .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            font-weight: 700;
+            font-size: 1.8rem;
+            margin-bottom: 0;
+            font-weight: normal;
         }
 
         .header p {
@@ -48,20 +49,19 @@
         }
 
         .content {
-            padding: 30px 20px;
+            padding: 0;
         }
 
         .loading {
-            text-align: center;
-            padding: 60px 20px;
+            text-align: left;
+            padding: 20px 0;
             color: #666;
-            font-size: 1.1rem;
+            font-size: 1rem;
         }
 
         .day-section {
-            margin-bottom: 40px;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 30px;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
         }
 
         .day-section:last-child {
@@ -70,104 +70,96 @@
         }
 
         .day-header {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #4CAF50;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            font-size: 1.2rem;
+            font-weight: normal;
+            color: #2c2c2c;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
         }
 
         .truck-item {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 15px;
-            border-left: 4px solid #4CAF50;
-            transition: all 0.3s ease;
+            background: none;
+            padding: 5px 0 5px 20px;
+            margin-bottom: 10px;
+            border: none;
         }
 
-        .truck-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
 
         .truck-name {
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 8px;
+            font-size: 1rem;
+            font-weight: normal;
+            color: #2c2c2c;
+            margin-bottom: 3px;
             cursor: pointer;
-            text-decoration: none;
+            text-decoration: underline;
             display: inline-block;
-            transition: color 0.3s ease;
         }
 
         .truck-name:hover {
-            color: #4CAF50;
-            text-decoration: underline;
+            color: #666;
         }
 
         .truck-details {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            align-items: center;
             color: #666;
-            font-size: 1rem;
+            font-size: 0.9rem;
+            margin-left: 0;
         }
 
         .location {
-            display: flex;
-            align-items: center;
-            gap: 5px;
+            display: inline;
+            margin-right: 15px;
         }
 
         .time {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-weight: 500;
+            display: inline;
+            font-weight: normal;
         }
 
         .vision-badge {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 12px;
+            background: #eee;
+            color: #666;
+            padding: 2px 6px;
+            border: 1px solid #ccc;
             font-size: 0.8rem;
-            font-weight: 500;
+            font-weight: normal;
         }
 
         .updated-time {
-            text-align: center;
+            text-align: left;
             color: #666;
             font-size: 0.9rem;
             margin-top: 30px;
             padding-top: 20px;
-            border-top: 1px solid #eee;
+            border-top: 1px solid #ddd;
         }
 
         .stats {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-            text-align: center;
+            background: none;
+            padding: 0;
+            margin-top: 30px;
+            margin-bottom: 0;
+            text-align: left;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
         }
 
         .stats-number {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #4CAF50;
+            font-size: 1rem;
+            font-weight: normal;
+            color: #2c2c2c;
         }
 
         .stats-label {
             color: #666;
             font-size: 1rem;
+        }
+        
+        .ai-info {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            font-style: italic;
         }
 
         @media (max-width: 768px) {
@@ -176,25 +168,15 @@
             }
 
             .header h1 {
-                font-size: 2rem;
+                font-size: 1.5rem;
             }
 
-            .content {
-                padding: 20px 15px;
+            .container {
+                padding: 15px;
             }
 
-            .truck-details {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
-            }
-
-            .day-header {
-                font-size: 1.3rem;
-            }
-
-            .truck-name {
-                font-size: 1.2rem;
+            .truck-item {
+                padding: 5px 0 5px 15px;
             }
         }
 
@@ -203,8 +185,7 @@
             border: 1px solid #fed7d7;
             color: #c53030;
             padding: 20px;
-            border-radius: 8px;
-            text-align: center;
+            text-align: left;
             margin: 20px 0;
         }
     </style>
@@ -212,27 +193,31 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1><z Food Trucks Ballard</h1>
-            <p>Your guide to brewery food trucks around Seattle</p>
+            <h1>This Week's Ballard Food Trucks</h1>
         </div>
         
         <div class="content">
             <div id="loading" class="loading">
-                = Loading food truck schedules...
+Loading food truck schedules...
             </div>
             
             <div id="error" class="error" style="display: none;">
-                L Unable to load food truck data. Please try again later.
-            </div>
-            
-            <div id="stats" class="stats" style="display: none;">
-                <div class="stats-number" id="totalEvents">0</div>
-                <div class="stats-label">food trucks scheduled</div>
+Unable to load food truck data. Please try again later.
             </div>
             
             <div id="schedule" style="display: none;"></div>
             
             <div id="updated" class="updated-time" style="display: none;"></div>
+            
+            <div id="stats" class="stats" style="display: none;">
+                <span class="stats-number" id="totalEvents">0</span>
+                <span class="stats-label"> trucks total</span>
+            </div>
+            
+            <div id="ai-info" class="ai-info" style="display: none;">
+                'AI Extracted' means the truck name was generated from analyzing an image.
+            </div>
+            
         </div>
     </div>
 
@@ -259,11 +244,10 @@
         function displayFoodTrucks(data) {
             document.getElementById('loading').style.display = 'none';
             
-            // Show stats
+            // Show stats at bottom
             const statsEl = document.getElementById('stats');
             const totalEventsEl = document.getElementById('totalEvents');
             totalEventsEl.textContent = data.total_events || data.events.length;
-            statsEl.style.display = 'block';
             
             // Group events by date
             const eventsByDate = {};
@@ -290,27 +274,28 @@
                 });
                 
                 html += `<div class="day-section">`;
-                html += `<div class="day-header">=Å ${dayName}</div>`;
+                html += `<div class="day-header">${dayName}</div>`;
                 
                 eventsByDate[dateKey].forEach(event => {
-                    const truckName = event.vendor || event.vendor_name || 'TBD';
+                    const rawTruckName = event.vendor || event.vendor_name || 'TBD';
+                    const truckName = rawTruckName.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1F018}-\u{1F270}]|[\u{238C}]|[\u{2764}]|[\u{FE0F}]/gu, '').trim();
                     const location = event.location || '';
                     const timeString = formatTimeRange(event.start_time, event.end_time);
-                    const isVisionExtracted = event.vendor && (event.vendor.includes('=¼>') || event.extraction_method === 'vision');
+                    const isVisionExtracted = event.vendor && event.extraction_method === 'vision';
                     
                     html += `<div class="truck-item">`;
-                    html += `<a href="#" class="truck-name" onclick="searchTruck('${truckName.replace(/=¼>/g, '').trim()}'); return false;">`;
-                    html += `=š ${truckName}`;
+                    html += `<a href="#" class="truck-name" onclick="searchTruck('${truckName}'); return false;">`;
+                    html += `${truckName}`;
                     if (isVisionExtracted) {
                         html += ` <span class="vision-badge">AI extracted</span>`;
                     }
                     html += `</a>`;
                     html += `<div class="truck-details">`;
                     if (location) {
-                        html += `<div class="location">=Í ${location}</div>`;
+                        html += `<div class="location">${location}</div>`;
                     }
                     if (timeString) {
-                        html += `<div class="time">=P ${timeString}</div>`;
+                        html += `<div class="time">${timeString}</div>`;
                     }
                     html += `</div>`;
                     html += `</div>`;
@@ -336,6 +321,15 @@
                 })} PST`;
                 updatedEl.style.display = 'block';
             }
+            
+            // Show stats at bottom
+            statsEl.style.display = 'block';
+            
+            // Show AI info if there are any vision-extracted items
+            const hasVisionExtracted = data.events.some(event => event.extraction_method === 'vision');
+            if (hasVisionExtracted) {
+                document.getElementById('ai-info').style.display = 'block';
+            }
         }
 
         function formatTimeRange(startTime, endTime) {
@@ -347,7 +341,7 @@
 
         function searchTruck(truckName) {
             // Clean up the truck name for search
-            const cleanName = truckName.replace(/=¼>/g, '').trim();
+            const cleanName = truckName.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1F018}-\u{1F270}]|[\u{238C}]|[\u{2764}]|[\u{FE0F}]/gu, '').trim();
             const searchQuery = encodeURIComponent(`${cleanName} food truck seattle`);
             window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
         }
