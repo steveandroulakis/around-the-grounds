@@ -145,17 +145,8 @@ def deploy_to_web(events: List[FoodTruckEvent], git_repo_url: Optional[str] = No
         # Get repository URL with fallback chain
         repository_url = get_git_repository_url(git_repo_url)
         
-        # Ensure public directory exists
-        public_dir = Path("public")
-        public_dir.mkdir(exist_ok=True)
-        
         # Generate web data
         web_data = generate_web_data(events)
-        
-        # Write JSON file
-        json_path = public_dir / "data.json"
-        with open(json_path, 'w') as f:
-            json.dump(web_data, f, indent=2)
         
         print(f"✅ Generated web data: {len(events)} events")
         print(f"📍 Target repository: {repository_url}")
@@ -194,19 +185,22 @@ def _deploy_with_github_auth(web_data: dict, repository_url: str) -> bool:
             subprocess.run(['git', 'config', 'user.name', 'Around the Grounds Bot'], 
                          cwd=repo_dir, check=True, capture_output=True)
             
-            # Ensure public directory exists in cloned repo
-            public_dir = repo_dir / "public"
-            public_dir.mkdir(exist_ok=True)
+            # Copy template files from public_template to cloned repo
+            public_template_dir = Path.cwd() / "public_template"
+            target_public_dir = repo_dir / "public"
             
-            # Write web data to cloned repository
-            json_path = public_dir / "data.json"
+            print(f"📋 Copying template files from {public_template_dir}...")
+            shutil.copytree(public_template_dir, target_public_dir, dirs_exist_ok=True)
+            
+            # Write generated web data to cloned repository
+            json_path = target_public_dir / "data.json"
             with open(json_path, 'w') as f:
                 json.dump(web_data, f, indent=2)
             
             print(f"📝 Updated data.json with {web_data.get('total_events', 0)} events")
             
-            # Add and check for changes
-            subprocess.run(['git', 'add', str(json_path)], cwd=repo_dir, check=True, capture_output=True)
+            # Add all files in public directory
+            subprocess.run(['git', 'add', 'public/'], cwd=repo_dir, check=True, capture_output=True)
             
             # Check if there are changes to commit
             result = subprocess.run(['git', 'diff', '--staged', '--quiet'], cwd=repo_dir, capture_output=True)

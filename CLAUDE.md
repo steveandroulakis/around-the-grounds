@@ -36,20 +36,111 @@ uv run around-the-grounds --deploy     # Run with vision analysis and deploy to 
 ```
 
 ### Web Deployment
+
+**IMPORTANT**: Web deployment requires GitHub App authentication setup (see GitHub App Configuration section below).
+
 ```bash
 # Deploy fresh data to website (full workflow)
+uv run around-the-grounds --deploy
+
+# Deploy to custom repository
+uv run around-the-grounds --deploy --git-repo https://github.com/username/repo.git
+
+# Or use environment variable
+export GIT_REPOSITORY_URL="https://github.com/username/repo.git"
 uv run around-the-grounds --deploy
 
 # This command will:
 # 1. Scrape all brewery websites for fresh data
 # 2. Generate web-friendly JSON data in public/data.json
-# 3. Commit and push changes to git
-# 4. Trigger automatic Vercel deployment
-# 5. Website updates live within minutes
+# 3. Authenticate using GitHub App credentials
+# 4. Clone target repository, commit changes, and push
+# 5. Trigger automatic deployment (Vercel/Netlify/etc.)
+# 6. Website updates live within minutes
 
 # For Temporal workflows
 uv run around-the-grounds --deploy --verbose  # Recommended for scheduled runs
 ```
+
+### GitHub App Configuration
+
+Web deployment uses GitHub App authentication for secure repository access:
+
+#### 1. Create GitHub App
+1. Go to https://github.com/settings/apps
+2. Click "New GitHub App"
+3. Configure:
+   - **App name**: "Around the Grounds Deployer" (or similar)
+   - **Homepage URL**: Your repository URL
+   - **Repository permissions**:
+     - Contents: Read & Write
+     - Metadata: Read
+   - **Where can this GitHub App be installed?**: Only on this account
+4. **Generate private key** and download the `.pem` file
+5. Note the **App ID** from the app settings page
+
+#### 2. Install App on Repository
+1. Go to your GitHub App settings
+2. Click "Install App" 
+3. Select your target repository (e.g., `ballard-food-trucks`)
+4. Note the **Installation ID** from the URL after installation
+
+#### 3. Configure Environment Variables
+```bash
+# Copy template
+cp .env.example .env
+
+# Add GitHub App credentials to .env:
+GITHUB_APP_ID=123456
+GITHUB_APP_INSTALLATION_ID=12345678
+GITHUB_APP_PRIVATE_KEY_B64=$(base64 -i path/to/your-app.private-key.pem)
+GIT_REPOSITORY_URL=https://github.com/username/ballard-food-trucks.git
+
+# Optional: AI vision analysis
+ANTHROPIC_API_KEY=your-anthropic-api-key
+```
+
+#### 4. Target Repository Setup
+
+The system pushes static site data to a **separate target repository** which is then deployed by platforms like Vercel:
+
+**Two-Repository Architecture**:
+- **Source repo** (this one): Contains scraping code, runs workers
+- **Target repo** (e.g., `ballard-food-trucks`): Receives data, served as website
+
+**Configuration Options**:
+
+**Default Repository**: `steveandroulakis/ballard-food-trucks`
+```bash
+# Uses default repository from settings
+uv run around-the-grounds --deploy
+```
+
+**Custom Repository via CLI**:
+```bash
+uv run around-the-grounds --deploy --git-repo https://github.com/username/custom-repo.git
+```
+
+**Custom Repository via Environment**:
+```bash
+export GIT_REPOSITORY_URL="https://github.com/username/custom-repo.git"
+uv run around-the-grounds --deploy
+```
+
+**Configuration Precedence**:
+1. CLI argument (`--git-repo`)
+2. Environment variable (`GIT_REPOSITORY_URL`)
+3. Default (`steveandroulakis/ballard-food-trucks`)
+
+#### 5. Deployment Workflow
+
+When you run `--deploy`, the system:
+1. **Scrapes** all brewery websites for fresh data
+2. **Generates** web-friendly JSON data in `public/data.json`
+3. **Authenticates** using GitHub App credentials
+4. **Clones** target repository, commits changes, and pushes
+5. **Triggers** automatic deployment (Vercel/Netlify/etc.)
+6. **Website** updates live within minutes
 
 ### Temporal Workflow Execution
 

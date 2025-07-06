@@ -133,26 +133,28 @@ class DeploymentActivities:
                 subprocess.run(['git', 'config', 'user.name', 'Steve Androulakis'], 
                              cwd=repo_dir, check=True, capture_output=True)
                 
-                # Ensure public directory exists in cloned repo
-                public_dir = repo_dir / "public"
-                public_dir.mkdir(exist_ok=True)
+                # Copy template files from public_template to cloned repo
+                public_template_dir = Path.cwd() / "public_template"
+                target_public_dir = repo_dir / "public"
                 
-                # Write JSON file to cloned repo
-                json_path = public_dir / "data.json"
+                activity.logger.info(f"Copying template files from {public_template_dir}")
+                shutil.copytree(public_template_dir, target_public_dir, dirs_exist_ok=True)
+                
+                # Write generated web data to cloned repository
+                json_path = target_public_dir / "data.json"
                 with open(json_path, 'w') as f:
                     json.dump(web_data, f, indent=2)
                 
                 activity.logger.info(f"Generated web data file: {json_path}")
                 
+                # Add all files in public directory
+                subprocess.run(['git', 'add', 'public/'], cwd=repo_dir, check=True, capture_output=True)
+                
                 # Check if there are changes to commit
-                result = subprocess.run(['git', 'diff', '--quiet', 'HEAD', str(json_path)], 
-                                      cwd=repo_dir, capture_output=True)
+                result = subprocess.run(['git', 'diff', '--staged', '--quiet'], cwd=repo_dir, capture_output=True)
                 if result.returncode == 0:
                     activity.logger.info("No changes to deploy")
                     return True
-                
-                # Add and commit the data file
-                subprocess.run(['git', 'add', str(json_path)], cwd=repo_dir, check=True, capture_output=True)
                 
                 # Commit changes
                 commit_msg = f"🚚 Update food truck data - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
