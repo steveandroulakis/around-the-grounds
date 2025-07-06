@@ -236,6 +236,48 @@ def _deploy_with_github_auth(web_data: dict, repository_url: str) -> bool:
         return False
 
 
+def preview_locally(events: List[FoodTruckEvent]) -> bool:
+    """Generate web files locally in public/ directory for preview."""
+    import shutil
+    
+    try:
+        # Generate web data
+        web_data = generate_web_data(events)
+        
+        # Set up paths
+        public_template_dir = Path.cwd() / "public_template"
+        local_public_dir = Path.cwd() / "public"
+        
+        # Ensure public_template exists
+        if not public_template_dir.exists():
+            print(f"❌ Template directory not found: {public_template_dir}")
+            return False
+        
+        # Create or clear public directory
+        if local_public_dir.exists():
+            shutil.rmtree(local_public_dir)
+        
+        # Copy template files to public/
+        print(f"📋 Copying template files from {public_template_dir}...")
+        shutil.copytree(public_template_dir, local_public_dir)
+        
+        # Write generated web data to local public directory
+        json_path = local_public_dir / "data.json"
+        with open(json_path, 'w') as f:
+            json.dump(web_data, f, indent=2)
+        
+        print(f"✅ Generated local preview: {len(events)} events")
+        print(f"📁 Preview files in: {local_public_dir}")
+        print(f"🌐 To serve locally: cd public && python -m http.server 8000")
+        print(f"🔗 Then visit: http://localhost:8000")
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error during local preview generation: {e}")
+        return False
+
+
 async def scrape_food_trucks(config_path: Optional[str] = None) -> tuple:
     """Scrape food truck schedules from all configured breweries."""
     breweries = load_brewery_config(config_path)
@@ -277,6 +319,11 @@ def main(argv: Optional[list[str]] = None) -> int:
         "--git-repo",
         help="Git repository URL for deployment (default: ballard-food-trucks)"
     )
+    parser.add_argument(
+        "--preview", "-p",
+        action="store_true",
+        help="Generate web files locally in public/ directory for preview"
+    )
     
     args = parser.parse_args(argv)
     
@@ -298,6 +345,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         # Deploy to web if requested
         if args.deploy and events:
             deploy_to_web(events, args.git_repo)
+        
+        # Generate local preview if requested
+        if args.preview and events:
+            preview_locally(events)
         
         # Return appropriate exit code
         if errors and not events:

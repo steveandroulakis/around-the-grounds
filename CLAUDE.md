@@ -27,6 +27,7 @@ uv sync --dev  # Install all dependencies including dev tools
 uv run around-the-grounds              # Run the CLI tool
 uv run around-the-grounds --verbose    # Run with verbose logging
 uv run around-the-grounds --config /path/to/config.json  # Use custom config
+uv run around-the-grounds --preview    # Generate local preview files
 uv run around-the-grounds --deploy     # Run and deploy to web
 
 # With AI vision analysis (optional)
@@ -34,6 +35,30 @@ export ANTHROPIC_API_KEY="your-api-key"
 uv run around-the-grounds --verbose    # Run with vision analysis enabled
 uv run around-the-grounds --deploy     # Run with vision analysis and deploy to web
 ```
+
+### Local Preview & Testing
+
+Before deploying, generate and test web files locally:
+
+```bash
+# Generate web files locally for testing
+uv run around-the-grounds --preview
+
+# Serve locally and view in browser
+cd public && python -m http.server 8000
+# Visit: http://localhost:8000
+
+# Or automated testing (server runs for 10 seconds)
+cd public && (timeout 10 python -m http.server 8000 &) && sleep 2 && curl -s http://localhost:8000/
+```
+
+**What `--preview` does:**
+- Scrapes fresh data from all brewery websites
+- Copies templates from `public_template/` to `public/`
+- Generates `data.json` with current food truck data
+- Creates complete website in `public/` directory (git-ignored)
+
+This allows you to test web interface changes, verify data accuracy, and debug issues before deploying to production.
 
 ### Web Deployment
 
@@ -177,6 +202,33 @@ uv run python -m around_the_grounds.temporal.worker
 # Execute workflows - uses cloud configuration
 uv run python -m around_the_grounds.temporal.starter --deploy --verbose
 ```
+
+### Production Deployment via CI/CD
+
+For automated production updates using Docker and Watchtower:
+
+```bash
+# 1. GitHub Actions builds and pushes to Docker Hub (takes ~4 minutes)
+# 2. Watchtower runs every 5 minutes to pull latest image
+# 3. Monitor worker container:
+ssh admin@192.168.0.20
+docker ps -a -f "ancestor=steveandroulakis/around-the-grounds-worker:latest"
+docker logs -f around-the-grounds-worker
+
+# 4. Trigger schedule via Temporal UI and watch execution
+```
+
+**CI/CD Workflow:**
+1. **Code changes** → GitHub Actions → Docker Hub (4 minutes)
+2. **Watchtower** detects new image → pulls and restarts worker (every 5 minutes)
+3. **Temporal schedules** trigger workflows → worker executes deployment
+4. **Data deploys** automatically to target repository → live website updates
+
+**Production Monitoring:**
+- Monitor Docker containers on production server
+- Check worker logs for execution status
+- Trigger immediate updates via Temporal UI
+- Verify deployment success on live website
 
 #### Custom Server with mTLS
 ```bash
@@ -612,8 +664,23 @@ When working on this project:
 2. **Write failing tests** for new features before implementation
 3. **Implement with error handling** - always include try/catch and logging
 4. **Test error scenarios** - network failures, invalid data, timeouts
-5. **Run full test suite** before committing changes
-6. **Update documentation** if adding new parsers or changing architecture
+5. **Preview changes locally** using `--preview` flag before deployment
+6. **Run full test suite** before committing changes
+7. **Update documentation** if adding new parsers or changing architecture
+
+### Local Development Workflow
+```bash
+# 1. Make code changes
+# 2. Test locally with preview
+uv run around-the-grounds --preview
+cd public && python -m http.server 8000
+
+# 3. Run tests
+uv run python -m pytest
+
+# 4. Deploy when ready
+uv run around-the-grounds --deploy
+```
 
 ## Web Deployment Workflow
 

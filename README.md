@@ -28,6 +28,7 @@ uv sync
 ```bash
 uv run around-the-grounds              # Show 7-day schedule
 uv run around-the-grounds --verbose    # With detailed logging
+uv run around-the-grounds --preview    # Generate local preview files
 ```
 
 ### Example Output
@@ -78,6 +79,30 @@ To deploy a live website, you need a **target repository** and **GitHub App** fo
 
 This will copy web templates and generate fresh data in your target repository, triggering automatic deployment.
 
+## Local Preview & Testing
+
+Before deploying, you can preview changes locally:
+
+```bash
+# Generate web files locally for testing
+uv run around-the-grounds --preview
+
+# Serve locally and view in browser
+cd public && python -m http.server 8000
+# Visit: http://localhost:8000
+
+# Or automated testing (server runs for 10 seconds)
+cd public && (timeout 10 python -m http.server 8000 &) && sleep 2 && curl -s http://localhost:8000/
+```
+
+**What `--preview` does:**
+1. Scrapes fresh data from all brewery websites
+2. Copies templates from `public_template/` to `public/`
+3. Generates `data.json` with current food truck data
+4. Creates complete website in `public/` directory (git-ignored)
+
+This allows you to test web interface changes, verify data accuracy, and debug issues before deploying to production.
+
 ## Scheduled Updates
 
 Use **Temporal workflows** to run automatic updates with a persistent worker system.
@@ -108,6 +133,41 @@ uv run python -m around_the_grounds.temporal.schedule_manager delete --schedule-
 ```
 
 Workers can run on any system (local, cloud, Synology NAS) and will receive scheduled workflow executions from Temporal.
+
+### Production Deployment via CI/CD
+
+For automated production updates using Docker and Watchtower:
+
+A **Temporal Worker** runs in a Docker container and continuously listens for scheduled workflow executions. This worker will automatically pick up and execute any schedules you've configured (see [Scheduled Updates](#scheduled-updates) section above for creating schedules).
+
+**Example CICD Flow:**
+1. **Code changes** → GitHub Actions → Docker Hub (4 minutes)
+2. **Watchtower** detects new image → pulls and restarts worker container (every 5 minutes)
+3. **Temporal Worker** in container listens for scheduled workflow executions
+4. **Schedules trigger** automatically (every 30 minutes, etc.) or manually starting workflows via UI/CLI/API
+5. **Worker executes** scraping and deployment workflow which pushes to the target repository
+6. **Data deploys** automatically to target repository → live website updates (Vercel, Netlify, etc.)
+
+The containerized worker provides reliable, continuous execution of scheduled food truck data updates without manual intervention.
+
+In my case it looks like this:
+```bash
+# 1. GitHub Actions builds and pushes to Docker Hub (takes ~4 minutes)
+# 2. Watchtower runs every 5 minutes on my home server to pull the latest Temporal worker image
+# 3. Monitor worker container (it should auto-restart with the new image):
+ssh admin@192.168.0.20
+docker ps -a -f "ancestor=steveandroulakis/around-the-grounds-worker:latest"
+docker logs -f around-the-grounds-worker
+
+# 4. Trigger Temporal schedules manually via:
+#    - Temporal UI (web interface)
+#    - CLI: uv run python -m around_the_grounds.temporal.schedule_manager trigger --schedule-id daily-scrape
+#    - Temporal API (programmatic)
+
+# 5. Worker executes the scraping workflow
+# 6. Data is pushed to target repository (e.g., github.com/steveandroulakis/ballard-food-trucks)
+# 7. Target repository is deployed automatically (e.g., Vercel, Netlify
+```
 
 ## Configuration
 
@@ -148,6 +208,20 @@ uv run around-the-grounds --deploy
 ### Setup
 ```bash
 uv sync --dev                          # Install dev dependencies
+```
+
+### Local Development Workflow
+```bash
+# 1. Make code changes
+# 2. Test locally with preview
+uv run around-the-grounds --preview
+cd public && python -m http.server 8000
+
+# 3. Run tests
+uv run python -m pytest
+
+# 4. Deploy when ready
+uv run around-the-grounds --deploy
 ```
 
 ### Testing  
