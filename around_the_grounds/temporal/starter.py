@@ -6,9 +6,9 @@ import logging
 import sys
 from datetime import datetime
 from typing import Optional
-from temporalio.client import Client
 from around_the_grounds.temporal.workflows import FoodTruckWorkflow
 from around_the_grounds.temporal.shared import WorkflowParams
+from around_the_grounds.temporal.config import get_temporal_client, TEMPORAL_TASK_QUEUE, validate_configuration
 
 logger = logging.getLogger(__name__)
 
@@ -16,15 +16,25 @@ logger = logging.getLogger(__name__)
 class FoodTruckStarter:
     """Production-ready starter for food truck workflows."""
     
-    def __init__(self, temporal_address: str = "localhost:7233"):
-        self.temporal_address = temporal_address
+    def __init__(self, temporal_address: Optional[str] = None):
+        # temporal_address parameter kept for backward compatibility
+        # but actual connection uses environment configuration
+        self.legacy_address = temporal_address
         self.client = None
     
     async def connect(self):
-        """Connect to Temporal server."""
+        """Connect to Temporal server using configuration system."""
         try:
-            self.client = await Client.connect(self.temporal_address)
-            logger.info(f"✅ Connected to Temporal at {self.temporal_address}")
+            # Validate configuration before connecting
+            validate_configuration()
+            
+            # Use the new configuration system instead of legacy address
+            self.client = await get_temporal_client()
+            
+            if self.legacy_address and self.legacy_address != "localhost:7233":
+                logger.warning(f"⚠️  CLI --temporal-address={self.legacy_address} is deprecated.")
+                logger.warning(f"⚠️  Please use TEMPORAL_ADDRESS environment variable instead.")
+                
         except Exception as e:
             logger.error(f"❌ Failed to connect to Temporal: {e}")
             raise
@@ -57,7 +67,7 @@ class FoodTruckStarter:
                 FoodTruckWorkflow.run,
                 params,
                 id=workflow_id,
-                task_queue="food-truck-task-queue",
+                task_queue=TEMPORAL_TASK_QUEUE,
             )
             
             logger.info(f"⏳ Workflow started, waiting for completion...")
@@ -79,7 +89,7 @@ async def main():
     parser.add_argument("--config", "-c", help="Path to brewery configuration JSON file")
     parser.add_argument("--deploy", "-d", action="store_true", help="Deploy results to web")
     parser.add_argument("--workflow-id", help="Custom workflow ID")
-    parser.add_argument("--temporal-address", default="localhost:7233", help="Temporal server address")
+    parser.add_argument("--temporal-address", default="localhost:7233", help="Temporal server address (deprecated - use TEMPORAL_ADDRESS env var)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
     
     args = parser.parse_args()
@@ -90,6 +100,11 @@ async def main():
         level=log_level,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
+    
+    # Show deprecation warning if --temporal-address is used with non-default value
+    if args.temporal_address != "localhost:7233":
+        logger.warning(f"⚠️  --temporal-address CLI argument is deprecated.")
+        logger.warning(f"⚠️  Please use TEMPORAL_ADDRESS environment variable instead.")
     
     starter = FoodTruckStarter(args.temporal_address)
     
