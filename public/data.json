@@ -2,13 +2,192 @@
   "events": [
     {
       "date": "2025-07-05T00:00:00",
-      "vendor": "Test Truck",
-      "location": "Test Brewery",
-      "start_time": null,
+      "description": null,
+      "end_time": "08:00 PM",
+      "location": "Stoup Brewing - Ballard",
+      "start_time": "01:00 PM",
+      "vendor": "Woodshop BBQ"
+    },
+    {
+      "date": "2025-07-05T00:00:00",
+      "description": null,
+      "end_time": "08:00 PM",
+      "location": "Obec Brewing",
+      "start_time": "04:00 PM",
+      "vendor": "Kaosamai Thai"
+    },
+    {
+      "date": "2025-07-05T13:00:00.911000",
+      "description": null,
+      "end_time": "09:00 PM",
+      "location": "Yonder Cider & Bale Breaker - Ballard",
+      "start_time": "01:00 PM",
+      "vendor": "The Cheese Pit"
+    },
+    {
+      "date": "2025-07-06T00:00:00",
+      "description": null,
+      "end_time": "07:00 PM",
+      "location": "Stoup Brewing - Ballard",
+      "start_time": "01:00 PM",
+      "vendor": "Burger Planet"
+    },
+    {
+      "date": "2025-07-06T00:00:00",
+      "description": null,
+      "end_time": "07:00 PM",
+      "location": "Urban Family Brewing",
+      "start_time": "01:00 PM",
+      "vendor": "Kaosamia"
+    },
+    {
+      "date": "2025-07-06T13:00:00.516000",
+      "description": null,
+      "end_time": "09:00 PM",
+      "location": "Yonder Cider & Bale Breaker - Ballard",
+      "start_time": "01:00 PM",
+      "vendor": "Tacos &amp; Beer"
+    },
+    {
+      "date": "2025-07-07T00:00:00",
+      "description": null,
+      "end_time": "08:00 PM",
+      "extraction_method": "vision",
+      "location": "Urban Family Brewing",
+      "start_time": "04:00 PM",
+      "vendor": "TOLU \ud83d\uddbc\ufe0f\ud83e\udd16"
+    },
+    {
+      "date": "2025-07-07T00:00:00",
+      "description": null,
+      "end_time": "08:00 PM",
+      "location": "Stoup Brewing - Ballard",
+      "start_time": "05:00 PM",
+      "vendor": "Where Ya At Matt"
+    },
+    {
+      "date": "2025-07-08T00:00:00",
+      "description": null,
+      "end_time": "08:00 PM",
+      "extraction_method": "vision",
+      "location": "Urban Family Brewing",
+      "start_time": "04:00 PM",
+      "vendor": "Georgia's \ud83d\uddbc\ufe0f\ud83e\udd16"
+    },
+    {
+      "date": "2025-07-08T00:00:00",
+      "description": null,
+      "end_time": "08:00 PM",
+      "location": "Stoup Brewing - Ballard",
+      "start_time": "05:00 PM",
+      "vendor": "Poke Me"
+    },
+    {
+      "date": "2025-07-08T16:30:00.531000",
+      "description": null,
+      "end_time": "08:00 PM",
+      "location": "Yonder Cider & Bale Breaker - Ballard",
+      "start_time": "04:30 PM",
+      "vendor": "Tolu Modern Fijian Cuisine"
+    },
+    {
+      "date": "2025-07-09T00:00:00",
+      "description": null,
+      "end_time": "08:00 PM",
+      "location": "Urban Family Brewing",
+      "start_time": "04:00 PM",
+      "vendor": "Impeckable Chicken"
+    },
+    {
+      "date": "2025-07-09T00:00:00",
+      "description": null,
+      "end_time": "08:30 PM",
+      "location": "Stoup Brewing - Ballard",
+      "start_time": "04:30 PM",
+      "vendor": "Paparepas"
+    },
+    {
+      "date": "2025-07-09T16:00:00.616000",
+      "description": null,
+      "end_time": "08:00 PM",
+      "location": "Yonder Cider & Bale Breaker - Ballard",
+      "start_time": "04:00 PM",
+      "vendor": "Georgia\u2019s Greek"
+    },
+    {
+      "date": "2025-07-10T00:00:00",
+      "description": null,
+      "end_time": "04:00 PM",
+      "location": "Stoup Brewing - Ballard",
+      "start_time": "12:00 PM",
+      "vendor": "Birrieria Pepe El Toro"
+    },
+    {
+      "date": "2025-07-10T00:00:00",
+      "description": null,
+      "end_time": "08:00 PM",
+      "extraction_method": "vision",
+      "location": "Urban Family Brewing",
+      "start_time": "04:00 PM",
+      "vendor": "Whatake \ud83d\uddbc\ufe0f\ud83e\udd16"
+    },
+    {
+      "date": "2025-07-10T16:00:00.835000",
+      "description": null,
+      "end_time": "08:00 PM",
+      "location": "Yonder Cider & Bale Breaker - Ballard",
+      "start_time": "04:00 PM",
+      "vendor": "Impeckable Chicken"
+    },
+    {
+      "date": "2025-07-11T00:00:00",
+      "description": null,
+      "end_time": "09:00 PM",
+      "location": "Stoup Brewing - Ballard",
+      "start_time": "05:00 PM",
+      "vendor": "Georgia's Greek"
+    },
+    {
+      "date": "2025-07-11T15:00:00.167000",
+      "description": null,
+      "end_time": "09:00 PM",
+      "location": "Yonder Cider & Bale Breaker - Ballard",
+      "start_time": "03:00 PM",
+      "vendor": "Now Make Me A Sandwich"
+    },
+    {
+      "date": "2025-07-12T00:00:00",
+      "description": null,
       "end_time": null,
-      "description": null
+      "location": "Stoup Brewing - Ballard",
+      "start_time": null,
+      "vendor": "Don Luchos"
+    },
+    {
+      "date": "2025-07-12T00:00:00",
+      "description": null,
+      "end_time": "08:00 PM",
+      "location": "Stoup Brewing - Ballard",
+      "start_time": "01:00 PM",
+      "vendor": "Tat's Truck"
+    },
+    {
+      "date": "2025-07-12T00:00:00",
+      "description": null,
+      "end_time": "08:00 PM",
+      "location": "Urban Family Brewing",
+      "start_time": "04:00 PM",
+      "vendor": "Oskar"
+    },
+    {
+      "date": "2025-07-12T13:00:00.646000",
+      "description": null,
+      "end_time": "09:00 PM",
+      "location": "Yonder Cider & Bale Breaker - Ballard",
+      "start_time": "01:00 PM",
+      "vendor": "Georgia\u2019s Greek"
     }
   ],
-  "updated": "2025-07-05T21:19:21.827776",
-  "total_events": 1
+  "total_events": 23,
+  "updated": "2025-07-05T21:22:01.919198"
 }
