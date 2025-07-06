@@ -5,8 +5,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 Around the Grounds is a robust Python CLI tool for tracking food truck schedules and locations across multiple breweries. The project features:
+- **Web interface** with mobile-responsive design and automatic deployment to Vercel
 - **Async web scraping** with concurrent processing of multiple brewery websites
 - **AI vision analysis** using Claude Vision API to extract vendor names from food truck logos/images
+- **Auto-deployment** with git integration for seamless web updates
 - **Extensible parser system** with custom parsers for different brewery website structures
 - **Comprehensive error handling** with retry logic, isolation, and graceful degradation
 - **Extensive test suite** with 205+ tests covering unit, integration, vision analysis, and error scenarios
@@ -24,10 +26,28 @@ uv sync --dev  # Install all dependencies including dev tools
 uv run around-the-grounds              # Run the CLI tool
 uv run around-the-grounds --verbose    # Run with verbose logging
 uv run around-the-grounds --config /path/to/config.json  # Use custom config
+uv run around-the-grounds --deploy     # Run and deploy to web
 
 # With AI vision analysis (optional)
 export ANTHROPIC_API_KEY="your-api-key"
 uv run around-the-grounds --verbose    # Run with vision analysis enabled
+uv run around-the-grounds --deploy     # Run with vision analysis and deploy to web
+```
+
+### Web Deployment
+```bash
+# Deploy fresh data to website (full workflow)
+uv run around-the-grounds --deploy
+
+# This command will:
+# 1. Scrape all brewery websites for fresh data
+# 2. Generate web-friendly JSON data in public/data.json
+# 3. Commit and push changes to git
+# 4. Trigger automatic Vercel deployment
+# 5. Website updates live within minutes
+
+# For Temporal workflows
+uv run around-the-grounds --deploy --verbose  # Recommended for scheduled runs
 ```
 
 ### Testing
@@ -81,7 +101,12 @@ around_the_grounds/
 ├── utils/
 │   ├── date_utils.py           # Date/time utilities with validation
 │   └── vision_analyzer.py      # AI vision analysis for vendor identification
-└── main.py                     # CLI entry point with error reporting
+└── main.py                     # CLI entry point with web deployment support
+
+public/                         # Web interface files (deployed to Vercel)
+├── index.html                  # Mobile-responsive web interface
+├── data.json                   # Generated web data (auto-updated by --deploy)
+└── vercel.json                 # Vercel deployment configuration
 
 tests/                          # Comprehensive test suite
 ├── conftest.py                 # Shared test fixtures
@@ -108,6 +133,8 @@ tests/                          # Comprehensive test suite
 - **Scrapers**: Async coordinator with concurrent processing, retry logic, and error isolation
 - **Config**: JSON-based configuration with validation and error reporting
 - **Utils**: Date/time utilities with comprehensive parsing and validation, plus AI vision analysis
+- **Web Interface**: Mobile-responsive HTML/CSS/JS frontend with automatic data fetching
+- **Web Deployment**: Git-based deployment system with Vercel integration for automatic updates
 - **Tests**: 205+ tests covering all scenarios including extensive error handling and vision analysis
 
 ### Core Dependencies
@@ -369,6 +396,37 @@ When working on this project:
 4. **Test error scenarios** - network failures, invalid data, timeouts
 5. **Run full test suite** before committing changes
 6. **Update documentation** if adding new parsers or changing architecture
+
+## Web Deployment Workflow
+
+When updating or maintaining the web interface:
+
+### Development & Testing
+1. **Test locally**: Ensure `uv run around-the-grounds` works correctly
+2. **Test web data generation**: Run `uv run around-the-grounds --deploy` (will create/update `public/data.json`)
+3. **Test web interface**: Open `public/index.html` in browser to verify display
+4. **Check responsive design**: Test on mobile viewport sizes
+
+### Deployment Process
+1. **Run deployment command**: `uv run around-the-grounds --deploy`
+2. **Verify git commit**: Check that `public/data.json` was committed with fresh data
+3. **Monitor Vercel deployment**: Changes should deploy automatically within minutes
+4. **Test live site**: Verify website shows updated data and functions correctly
+
+### Scheduled Updates (Temporal)
+```python
+# Recommended Temporal workflow command
+@workflow.run
+async def update_food_trucks():
+    # This runs the full pipeline: scrape → generate JSON → commit → deploy
+    subprocess.run(['uv', 'run', 'around-the-grounds', '--deploy', '--verbose'])
+```
+
+### Troubleshooting Web Deployment
+- **No changes deployed**: Check if `public/data.json` actually changed
+- **Website not updating**: Check Vercel deployment logs and ensure git push succeeded
+- **Mobile display issues**: Test responsive CSS and ensure viewport meta tag is present
+- **Data fetching errors**: Verify `public/data.json` is valid JSON and accessible at `/data.json`
 
 ## Troubleshooting Common Issues
 

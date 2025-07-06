@@ -4,7 +4,10 @@ import argparse
 import asyncio
 import json
 import logging
+import os
+import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Optional, List
 
@@ -98,6 +101,85 @@ def format_events_output(events: List[FoodTruckEvent], errors: list = None) -> s
     return "\n".join(output)
 
 
+def generate_web_data(events: List[FoodTruckEvent]) -> dict:
+    """Generate web-friendly JSON data from events."""
+    web_events = []
+    
+    for event in events:
+        # Convert event to web format
+        web_event = {
+            "date": event.date.isoformat(),
+            "vendor": event.food_truck_name,
+            "location": event.brewery_name,
+            "start_time": event.start_time.strftime("%I:%M %p") if event.start_time else None,
+            "end_time": event.end_time.strftime("%I:%M %p") if event.end_time else None,
+            "description": event.description,
+        }
+        
+        # Add AI extraction indicator
+        if event.ai_generated_name:
+            web_event["extraction_method"] = "vision"
+            web_event["vendor"] = f"{event.food_truck_name} 🖼️🤖"
+        
+        web_events.append(web_event)
+    
+    return {
+        "events": web_events,
+        "updated": datetime.now().isoformat(),
+        "total_events": len(web_events)
+    }
+
+
+def deploy_to_web(events: List[FoodTruckEvent]) -> bool:
+    """Generate web data and deploy to Vercel via git."""
+    try:
+        # Ensure public directory exists
+        public_dir = Path("public")
+        public_dir.mkdir(exist_ok=True)
+        
+        # Generate web data
+        web_data = generate_web_data(events)
+        
+        # Write JSON file
+        json_path = public_dir / "data.json"
+        with open(json_path, 'w') as f:
+            json.dump(web_data, f, indent=2)
+        
+        print(f"✅ Generated web data: {len(events)} events")
+        
+        # Check if we're in a git repository
+        result = subprocess.run(['git', 'status'], capture_output=True, text=True)
+        if result.returncode != 0:
+            print("⚠️  Not in a git repository - skipping deployment")
+            return False
+        
+        # Add and commit the data file
+        subprocess.run(['git', 'add', str(json_path)], check=True)
+        
+        # Check if there are changes to commit
+        result = subprocess.run(['git', 'diff', '--staged', '--quiet'], capture_output=True)
+        if result.returncode == 0:
+            print("ℹ️  No changes to deploy")
+            return True
+        
+        # Commit changes
+        commit_msg = f"🚚 Update food truck data - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        subprocess.run(['git', 'commit', '-m', commit_msg], check=True)
+        
+        # Push to origin
+        subprocess.run(['git', 'push'], check=True)
+        
+        print("🚀 Deployed to Vercel! Changes will be live shortly.")
+        return True
+        
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Deployment failed: {e}")
+        return False
+    except Exception as e:
+        print(f"❌ Error during deployment: {e}")
+        return False
+
+
 async def scrape_food_trucks(config_path: Optional[str] = None) -> tuple:
     """Scrape food truck schedules from all configured breweries."""
     breweries = load_brewery_config(config_path)
@@ -130,6 +212,11 @@ def main(argv: Optional[list[str]] = None) -> int:
         action="store_true",
         help="Enable verbose logging"
     )
+    parser.add_argument(
+        "--deploy", "-d",
+        action="store_true",
+        help="Deploy results to web (generate JSON and push to git)"
+    )
     
     args = parser.parse_args(argv)
     
@@ -147,6 +234,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         events, errors = asyncio.run(scrape_food_trucks(args.config))
         output = format_events_output(events, errors)
         print(output)
+        
+        # Deploy to web if requested
+        if args.deploy and events:
+            deploy_to_web(events)
         
         # Return appropriate exit code
         if errors and not events:

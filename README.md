@@ -2,6 +2,8 @@
 
 A Python tool for tracking food truck schedules and locations across multiple breweries. Get a unified view of food truck events for the next 7 days by scraping brewery websites asynchronously.
 
+**🌐 [Live Web Interface](https://ballard-food-trucks.around-the-grounds.vercel.app)** | **🖥️ CLI Tool** | **🤖 AI Vision Analysis** | **🚀 Auto-Deploy**
+
 ## Example Output
 
 ```
@@ -49,17 +51,36 @@ Found 23 food truck events:
   🚚 Georgia's Greek @ Yonder Cider & Bale Breaker - Ballard
 ```
 
+## 🌐 Web Interface
+
+The project now includes a beautiful, mobile-responsive web interface that automatically updates with fresh food truck data:
+
+- **Live Site**: [foodtrucksballard.com](https://foodtrucksballard.com) (or your configured domain)
+- **Mobile Optimized**: Clean, fast interface perfect for quick checks on the go
+- **Clickable Truck Names**: Tap any food truck name to Google search for more info
+- **AI Vision Indicators**: See which vendor names were extracted using AI vision analysis
+- **Auto-Updates**: Automatically deploys fresh data when scheduled via Temporal or cron
+- **Real-Time Data**: Shows current schedules from all supported breweries
+
+### Web Features
+- 📱 **Mobile-first design** - Perfect for checking schedules on your phone
+- 🔍 **Smart search** - Click truck names to search Google for menus and reviews
+- 🤖 **AI indicators** - See which names were extracted via Claude Vision API
+- ⏰ **Last updated timestamp** - Always know how fresh the data is
+- 🎨 **Clean, modern interface** - Easy to scan and find what you're looking for
+
 ## Features
 
+- 🌐 **Web Interface**: Beautiful, mobile-responsive website with automatic deployment
+- 🚀 **Auto-Deploy**: One-command deployment to Vercel with git integration
 - 🔄 **Async Web Scraping**: Concurrent scraping of multiple brewery websites
-- 🌐 **API Integration**: Support for both HTML scraping and direct API access
 - 🤖 **AI Vision Analysis**: Extracts food truck vendor names from logos/images using Claude Vision API
 - 📅 **7-Day Forecast**: Shows food truck schedules for the next week
 - 🏗️ **Extensible Parser System**: Easy to add new breweries with custom parsers
 - ⚙️ **JSON Configuration**: Simple brewery configuration via JSON
 - 🚀 **Fast Performance**: Concurrent processing with comprehensive error handling
 - 🛡️ **Robust Error Handling**: Retry logic, error isolation, and graceful degradation
-- 📊 **Formatted Output**: Clean, readable schedule display with emojis
+- 📊 **Dual Output**: CLI tool + web interface with consistent formatting
 - 🧪 **Comprehensive Testing**: 205+ tests covering all scenarios including error cases
 
 ## Supported Breweries
@@ -80,26 +101,30 @@ uv sync
 
 ## Usage
 
-### Basic Usage
+### Basic CLI Usage
 ```bash
-uv run around-the-grounds
+uv run around-the-grounds              # Run CLI tool
+uv run around-the-grounds --verbose    # Run with verbose logging
+uv run around-the-grounds --config /path/to/custom/breweries.json  # Custom config
 ```
 
-### With Verbose Logging
+### Web Deployment
+Deploy fresh data to your website:
 ```bash
-uv run around-the-grounds --verbose
+uv run around-the-grounds --deploy     # Scrape data and deploy to web
 ```
 
-### Custom Configuration
-```bash
-uv run around-the-grounds --config /path/to/custom/breweries.json
-```
+This will:
+1. Scrape all brewery websites for fresh data
+2. Generate web-friendly JSON data
+3. Commit and push to git (triggers Vercel deployment)
+4. Your website updates automatically within minutes
 
 ### AI Vision Analysis Setup (Optional)
 For enhanced vendor name extraction from images:
 ```bash
 export ANTHROPIC_API_KEY="your-api-key-here"
-uv run around-the-grounds
+uv run around-the-grounds --deploy
 ```
 
 When configured, the system will automatically analyze food truck logos to extract vendor names when text-based extraction fails, improving identification accuracy for breweries like Urban Family.
@@ -108,18 +133,55 @@ When configured, the system will automatically analyze food truck logos to extra
 ```
 🍺 Around the Grounds - Food Truck Tracker
 ==================================================
-Found 17 food truck events:
+Found 23 food truck events:
 
 📅 Saturday, July 05, 2025
   🚚 Woodshop BBQ @ Stoup Brewing - Ballard 01:00 PM - 08:00 PM
   🚚 Kaosamai Thai @ Obec Brewing 04:00 PM - 08:00 PM
-  🚚 The Cheese Pit @ Yonder Cider & Bale Breaker - Ballard
+  🚚 The Cheese Pit @ Yonder Cider & Bale Breaker - Ballard 01:00 PM - 09:00 PM
 
 📅 Sunday, July 06, 2025
   🚚 Burger Planet @ Stoup Brewing - Ballard 01:00 PM - 07:00 PM
   🚚 Kaosamia @ Urban Family Brewing 01:00 PM - 07:00 PM
-  🚚 Tacos & Beer @ Yonder Cider & Bale Breaker - Ballard
+  🚚 Tacos & Beer @ Yonder Cider & Bale Breaker - Ballard 01:00 PM - 09:00 PM
+
+📅 Monday, July 07, 2025
+  🚚 TOLU 🖼️🤖 @ Urban Family Brewing 04:00 PM - 08:00 PM
+  🚚 Where Ya At Matt @ Stoup Brewing - Ballard 05:00 PM - 08:00 PM
 ```
+
+## 🚀 Web Deployment Setup
+
+Setting up your own food truck website is simple with Vercel:
+
+### 1. Fork & Clone
+```bash
+git clone https://github.com/yourusername/around-the-grounds
+cd around-the-grounds
+```
+
+### 2. Deploy to Vercel
+1. Connect your GitHub repo to [Vercel](https://vercel.com)
+2. Set build settings:
+   - **Build Command**: `echo "No build needed"`
+   - **Output Directory**: `public`
+   - **Install Command**: `echo "No install needed"`
+3. Deploy!
+
+### 3. Configure Domain (Optional)
+- Buy a domain like `foodtrucksballard.com`
+- Add it to your Vercel project
+- DNS automatically configured
+
+### 4. Schedule Updates
+Use Temporal, cron, or GitHub Actions to run:
+```bash
+uv run around-the-grounds --deploy
+```
+
+**Cost**: ~$15/year for domain, everything else is free!
+
+See [DEPLOY.md](DEPLOY.md) for detailed deployment instructions.
 
 ## Configuration
 
