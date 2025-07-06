@@ -11,8 +11,8 @@ Around the Grounds is a robust Python CLI tool for tracking food truck schedules
 - **Auto-deployment** with git integration for seamless web updates
 - **Extensible parser system** with custom parsers for different brewery website structures
 - **Comprehensive error handling** with retry logic, isolation, and graceful degradation
-- **Temporal workflow integration** for reliable scheduled execution and monitoring
-- **Extensive test suite** with 205+ tests covering unit, integration, vision analysis, and error scenarios
+- **Temporal workflow integration** with cloud deployment support (local, Temporal Cloud, custom servers)
+- **Extensive test suite** with 196 tests covering unit, integration, vision analysis, and error scenarios
 - **Modern Python tooling** with uv for dependency management and packaging
 
 ## Development Commands
@@ -52,7 +52,12 @@ uv run around-the-grounds --deploy --verbose  # Recommended for scheduled runs
 ```
 
 ### Temporal Workflow Execution
+
+The system supports multiple Temporal deployment scenarios through environment-based configuration:
+
+#### Local Development (Default)
 ```bash
+# No configuration needed - connects to localhost:7233
 # Start Temporal worker (run in separate terminal)
 uv run python -m around_the_grounds.temporal.worker
 
@@ -64,14 +69,95 @@ uv run python -m around_the_grounds.temporal.starter --config /path/to/config.js
 
 # Execute workflow with custom ID for tracking
 uv run python -m around_the_grounds.temporal.starter --workflow-id daily-update-2025 --deploy
-
-# Connect to different Temporal server
-uv run python -m around_the_grounds.temporal.starter --temporal-address production:7233 --deploy
 ```
+
+#### Temporal Cloud Deployment
+```bash
+# Set environment variables for Temporal Cloud
+export TEMPORAL_ADDRESS="your-namespace.acct.tmprl.cloud:7233"
+export TEMPORAL_NAMESPACE="your-namespace"
+export TEMPORAL_API_KEY="your-api-key"
+
+# Start worker - automatically connects to Temporal Cloud
+uv run python -m around_the_grounds.temporal.worker
+
+# Execute workflows - uses cloud configuration
+uv run python -m around_the_grounds.temporal.starter --deploy --verbose
+```
+
+#### Custom Server with mTLS
+```bash
+# Set environment variables for custom server with certificate authentication
+export TEMPORAL_ADDRESS="your-server.example.com:7233"
+export TEMPORAL_NAMESPACE="production"
+export TEMPORAL_TLS_CERT="/path/to/cert.pem"
+export TEMPORAL_TLS_KEY="/path/to/key.pem"
+
+# Start worker and execute workflows
+uv run python -m around_the_grounds.temporal.worker
+uv run python -m around_the_grounds.temporal.starter --deploy
+```
+
+#### Environment Configuration
+Create a `.env` file (based on `.env.example`) for persistent configuration:
+```bash
+# Copy the template
+cp .env.example .env
+
+# Edit with your Temporal configuration
+# TEMPORAL_ADDRESS=your-namespace.acct.tmprl.cloud:7233
+# TEMPORAL_API_KEY=your-api-key
+# etc.
+```
+
+#### Legacy CLI Arguments (Deprecated)
+```bash
+# CLI arguments still work but show deprecation warnings
+uv run python -m around_the_grounds.temporal.starter --temporal-address production:7233 --deploy
+# Warning: --temporal-address is deprecated, use TEMPORAL_ADDRESS environment variable
+```
+
+### Temporal Schedule Management
+
+The system includes comprehensive schedule management for automated workflow execution:
+
+#### Creating and Managing Schedules
+```bash
+# Create a schedule that runs every 30 minutes
+uv run python -m around_the_grounds.temporal.schedule_manager create --schedule-id daily-scrape --interval 30
+
+# Create a schedule with custom config and start paused
+uv run python -m around_the_grounds.temporal.schedule_manager create --schedule-id custom-scrape --interval 60 --config /path/to/config.json --paused
+
+# List all schedules
+uv run python -m around_the_grounds.temporal.schedule_manager list
+
+# Describe a specific schedule
+uv run python -m around_the_grounds.temporal.schedule_manager describe --schedule-id daily-scrape
+
+# Pause/unpause schedules
+uv run python -m around_the_grounds.temporal.schedule_manager pause --schedule-id daily-scrape --note "Maintenance window"
+uv run python -m around_the_grounds.temporal.schedule_manager unpause --schedule-id daily-scrape
+
+# Trigger immediate execution
+uv run python -m around_the_grounds.temporal.schedule_manager trigger --schedule-id daily-scrape
+
+# Update schedule interval
+uv run python -m around_the_grounds.temporal.schedule_manager update --schedule-id daily-scrape --interval 45
+
+# Delete a schedule
+uv run python -m around_the_grounds.temporal.schedule_manager delete --schedule-id daily-scrape
+```
+
+#### Schedule Features
+- **Configurable intervals**: Any number of minutes (5, 30, 60, 120, etc.)
+- **Multiple deployment modes**: Works with local, Temporal Cloud, and mTLS
+- **Production ready**: Built-in error handling and detailed logging
+- **Full lifecycle management**: Create, list, describe, pause, unpause, trigger, update, delete
 
 ### Testing
 ```bash
-# Full test suite (205+ tests)
+# Full test suite (196 tests)
 uv run python -m pytest                    # Run all tests
 uv run python -m pytest tests/unit/        # Unit tests only
 uv run python -m pytest tests/parsers/     # Parser-specific tests
@@ -121,6 +207,8 @@ around_the_grounds/
 │   ├── __init__.py             # Module initialization
 │   ├── workflows.py            # FoodTruckWorkflow definition
 │   ├── activities.py           # ScrapeActivities and DeploymentActivities
+│   ├── config.py               # Temporal client configuration system
+│   ├── schedule_manager.py     # Comprehensive schedule management script
 │   ├── shared.py               # WorkflowParams and WorkflowResult data classes
 │   ├── worker.py               # Production-ready worker with error handling
 │   ├── starter.py              # CLI workflow execution client
@@ -164,11 +252,12 @@ tests/                          # Comprehensive test suite
   - `DeploymentActivities`: Activities for web data generation and git operations
   - `FoodTruckWorker`: Production-ready worker with thread pool and signal handling
   - `FoodTruckStarter`: CLI client for manual workflow execution
+  - `ScheduleManager`: Comprehensive schedule management with configurable intervals and full lifecycle operations
 - **Config**: JSON-based configuration with validation and error reporting
 - **Utils**: Date/time utilities with comprehensive parsing and validation, plus AI vision analysis
 - **Web Interface**: Mobile-responsive HTML/CSS/JS frontend with automatic data fetching
 - **Web Deployment**: Git-based deployment system with Vercel integration for automatic updates
-- **Tests**: 205+ tests covering all scenarios including extensive error handling and vision analysis
+- **Tests**: 196 tests covering all scenarios including extensive error handling and vision analysis
 
 ### Core Dependencies
 
@@ -384,7 +473,7 @@ The application implements comprehensive error handling with these principles:
 
 ## Testing Strategy
 
-The project includes a comprehensive test suite with 205+ tests:
+The project includes a comprehensive test suite with 196 tests:
 
 ### Test Organization
 ```
@@ -457,7 +546,9 @@ When updating or maintaining the web interface:
 uv run python -m around_the_grounds.temporal.starter --deploy --verbose
 
 # Scheduled execution (configured via Temporal schedules)
-# See around_the_grounds/temporal/README.md for schedule configuration
+# Create a schedule that runs every 30 minutes:
+# uv run python -m around_the_grounds.temporal.schedule_manager create --schedule-id daily-scrape --interval 30
+# See around_the_grounds/temporal/README.md for complete schedule configuration
 ```
 
 ### Troubleshooting Web Deployment

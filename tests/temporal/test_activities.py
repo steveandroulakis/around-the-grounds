@@ -448,5 +448,5 @@ class TestDeploymentActivities:
             
             result = await activities.deploy_to_git(mock_web_data)
             
-            # Should still return True since commit succeeded
-            assert result is True
+            # Should return False when push fails
+            assert result is False

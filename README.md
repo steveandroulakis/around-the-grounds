@@ -81,7 +81,7 @@ The project now includes a beautiful, mobile-responsive web interface that autom
 - 🚀 **Fast Performance**: Concurrent processing with comprehensive error handling
 - 🛡️ **Robust Error Handling**: Retry logic, error isolation, and graceful degradation
 - 📊 **Dual Output**: CLI tool + web interface with consistent formatting
-- 🧪 **Comprehensive Testing**: 205+ tests covering all scenarios including error cases
+- 🧪 **Comprehensive Testing**: 196 tests covering all scenarios including error cases
 
 ## Supported Breweries
 
@@ -174,7 +174,17 @@ cd around-the-grounds
 - DNS automatically configured
 
 ### 4. Schedule Updates
-Use Temporal, cron, or GitHub Actions to run:
+
+#### With Temporal Schedules (Recommended)
+```bash
+# Create a schedule that runs every 30 minutes
+uv run python -m around_the_grounds.temporal.schedule_manager create --schedule-id daily-scrape --interval 30
+
+# Start a worker to process scheduled workflows
+uv run python -m around_the_grounds.temporal.worker
+```
+
+#### With Cron or GitHub Actions
 ```bash
 uv run around-the-grounds --deploy
 ```
@@ -313,7 +323,7 @@ The project follows a clean, modular architecture with comprehensive error handl
 - **Scrapers**: Async coordinator with concurrent processing, retry logic, and error isolation
 - **Config**: JSON-based configuration with validation and error reporting
 - **Utils**: Date/time utilities with comprehensive parsing and validation, plus AI vision analysis
-- **Tests**: 205+ tests covering unit, integration, vision analysis, and error scenarios
+- **Tests**: 196 tests covering unit, integration, vision analysis, and error scenarios
 
 ## Development
 
@@ -324,7 +334,7 @@ uv sync --dev
 
 ### Running Tests
 ```bash
-uv run python -m pytest                    # Run all tests (205+ tests)
+uv run python -m pytest                    # Run all tests (196 tests)
 uv run python -m pytest -v                 # Verbose output
 uv run python -m pytest --cov=around_the_grounds --cov-report=html  # Coverage
 uv run python -m pytest tests/parsers/     # Parser-specific tests

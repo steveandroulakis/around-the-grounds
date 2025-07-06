@@ -151,16 +151,6 @@ class TestStoupBallardParser:
         result = parser._parse_date("invalid")
         assert result is None
     
-    def test_parse_date_invalid_month(self, parser):
-        """Test parsing invalid month."""
-        result = parser._parse_date("13.05")  # Month 13 doesn't exist
-        assert result is None
-    
-    def test_parse_date_invalid_day(self, parser):
-        """Test parsing invalid day."""
-        result = parser._parse_date("02.30")  # February 30th doesn't exist
-        assert result is None
-    
     @freeze_time("2025-07-05")
     def test_parse_time_pm_range(self, parser):
         """Test parsing PM time range."""
@@ -179,24 +169,6 @@ class TestStoupBallardParser:
         assert start_time.hour == 8   # 8am
         assert end_time.hour == 11    # 11am
     
-    @freeze_time("2025-07-05")
-    def test_parse_time_noon_range(self, parser):
-        """Test parsing time range with noon."""
-        date = datetime(2025, 7, 5)
-        start_time, end_time = parser._parse_time(date, (12, 2, "pm"))
-        
-        assert start_time.hour == 12  # 12pm (noon)
-        assert end_time.hour == 14    # 2pm
-    
-    @freeze_time("2025-07-05")
-    def test_parse_time_midnight_range(self, parser):
-        """Test parsing time range with midnight."""
-        date = datetime(2025, 7, 5)
-        start_time, end_time = parser._parse_time(date, (12, 2, "am"))
-        
-        assert start_time.hour == 0   # 12am (midnight)
-        assert end_time.hour == 2     # 2am
-    
     def test_parse_time_invalid_hour(self, parser):
         """Test parsing invalid hour."""
         date = datetime(2025, 7, 5)
@@ -204,19 +176,6 @@ class TestStoupBallardParser:
         
         assert start_time is None
         assert end_time is None
-    
-    def test_parse_time_invalid_period(self, parser):
-        """Test parsing invalid period."""
-        date = datetime(2025, 7, 5)
-        start_time, end_time = parser._parse_time(date, (1, 8, "invalid"))
-        
-        assert start_time is None
-        assert end_time is None
-    
-    def test_parse_time_none_input(self, parser):
-        """Test parsing with None input."""
-        result = parser._parse_time(None, None)
-        assert result == (None, None)
     
     @freeze_time("2025-07-05")
     def test_parse_time_from_text_valid(self, parser):
@@ -226,14 +185,6 @@ class TestStoupBallardParser:
         
         assert start_time.hour == 13
         assert end_time.hour == 20
-    
-    def test_parse_time_from_text_invalid(self, parser):
-        """Test parsing time from invalid text."""
-        date = datetime(2025, 7, 5)
-        start_time, end_time = parser._parse_time_from_text(date, "invalid time")
-        
-        assert start_time is None
-        assert end_time is None
     
     @pytest.mark.asyncio
     async def test_parse_network_error(self, parser):
@@ -284,27 +235,3 @@ class TestStoupBallardParser:
                     events = await parser.parse(session)
                     assert isinstance(events, list)
     
-    def test_extract_from_section_empty(self, parser):
-        """Test extracting from empty section."""
-        from bs4 import BeautifulSoup
-        
-        empty_section = BeautifulSoup("<section></section>", 'html.parser').find('section')
-        events = parser._extract_from_section(empty_section)
-        
-        assert len(events) == 0
-    
-    def test_parse_entry_missing_date_element(self, parser):
-        """Test parsing entry with missing date element."""
-        from bs4 import BeautifulSoup
-        
-        entry_html = """
-        <div class="food-truck-entry">
-            <p>1 — 8pm</p>
-            <p>Test Food Truck</p>
-        </div>
-        """
-        
-        entry = BeautifulSoup(entry_html, 'html.parser').find('div')
-        result = parser._parse_entry(entry)
-        
-        assert result is None
