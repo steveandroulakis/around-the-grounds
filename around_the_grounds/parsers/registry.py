@@ -2,12 +2,14 @@ from typing import Dict, Type
 from .base import BaseParser
 from .stoup_ballard import StoupBallardParser
 from .bale_breaker import BaleBreakerParser
+from .obec_brewing import ObecBrewingParser
 
 
 class ParserRegistry:
     _parsers: Dict[str, Type[BaseParser]] = {
         'stoup-ballard': StoupBallardParser,
         'yonder-balebreaker': BaleBreakerParser,
+        'obec-brewing': ObecBrewingParser,
     }
     
     @classmethod

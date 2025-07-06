@@ -22,6 +22,15 @@
         "note": "Uses Squarespace calendar API to fetch food truck events",
         "api_type": "squarespace_calendar"
       }
+    },
+    {
+      "key": "obec-brewing",
+      "name": "Obec Brewing",
+      "url": "https://obecbrewing.com/",
+      "parser_config": {
+        "note": "Simple text format: 'Food truck: <name> <time>'",
+        "pattern": "Food truck:\\s*([^0-9]+)\\s*([0-9:]+\\s*-\\s*[0-9:]+)"
+      }
     }
   ]
 }
