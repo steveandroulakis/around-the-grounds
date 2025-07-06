@@ -1,5 +1,3 @@
 {
-  "buildCommand": "ls -la public || echo 'No public directory found'",
-  "outputDirectory": "public",
-  "installCommand": "echo 'No install needed'"
+  "cleanUrls": true
 }
