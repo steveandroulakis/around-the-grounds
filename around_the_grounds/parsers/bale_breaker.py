@@ -2,6 +2,7 @@ import re
 from datetime import datetime, timedelta
 from typing import List
 import aiohttp
+import json
 
 from .base import BaseParser
 from ..models import FoodTruckEvent
@@ -10,21 +11,24 @@ from ..models import FoodTruckEvent
 class BaleBreakerParser(BaseParser):
     async def parse(self, session: aiohttp.ClientSession) -> List[FoodTruckEvent]:
         try:
+            # First, get the main page to find the collection ID
             soup = await self.fetch_page(session, self.brewery.url)
-            events = []
-            
             if not soup:
                 raise ValueError("Failed to fetch page content")
             
-            # Look for any event or calendar sections
-            event_sections = soup.find_all(['div', 'section'], class_=re.compile(r'event|calendar|schedule'))
+            # Extract collection ID from the calendar block
+            collection_id = self._extract_collection_id(soup)
+            if not collection_id:
+                self.logger.warning("Could not find collection ID, falling back to placeholder event")
+                return self._create_fallback_event()
             
-            for section in event_sections:
-                events.extend(self._extract_events_from_section(section))
+            # Fetch calendar events from API
+            events = await self._fetch_calendar_events(session, collection_id)
             
-            # If no structured events found, look for text patterns
+            # If no events found, fall back to placeholder
             if not events:
-                events = self._extract_from_text(soup.get_text())
+                self.logger.warning("No events found from API, falling back to placeholder event")
+                return self._create_fallback_event()
             
             # Filter and validate events
             valid_events = self.filter_valid_events(events)
@@ -33,95 +37,127 @@ class BaleBreakerParser(BaseParser):
             
         except Exception as e:
             self.logger.error(f"Error parsing Bale Breaker: {str(e)}")
-            raise ValueError(f"Failed to parse Bale Breaker website: {str(e)}")
+            # Return fallback event instead of failing completely
+            return self._create_fallback_event()
     
-    def _extract_events_from_section(self, section) -> List[FoodTruckEvent]:
-        events = []
-        text = section.get_text()
-        
-        # Look for common date patterns
-        date_patterns = [
-            r'(Mon|Tue|Wed|Thu|Fri|Sat|Sun).*?(\d{1,2}[/.-]\d{1,2})',
-            r'(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})',
-            r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec).*?(\d{1,2})'
-        ]
-        
-        # Look for food truck names or event descriptions
-        lines = text.split('\n')
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
+    def _extract_collection_id(self, soup) -> str:
+        """Extract the Squarespace calendar collection ID from the page"""
+        try:
+            # Look for calendar block with data-block-json attribute
+            calendar_blocks = soup.find_all('div', {'class': 'calendar-block'})
+            for block in calendar_blocks:
+                data_json = block.get('data-block-json')
+                if data_json:
+                    # Decode HTML entities and parse JSON
+                    import html
+                    decoded_json = html.unescape(data_json)
+                    block_data = json.loads(decoded_json)
+                    collection_id = block_data.get('collectionId')
+                    if collection_id:
+                        self.logger.debug(f"Found collection ID: {collection_id}")
+                        return collection_id
             
-            # Skip common non-event text
-            if any(word in line.lower() for word in ['contact', 'hours', 'location', 'instagram']):
-                continue
+            # Fallback: look in script tags for collection info
+            scripts = soup.find_all('script')
+            for script in scripts:
+                if script.string and 'collectionId' in script.string:
+                    text = script.string
+                    import re
+                    match = re.search(r'"collectionId":"([^"]+)"', text)
+                    if match:
+                        collection_id = match.group(1)
+                        self.logger.debug(f"Found collection ID in script: {collection_id}")
+                        return collection_id
             
-            # Look for potential food truck names or events
-            if any(word in line.lower() for word in ['food truck', 'truck', 'kitchen', 'bbq', 'taco', 'burger']):
-                # Try to extract date from nearby text
-                event = self._create_event_from_text(line)
-                if event:
-                    events.append(event)
-        
-        return events
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"Error extracting collection ID: {str(e)}")
+            return None
     
-    def _extract_from_text(self, text: str) -> List[FoodTruckEvent]:
+    async def _fetch_calendar_events(self, session: aiohttp.ClientSession, collection_id: str) -> List[FoodTruckEvent]:
+        """Fetch events from the Squarespace calendar API"""
         events = []
         
-        # Since the site doesn't have structured data, we'll create a placeholder
-        # that indicates manual checking is needed
+        try:
+            # Get current month and next few months
+            now = datetime.now()
+            months_to_fetch = [
+                (now.year, now.month),
+                ((now + timedelta(days=32)).year, (now + timedelta(days=32)).month),
+                ((now + timedelta(days=63)).year, (now + timedelta(days=63)).month)
+            ]
+            
+            for year, month in months_to_fetch:
+                month_names = ['January', 'February', 'March', 'April', 'May', 'June',
+                              'July', 'August', 'September', 'October', 'November', 'December']
+                month_str = f"{month_names[month-1]}-{year}"  # MMMM-yyyy format
+                api_url = f"https://www.bbycballard.com/api/open/GetItemsByMonth?month={month_str}&collectionId={collection_id}"
+                
+                self.logger.debug(f"Fetching calendar data from: {api_url}")
+                
+                async with session.get(api_url) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        self.logger.debug(f"Found {len(data)} events for {month_str}")
+                        
+                        for event_data in data:
+                            event = self._parse_api_event(event_data)
+                            if event:
+                                events.append(event)
+                    else:
+                        self.logger.warning(f"API request failed with status {response.status}")
+            
+            return events
+            
+        except Exception as e:
+            self.logger.error(f"Error fetching calendar events: {str(e)}")
+            return []
+    
+    def _parse_api_event(self, event_data: dict) -> FoodTruckEvent:
+        """Parse a single event from the Squarespace API response"""
+        try:
+            title = event_data.get('title', '').strip()
+            if not title:
+                return None
+            
+            # Convert timestamp to datetime
+            start_timestamp = event_data.get('startDate')
+            end_timestamp = event_data.get('endDate')
+            
+            if not start_timestamp:
+                return None
+            
+            # Squarespace timestamps are in milliseconds
+            start_date = datetime.fromtimestamp(start_timestamp / 1000)
+            end_date = None
+            if end_timestamp:
+                end_date = datetime.fromtimestamp(end_timestamp / 1000)
+            
+            # Create event
+            event = FoodTruckEvent(
+                brewery_key=self.brewery.key,
+                brewery_name=self.brewery.name,
+                food_truck_name=title,
+                date=start_date,
+                end_time=end_date,
+                description=f"Event from {self.brewery.name} calendar"
+            )
+            
+            self.logger.debug(f"Parsed event: {title} on {start_date}")
+            return event
+            
+        except Exception as e:
+            self.logger.error(f"Error parsing API event: {str(e)}")
+            return None
+    
+    def _create_fallback_event(self) -> List[FoodTruckEvent]:
+        """Create a fallback event when API parsing fails"""
         placeholder_event = FoodTruckEvent(
             brewery_key=self.brewery.key,
             brewery_name=self.brewery.name,
             food_truck_name="Check Instagram @BaleBreaker",
             date=datetime.now(),
-            description="Food truck schedule not available on website - check Instagram"
+            description="Food truck schedule not available - check Instagram or website directly"
         )
-        events.append(placeholder_event)
-        
-        return events
-    
-    def _create_event_from_text(self, text: str) -> FoodTruckEvent:
-        # Return None for empty or whitespace-only text
-        if not text or not text.strip():
-            return None
-            
-        # Extract potential food truck name
-        food_truck_name = text.strip()
-        
-        # Create event with today's date as placeholder
-        return FoodTruckEvent(
-            brewery_key=self.brewery.key,
-            brewery_name=self.brewery.name,
-            food_truck_name=food_truck_name,
-            date=datetime.now(),
-            description=f"Extracted from: {text}"
-        )
-    
-    def _parse_date(self, date_str: str) -> datetime:
-        # Return None for invalid inputs
-        if not date_str or date_str is None:
-            return None
-            
-        # Try different date formats
-        formats = [
-            '%m/%d/%Y',
-            '%m-%d-%Y',
-            '%m.%d.%Y',
-            '%m/%d',
-            '%m-%d'
-        ]
-        
-        for fmt in formats:
-            try:
-                date = datetime.strptime(date_str, fmt)
-                # If year not specified, assume current year
-                if date.year == 1900:
-                    date = date.replace(year=datetime.now().year)
-                return date
-            except (ValueError, TypeError):
-                continue
-        
-        # If no format matches, return None
-        return None
+        return [placeholder_event]

@@ -19,8 +19,8 @@
       "name": "Yonder Cider & Bale Breaker - Ballard",
       "url": "https://www.bbycballard.com/food-trucks-1-1",
       "parser_config": {
-        "note": "Food truck schedule not available on website - check Instagram @BaleBreaker",
-        "instagram": "@BaleBreaker"
+        "note": "Uses Squarespace calendar API to fetch food truck events",
+        "api_type": "squarespace_calendar"
       }
     }
   ]
