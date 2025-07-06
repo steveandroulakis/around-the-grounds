@@ -1,5 +1,5 @@
 {
-  "buildCommand": "mkdir -p public && echo 'Public directory created'",
+  "buildCommand": "ls -la public || echo 'No public directory found'",
   "outputDirectory": "public",
   "installCommand": "echo 'No install needed'"
 }
