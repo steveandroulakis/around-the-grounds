@@ -53,20 +53,21 @@ Found 23 food truck events:
 
 - 🔄 **Async Web Scraping**: Concurrent scraping of multiple brewery websites
 - 🌐 **API Integration**: Support for both HTML scraping and direct API access
+- 🤖 **AI Vision Analysis**: Extracts food truck vendor names from logos/images using Claude Vision API
 - 📅 **7-Day Forecast**: Shows food truck schedules for the next week
 - 🏗️ **Extensible Parser System**: Easy to add new breweries with custom parsers
 - ⚙️ **JSON Configuration**: Simple brewery configuration via JSON
 - 🚀 **Fast Performance**: Concurrent processing with comprehensive error handling
 - 🛡️ **Robust Error Handling**: Retry logic, error isolation, and graceful degradation
 - 📊 **Formatted Output**: Clean, readable schedule display with emojis
-- 🧪 **Comprehensive Testing**: 187+ tests covering all scenarios including error cases
+- 🧪 **Comprehensive Testing**: 205+ tests covering all scenarios including error cases
 
 ## Supported Breweries
 
 - **Stoup Brewing - Ballard**: Full HTML schedule parsing with date/time extraction
 - **Yonder Cider & Bale Breaker - Ballard**: Squarespace API integration for calendar data
 - **Obec Brewing**: Simple text-based food truck information parsing
-- **Urban Family Brewing**: Hivey API integration for calendar events
+- **Urban Family Brewing**: Hivey API integration with AI vision analysis for vendor identification
 
 ## Installation
 
@@ -93,6 +94,15 @@ uv run around-the-grounds --verbose
 ```bash
 uv run around-the-grounds --config /path/to/custom/breweries.json
 ```
+
+### AI Vision Analysis Setup (Optional)
+For enhanced vendor name extraction from images:
+```bash
+export ANTHROPIC_API_KEY="your-api-key-here"
+uv run around-the-grounds
+```
+
+When configured, the system will automatically analyze food truck logos to extract vendor names when text-based extraction fails, improving identification accuracy for breweries like Urban Family.
 
 ### Example Output
 ```
@@ -231,17 +241,17 @@ class TestNewBreweryParser:
 The project follows a clean, modular architecture with comprehensive error handling:
 
 - **Models**: Data classes for breweries and food truck events with validation
-- **Parsers**: Extensible parser system supporting HTML scraping and API integration
+- **Parsers**: Extensible parser system supporting HTML scraping, API integration, and AI vision analysis
   - `BaseParser`: Abstract base with HTTP error handling and validation
   - `StoupBallardParser`: HTML parsing with date/time extraction
   - `BaleBreakerParser`: Squarespace API integration
   - `ObecBrewingParser`: Simple text pattern matching
-  - `UrbanFamilyParser`: Hivey API integration with JSON parsing
+  - `UrbanFamilyParser`: Hivey API integration with AI vision fallback for vendor identification
 - **Registry**: Dynamic parser registration and retrieval with error handling
 - **Scrapers**: Async coordinator with concurrent processing, retry logic, and error isolation
 - **Config**: JSON-based configuration with validation and error reporting
-- **Utils**: Date/time utilities with comprehensive parsing and validation
-- **Tests**: 187+ tests covering unit, integration, and error scenarios
+- **Utils**: Date/time utilities with comprehensive parsing and validation, plus AI vision analysis
+- **Tests**: 205+ tests covering unit, integration, vision analysis, and error scenarios
 
 ## Development
 
@@ -252,11 +262,12 @@ uv sync --dev
 
 ### Running Tests
 ```bash
-uv run python -m pytest                    # Run all tests (187+ tests)
+uv run python -m pytest                    # Run all tests (205+ tests)
 uv run python -m pytest -v                 # Verbose output
 uv run python -m pytest --cov=around_the_grounds --cov-report=html  # Coverage
 uv run python -m pytest tests/parsers/     # Parser-specific tests
 uv run python -m pytest tests/integration/ # Integration tests
+uv run python -m pytest tests/unit/test_vision_analyzer.py  # Vision analysis tests
 uv run python -m pytest -k "test_error"    # Error handling tests
 ```
 
@@ -274,6 +285,7 @@ uv run mypy around_the_grounds/  # Type checking
 - `aiohttp` - Async HTTP client
 - `beautifulsoup4` - HTML parsing
 - `lxml` - XML/HTML parser backend
+- `anthropic` - AI Vision API for image analysis (optional)
 
 ## Contributing
 

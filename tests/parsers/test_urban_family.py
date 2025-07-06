@@ -5,6 +5,7 @@ from datetime import datetime
 import aiohttp
 from aioresponses import aioresponses
 import json
+from unittest.mock import patch
 
 from around_the_grounds.parsers.urban_family import UrbanFamilyParser
 from around_the_grounds.models import Brewery, FoodTruckEvent
@@ -110,8 +111,12 @@ class TestUrbanFamilyParser:
         ]
     
     @pytest.mark.asyncio
-    async def test_parse_success_with_api_data(self, parser, sample_api_response):
+    @patch('around_the_grounds.utils.vision_analyzer.VisionAnalyzer.analyze_food_truck_image')
+    async def test_parse_success_with_api_data(self, mock_vision, parser, sample_api_response):
         """Test successful parsing of API data."""
+        # Mock vision analysis to return None for the generic logo
+        mock_vision.return_value = None
+        
         api_url = "https://hivey-api-prod-pineapple.onrender.com/urbanfamily/public-calendar"
         
         with aioresponses() as m:

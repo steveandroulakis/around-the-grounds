@@ -6,9 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Around the Grounds is a robust Python CLI tool for tracking food truck schedules and locations across multiple breweries. The project features:
 - **Async web scraping** with concurrent processing of multiple brewery websites
+- **AI vision analysis** using Claude Vision API to extract vendor names from food truck logos/images
 - **Extensible parser system** with custom parsers for different brewery website structures
 - **Comprehensive error handling** with retry logic, isolation, and graceful degradation
-- **Extensive test suite** with 157+ tests covering unit, integration, and error scenarios
+- **Extensive test suite** with 205+ tests covering unit, integration, vision analysis, and error scenarios
 - **Modern Python tooling** with uv for dependency management and packaging
 
 ## Development Commands
@@ -23,21 +24,28 @@ uv sync --dev  # Install all dependencies including dev tools
 uv run around-the-grounds              # Run the CLI tool
 uv run around-the-grounds --verbose    # Run with verbose logging
 uv run around-the-grounds --config /path/to/config.json  # Use custom config
+
+# With AI vision analysis (optional)
+export ANTHROPIC_API_KEY="your-api-key"
+uv run around-the-grounds --verbose    # Run with vision analysis enabled
 ```
 
 ### Testing
 ```bash
-# Full test suite (157+ tests)
+# Full test suite (205+ tests)
 uv run python -m pytest                    # Run all tests
 uv run python -m pytest tests/unit/        # Unit tests only
 uv run python -m pytest tests/parsers/     # Parser-specific tests
 uv run python -m pytest tests/integration/ # Integration tests
+uv run python -m pytest tests/unit/test_vision_analyzer.py  # Vision analysis tests
+uv run python -m pytest tests/integration/test_vision_integration.py  # Vision integration tests
 uv run python -m pytest tests/test_error_handling.py  # Error handling tests
 
 # Test options
 uv run python -m pytest -v                 # Verbose output
 uv run python -m pytest --cov=around_the_grounds --cov-report=html  # Coverage
 uv run python -m pytest -k "test_error"    # Run error-related tests
+uv run python -m pytest -k "vision"        # Run vision-related tests
 uv run python -m pytest -x                 # Stop on first failure
 ```
 
@@ -56,7 +64,8 @@ The project follows a modular architecture with clear separation of concerns:
 ```
 around_the_grounds/
 ├── config/
-│   └── breweries.json          # Brewery configurations
+│   ├── breweries.json          # Brewery configurations
+│   └── settings.py             # Vision analysis and other settings
 ├── models/
 │   ├── brewery.py              # Brewery data model  
 │   └── schedule.py             # FoodTruckEvent data model
@@ -64,12 +73,14 @@ around_the_grounds/
 │   ├── __init__.py             # Parser module exports
 │   ├── base.py                 # Abstract base parser with error handling
 │   ├── stoup_ballard.py        # Stoup Brewing parser
-│   ├── bale_breaker.py         # Bale Breaker parser  
+│   ├── bale_breaker.py         # Bale Breaker parser
+│   ├── urban_family.py         # Urban Family parser with vision analysis
 │   └── registry.py             # Parser registry/factory
 ├── scrapers/
 │   └── coordinator.py          # Async scraping coordinator with error isolation
 ├── utils/
-│   └── date_utils.py           # Date/time utilities with validation
+│   ├── date_utils.py           # Date/time utilities with validation
+│   └── vision_analyzer.py      # AI vision analysis for vendor identification
 └── main.py                     # CLI entry point with error reporting
 
 tests/                          # Comprehensive test suite
@@ -78,8 +89,10 @@ tests/                          # Comprehensive test suite
 │   ├── html/                   # Real HTML samples from brewery websites
 │   └── config/                 # Test configurations
 ├── unit/                       # Unit tests for individual components
+│   └── test_vision_analyzer.py # Vision analysis component tests
 ├── parsers/                    # Parser-specific tests
 ├── integration/                # End-to-end integration tests
+│   └── test_vision_integration.py  # Vision analysis integration tests
 └── test_error_handling.py      # Comprehensive error scenario tests
 ```
 
@@ -90,11 +103,12 @@ tests/                          # Comprehensive test suite
   - `BaseParser`: Abstract base with HTTP error handling, validation, and logging
   - `StoupBallardParser`: Handles structured HTML with date/time parsing
   - `BaleBreakerParser`: Handles limited data with Instagram fallbacks
+  - `UrbanFamilyParser`: Hivey API integration with AI vision analysis fallback for vendor identification
 - **Registry**: Dynamic parser registration and retrieval with error handling
 - **Scrapers**: Async coordinator with concurrent processing, retry logic, and error isolation
 - **Config**: JSON-based configuration with validation and error reporting
-- **Utils**: Date/time utilities with comprehensive parsing and validation
-- **Tests**: 157+ tests covering all scenarios including extensive error handling
+- **Utils**: Date/time utilities with comprehensive parsing and validation, plus AI vision analysis
+- **Tests**: 205+ tests covering all scenarios including extensive error handling and vision analysis
 
 ### Core Dependencies
 
@@ -103,6 +117,7 @@ tests/                          # Comprehensive test suite
 - `beautifulsoup4` - HTML parsing with error tolerance
 - `lxml` - Fast XML/HTML parser backend  
 - `requests` - HTTP library (legacy support)
+- `anthropic` - Claude Vision API for AI-powered image analysis
 
 **Development & Testing:**
 - `pytest` - Test framework with async support
@@ -176,6 +191,97 @@ class ParserRegistry:
 - Test successful parsing with mock HTML
 - Test error scenarios (network, parsing, validation)
 - Test with real HTML fixtures if available
+- Mock vision analysis if your parser uses it
+
+## AI Vision Analysis Integration
+
+The system includes AI-powered vision analysis to extract food truck vendor names from logos and images when text-based methods fail.
+
+### How It Works
+
+1. **Text Extraction First**: All parsers attempt text-based vendor name extraction using existing methods
+2. **Vision Fallback**: When text extraction fails, the system automatically analyzes event images using Claude Vision API
+3. **Vendor Name Extraction**: The AI identifies business names from logos, signs, and food truck images
+4. **Name Cleaning**: Extracted names are cleaned to remove common suffixes like "Food Truck", "Kitchen", etc.
+5. **Graceful Degradation**: If vision analysis fails, the system falls back to "TBD"
+
+### Configuration
+
+Vision analysis is controlled by environment variables:
+
+```bash
+export ANTHROPIC_API_KEY="your-api-key"          # Required for vision analysis
+export VISION_ANALYSIS_ENABLED="true"            # Enable/disable (default: true)
+export VISION_MAX_RETRIES="2"                    # Max retry attempts (default: 2)
+export VISION_TIMEOUT="30"                       # API timeout in seconds (default: 30)
+```
+
+### Usage in Parsers
+
+The Urban Family parser demonstrates integration:
+
+```python
+from ..utils.vision_analyzer import VisionAnalyzer
+
+class UrbanFamilyParser(BaseParser):
+    def __init__(self, brewery):
+        super().__init__(brewery)
+        self._vision_analyzer = None
+    
+    @property
+    def vision_analyzer(self):
+        """Lazy initialization of vision analyzer."""
+        if self._vision_analyzer is None:
+            self._vision_analyzer = VisionAnalyzer()
+        return self._vision_analyzer
+    
+    def _extract_food_truck_name(self, item: Dict[str, Any]) -> Optional[str]:
+        # Try text-based extraction first
+        name = self._extract_name_from_text_fields(item)
+        if name:
+            return name
+        
+        # Fall back to vision analysis if image available
+        if 'eventImage' in item and item['eventImage']:
+            try:
+                vision_name = asyncio.run(
+                    self.vision_analyzer.analyze_food_truck_image(item['eventImage'])
+                )
+                if vision_name:
+                    return vision_name
+            except Exception as e:
+                self.logger.debug(f"Vision analysis failed: {str(e)}")
+        
+        return None
+```
+
+### Testing Vision Analysis
+
+Always mock vision analysis in tests:
+
+```python
+@patch('around_the_grounds.utils.vision_analyzer.VisionAnalyzer.analyze_food_truck_image')
+async def test_parser_with_vision_fallback(self, mock_vision, parser):
+    mock_vision.return_value = "Georgia's"
+    
+    test_item = {
+        "eventTitle": "FOOD TRUCK",
+        "eventImage": "https://example.com/logo.jpg"
+    }
+    
+    result = parser._extract_food_truck_name(test_item)
+    assert result == "Georgia's"
+    mock_vision.assert_called_once_with("https://example.com/logo.jpg")
+```
+
+### Real-World Results
+
+The vision analysis successfully extracts vendor names from actual brewery images:
+- "Georgia's" from Georgia's Greek Food Truck logo
+- "TOLU" from Tolu Modern Fijian Cuisine branding
+- "Whateke" from food truck signage
+
+This eliminates many "TBD" entries and provides users with accurate vendor information.
 
 ## Error Handling Strategy
 
@@ -190,6 +296,7 @@ The application implements comprehensive error handling with these principles:
 - **Network Errors**: Timeouts, DNS failures, SSL issues → Retry with exponential backoff (max 3 attempts)
 - **HTTP Errors**: 404, 500, 403 status codes → Immediate failure with descriptive messages  
 - **Parser Errors**: Invalid HTML, missing elements → Validation and fallback logic
+- **Vision API Errors**: Image analysis failures, API timeouts → Retry with exponential backoff, graceful degradation
 - **Configuration Errors**: Missing parsers, invalid URLs → No retry, immediate failure
 - **Data Validation**: Invalid events → Filtered out, logged for debugging
 
@@ -216,7 +323,7 @@ The application implements comprehensive error handling with these principles:
 
 ## Testing Strategy
 
-The project includes a comprehensive test suite with 157+ tests:
+The project includes a comprehensive test suite with 205+ tests:
 
 ### Test Organization
 ```
@@ -232,20 +339,23 @@ tests/
 ### Test Coverage Areas
 - **Models & Utilities**: Data validation, date parsing, registry operations
 - **Parser Functionality**: HTML parsing, data extraction, validation logic  
-- **Error Scenarios**: Network failures, malformed data, timeout handling
-- **Integration Workflows**: CLI functionality, coordinator behavior, error reporting
-- **Real Data Testing**: Uses actual HTML fixtures from brewery websites
+- **Vision Analysis**: AI image analysis, vendor name extraction, error handling, retry logic
+- **Error Scenarios**: Network failures, malformed data, timeout handling, API failures
+- **Integration Workflows**: CLI functionality, coordinator behavior, error reporting, vision integration
+- **Real Data Testing**: Uses actual HTML fixtures from brewery websites and real image URLs
 
 ### Writing Tests
 - **Use real HTML fixtures** when possible (stored in `tests/fixtures/html/`)
-- **Mock external dependencies** using `aioresponses` for HTTP calls
-- **Test error scenarios** - every component should have error tests
+- **Mock external dependencies** using `aioresponses` for HTTP calls and `@patch` for vision analysis
+- **Test error scenarios** - every component should have error tests (network, API, validation)
+- **Mock vision analysis** - Use `@patch('around_the_grounds.utils.vision_analyzer.VisionAnalyzer.analyze_food_truck_image')` in tests
 - **Follow naming convention**: `test_[component]_[scenario]`
 - **Use async tests** for async code with `@pytest.mark.asyncio`
 
 ### Running Tests
 - **Quick feedback**: `uv run python -m pytest tests/unit/`
 - **Parser-specific**: `uv run python -m pytest tests/parsers/`
+- **Vision analysis**: `uv run python -m pytest -k "vision"`
 - **Error scenarios**: `uv run python -m pytest -k "error"`
 - **Integration**: `uv run python -m pytest tests/integration/`
 

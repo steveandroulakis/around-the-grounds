@@ -22,7 +22,7 @@ class ScrapingError:
 
 
 class ScraperCoordinator:
-    def __init__(self, max_concurrent: int = 5, timeout: int = 30, max_retries: int = 3):
+    def __init__(self, max_concurrent: int = 5, timeout: int = 60, max_retries: int = 3):
         self.max_concurrent = max_concurrent
         self.timeout = aiohttp.ClientTimeout(total=timeout)
         self.max_retries = max_retries

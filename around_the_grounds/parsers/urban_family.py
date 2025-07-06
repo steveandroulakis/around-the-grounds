@@ -1,11 +1,13 @@
 import json
+import asyncio
 from datetime import datetime, timedelta
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import aiohttp
 
 from .base import BaseParser
 from ..models import FoodTruckEvent
 from ..utils.date_utils import DateUtils
+from ..utils.vision_analyzer import VisionAnalyzer
 
 
 class UrbanFamilyParser(BaseParser):
@@ -13,6 +15,18 @@ class UrbanFamilyParser(BaseParser):
     Parser for Urban Family Brewing using their API endpoint.
     Uses direct JSON API access instead of HTML scraping.
     """
+    
+    def __init__(self, brewery):
+        super().__init__(brewery)
+        self._vision_analyzer = None
+        self._vision_cache = {}  # Cache for image URL -> vendor name mappings
+    
+    @property
+    def vision_analyzer(self):
+        """Lazy initialization of vision analyzer."""
+        if self._vision_analyzer is None:
+            self._vision_analyzer = VisionAnalyzer()
+        return self._vision_analyzer
     
     async def parse(self, session: aiohttp.ClientSession) -> List[FoodTruckEvent]:
         try:
@@ -146,10 +160,67 @@ class UrbanFamilyParser(BaseParser):
             self.logger.debug(f"Error parsing event item: {str(e)}, item: {item}")
             return None
     
-    def _extract_food_truck_name(self, item: Dict[str, Any]) -> str:
+    def _extract_food_truck_name(self, item: Dict[str, Any]) -> Optional[str]:
         """
-        Extract food truck name from various possible fields in Urban Family's format.
+        Extract food truck name with vision analysis fallback.
+        Returns the extracted name or None if no valid name can be determined.
         """
+        # Try existing text-based extraction methods first
+        name = self._extract_name_from_text_fields(item)
+        if name:
+            return name
+        
+        # If no name found from text, try image analysis
+        if 'eventImage' in item and item['eventImage']:
+            image_url = str(item['eventImage'])
+            
+            # Check cache first
+            if image_url in self._vision_cache:
+                cached_name = self._vision_cache[image_url]
+                if cached_name:
+                    self.logger.debug(f"Using cached vision result for {image_url}: {cached_name}")
+                    return cached_name
+                else:
+                    self.logger.debug(f"Cached vision result for {image_url} was None, skipping")
+                    return None
+            
+            self.logger.debug(f"Attempting vision analysis for image: {image_url}")
+            
+            # Use asyncio to run the async vision analysis
+            try:
+                # Try to get the running event loop first
+                try:
+                    loop = asyncio.get_running_loop()
+                    # If there's already a running loop, we need to use a different approach
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        future = executor.submit(
+                            asyncio.run,
+                            self.vision_analyzer.analyze_food_truck_image(image_url)
+                        )
+                        vision_name = future.result(timeout=30)
+                except RuntimeError:
+                    # No running event loop, safe to create a new one
+                    vision_name = asyncio.run(
+                        self.vision_analyzer.analyze_food_truck_image(image_url)
+                    )
+                
+                # Cache the result (even if None)
+                self._vision_cache[image_url] = vision_name
+                
+                if vision_name:
+                    self.logger.info(f"Vision analysis extracted name: {vision_name}")
+                    return vision_name
+            except Exception as e:
+                self.logger.debug(f"Vision analysis failed: {str(e)}")
+                # Cache the failure
+                self._vision_cache[image_url] = None
+        
+        # Return None if no valid name found
+        return None
+    
+    def _extract_name_from_text_fields(self, item: Dict[str, Any]) -> Optional[str]:
+        """Extract name from text fields (existing logic moved here)."""
         # Try eventTitle first - some have food truck names
         if 'eventTitle' in item and item['eventTitle']:
             title = str(item['eventTitle']).strip()

@@ -29,6 +29,7 @@ dependencies = [
     "beautifulsoup4",
     "lxml",
     "aiohttp",
+    "anthropic>=0.40.0",
 ]
 
 [project.optional-dependencies]

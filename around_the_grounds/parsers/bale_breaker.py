@@ -10,18 +10,27 @@ from ..models import FoodTruckEvent
 
 class BaleBreakerParser(BaseParser):
     async def parse(self, session: aiohttp.ClientSession) -> List[FoodTruckEvent]:
+        collection_id = None
+        
         try:
-            # First, get the main page to find the collection ID
+            # First, try to get the main page to find the collection ID
             soup = await self.fetch_page(session, self.brewery.url)
-            if not soup:
-                raise ValueError("Failed to fetch page content")
-            
-            # Extract collection ID from the calendar block
-            collection_id = self._extract_collection_id(soup)
-            if not collection_id:
-                self.logger.warning("Could not find collection ID, falling back to placeholder event")
-                return self._create_fallback_event()
-            
+            if soup:
+                collection_id = self._extract_collection_id(soup)
+        except ValueError as e:
+            # Handle 403 errors or other access issues gracefully
+            if "403" in str(e) or "Access forbidden" in str(e):
+                self.logger.warning(f"Access to main page blocked (403), using fallback collection ID")
+                # Use known collection ID as fallback
+                collection_id = "61328af17400707612fccbc6"
+            else:
+                self.logger.error(f"Error fetching main page: {str(e)}")
+        
+        if not collection_id:
+            self.logger.warning("Could not find collection ID, falling back to placeholder event")
+            return self._create_fallback_event()
+        
+        try:
             # Fetch calendar events from API
             events = await self._fetch_calendar_events(session, collection_id)
             
@@ -112,6 +121,9 @@ class BaleBreakerParser(BaseParser):
             
         except Exception as e:
             self.logger.error(f"Error fetching calendar events: {str(e)}")
+            self.logger.error(f"Exception type: {type(e).__name__}")
+            import traceback
+            self.logger.error(f"Traceback: {traceback.format_exc()}")
             return []
     
     def _parse_api_event(self, event_data: dict) -> FoodTruckEvent:
@@ -140,6 +152,7 @@ class BaleBreakerParser(BaseParser):
                 brewery_name=self.brewery.name,
                 food_truck_name=title,
                 date=start_date,
+                start_time=start_date,
                 end_time=end_date,
                 description=None  # Don't show generic description to users
             )
