@@ -124,7 +124,7 @@
     },
     {
       "date": "2025-07-10T00:00:00",
-      "vendor": "Whateoke \ud83d\uddbc\ufe0f\ud83e\udd16",
+      "vendor": "Whateke \ud83d\uddbc\ufe0f\ud83e\udd16",
       "location": "Urban Family Brewing",
       "start_time": "04:00 PM",
       "end_time": "08:00 PM",
@@ -188,6 +188,6 @@
       "description": null
     }
   ],
-  "updated": "2025-07-05T19:58:46.802231",
+  "updated": "2025-07-05T20:07:48.310698",
   "total_events": 23
 }
