@@ -2,7 +2,7 @@
 
 A Python tool for tracking food truck schedules and locations across multiple breweries. Get a unified view of food truck events for the next 7 days by scraping brewery websites asynchronously.
 
-**🌐 [Live Web Interface](https://ballard-food-trucks.around-the-grounds.vercel.app)** | **🖥️ CLI Tool** | **🤖 AI Vision Analysis** | **🚀 Auto-Deploy**
+**🌐 [Live Web Interface](https://ballardfoodtrucks.com)** | **🖥️ CLI Tool** | **🤖 AI Vision Analysis** | **🚀 Auto-Deploy**
 
 ## Example Output
 
@@ -55,7 +55,7 @@ Found 23 food truck events:
 
 The project now includes a beautiful, mobile-responsive web interface that automatically updates with fresh food truck data:
 
-- **Live Site**: [foodtrucksballard.com](https://foodtrucksballard.com) (or your configured domain)
+- **Live Site**: [ballardfoodtrucks.com](https://ballardfoodtrucks.com) (or your configured domain)
 - **Mobile Optimized**: Clean, fast interface perfect for quick checks on the go
 - **Clickable Truck Names**: Tap any food truck name to Google search for more info
 - **AI Vision Indicators**: See which vendor names were extracted using AI vision analysis
