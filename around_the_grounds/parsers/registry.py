@@ -3,6 +3,7 @@ from .base import BaseParser
 from .stoup_ballard import StoupBallardParser
 from .bale_breaker import BaleBreakerParser
 from .obec_brewing import ObecBrewingParser
+from .urban_family import UrbanFamilyParser
 
 
 class ParserRegistry:
@@ -10,6 +11,7 @@ class ParserRegistry:
         'stoup-ballard': StoupBallardParser,
         'yonder-balebreaker': BaleBreakerParser,
         'obec-brewing': ObecBrewingParser,
+        'urban-family': UrbanFamilyParser,
     }
     
     @classmethod

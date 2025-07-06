@@ -31,6 +31,16 @@
         "note": "Simple text format: 'Food truck: <name> <time>'",
         "pattern": "Food truck:\\s*([^0-9]+)\\s*([0-9:]+\\s*-\\s*[0-9:]+)"
       }
+    },
+    {
+      "key": "urban-family",
+      "name": "Urban Family Brewing",
+      "url": "https://app.hivey.io/urbanfamily/public-calendar",
+      "parser_config": {
+        "note": "Uses Hivey API endpoint for calendar data",
+        "api_endpoint": "https://hivey-api-prod-pineapple.onrender.com/urbanfamily/public-calendar",
+        "api_type": "hivey_calendar"
+      }
     }
   ]
 }

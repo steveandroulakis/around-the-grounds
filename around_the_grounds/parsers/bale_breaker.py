@@ -141,7 +141,7 @@ class BaleBreakerParser(BaseParser):
                 food_truck_name=title,
                 date=start_date,
                 end_time=end_date,
-                description=f"Event from {self.brewery.name} calendar"
+                description=None  # Don't show generic description to users
             )
             
             self.logger.debug(f"Parsed event: {title} on {start_date}")
