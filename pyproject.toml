@@ -30,6 +30,7 @@ dependencies = [
     "lxml",
     "aiohttp",
     "anthropic>=0.40.0",
+    "temporalio>=1.9.0",
 ]
 
 [project.optional-dependencies]
