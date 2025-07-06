@@ -17,6 +17,8 @@ The Temporal integration wraps existing functionality in workflows and activitie
 temporal/
 ├── __init__.py        # Module initialization
 ├── activities.py      # ScrapeActivities and DeploymentActivities  
+├── config.py          # Temporal client configuration system
+├── schedule_manager.py # Comprehensive schedule management script
 ├── shared.py          # WorkflowParams and WorkflowResult data classes
 ├── starter.py         # CLI workflow execution client
 ├── workflows.py       # FoodTruckWorkflow definition
@@ -31,14 +33,15 @@ temporal/
 - **DeploymentActivities**: Activities for web data generation and git operations
 - **FoodTruckWorker**: Production worker with thread pools and signal handling
 - **FoodTruckStarter**: CLI client for manual workflow execution
+- **ScheduleManager**: Comprehensive schedule management with configurable intervals and full lifecycle operations
 
 ## Quick Start
 
 ### Prerequisites
 
-1. **Temporal Server**: Ensure Temporal server is running locally on `localhost:7233`
+1. **Temporal Server**: Local server on `localhost:7233`, Temporal Cloud, or custom deployment
 2. **Dependencies**: Run `uv sync` to install all dependencies including `temporalio`
-3. **Environment**: Set up any required environment variables (e.g., `ANTHROPIC_API_KEY`)
+3. **Environment**: Set up authentication and configuration (see Configuration section below)
 
 ### Basic Usage
 
@@ -57,6 +60,112 @@ uv run python -m around_the_grounds.temporal.starter --deploy
 
 # With verbose logging
 uv run python -m around_the_grounds.temporal.starter --deploy --verbose
+```
+
+## Configuration
+
+The system supports multiple deployment scenarios through environment-based configuration. All configuration is handled automatically - just set the appropriate environment variables and the system will connect to the right Temporal server with the correct authentication.
+
+### Local Development (Default)
+
+No configuration needed - connects to `localhost:7233` automatically:
+
+```bash
+# No environment variables needed
+uv run python -m around_the_grounds.temporal.worker
+uv run python -m around_the_grounds.temporal.starter --deploy
+```
+
+### Temporal Cloud
+
+Set environment variables for Temporal Cloud with API key authentication:
+
+```bash
+# Required for Temporal Cloud
+export TEMPORAL_ADDRESS="your-namespace.acct.tmprl.cloud:7233"
+export TEMPORAL_NAMESPACE="your-namespace"  
+export TEMPORAL_API_KEY="your-api-key"
+
+# Optional: Custom task queue
+export TEMPORAL_TASK_QUEUE="food-truck-task-queue"
+
+# Run worker and starter - automatically connects to Temporal Cloud
+uv run python -m around_the_grounds.temporal.worker
+uv run python -m around_the_grounds.temporal.starter --deploy
+```
+
+**Getting Temporal Cloud Credentials:**
+1. Sign up at [cloud.temporal.io](https://cloud.temporal.io)
+2. Create a namespace
+3. Generate an API key from the namespace settings
+4. Use the connection details provided in the UI
+
+### Custom Server with mTLS
+
+For enterprise deployments with certificate-based authentication:
+
+```bash
+# Required for mTLS authentication
+export TEMPORAL_ADDRESS="your-server.example.com:7233"
+export TEMPORAL_NAMESPACE="production"
+export TEMPORAL_TLS_CERT="/path/to/client.pem"
+export TEMPORAL_TLS_KEY="/path/to/client.key"
+
+# Optional: Custom task queue
+export TEMPORAL_TASK_QUEUE="production-task-queue"
+
+# Run worker and starter - automatically uses mTLS
+uv run python -m around_the_grounds.temporal.worker
+uv run python -m around_the_grounds.temporal.starter --deploy
+```
+
+### Environment Files
+
+For persistent configuration, create a `.env` file:
+
+```bash
+# Copy the template
+cp .env.example .env
+
+# Edit with your configuration
+# Example for Temporal Cloud:
+TEMPORAL_ADDRESS=my-namespace.acct.tmprl.cloud:7233
+TEMPORAL_NAMESPACE=my-namespace
+TEMPORAL_API_KEY=abcdef1234567890
+
+# Food truck application settings
+ANTHROPIC_API_KEY=your-anthropic-key
+VISION_ANALYSIS_ENABLED=true
+```
+
+### Configuration Validation
+
+The system validates configuration on startup and provides helpful error messages:
+
+```bash
+# Example successful connection to Temporal Cloud
+🔗 Connecting to Temporal server:
+   Address: my-namespace.acct.tmprl.cloud:7233
+   Namespace: my-namespace
+   Task Queue: food-truck-task-queue
+   Mode: Remote server
+   API Key: abcdef12...
+   Authentication: API Key
+✅ Configuration validation passed
+✅ Connected to Temporal successfully
+```
+
+### Legacy CLI Arguments (Deprecated)
+
+CLI arguments still work but show deprecation warnings:
+
+```bash
+# This still works but is deprecated
+uv run python -m around_the_grounds.temporal.starter --temporal-address production:7233 --deploy
+
+# Output includes deprecation warning:
+⚠️ --temporal-address CLI argument is deprecated.
+⚠️ Please use TEMPORAL_ADDRESS environment variable instead.
 ```
 
 ## Worker Configuration
@@ -237,26 +346,55 @@ The workflow handles activity failures gracefully:
 
 ## Scheduling
 
-### Temporal Schedules
+### Temporal Schedule Management
 
-For automated execution, use Temporal schedules (configured separately):
+The system includes a comprehensive schedule management script that supports creating, managing, and monitoring schedules with configurable intervals:
 
-```python
-# Example schedule configuration (via Temporal CLI or SDK)
-schedule = {
-    "schedule_id": "food-truck-updates",
-    "spec": {
-        "cron_expressions": ["0 */6 * * *"]  # Every 6 hours
-    },
-    "action": {
-        "start_workflow": {
-            "workflow_type": "FoodTruckWorkflow",
-            "task_queue": "food-truck-task-queue",
-            "args": [{"deploy": True}]
-        }
-    }
-}
+#### Creating Schedules
+
+```bash
+# Create a schedule that runs every 30 minutes
+uv run python -m around_the_grounds.temporal.schedule_manager create --schedule-id daily-scrape --interval 30
+
+# Create a schedule with custom config and start paused
+uv run python -m around_the_grounds.temporal.schedule_manager create --schedule-id custom-scrape --interval 60 --config /path/to/config.json --paused
+
+# Create a schedule without web deployment
+uv run python -m around_the_grounds.temporal.schedule_manager create --schedule-id scrape-only --interval 45 --no-deploy
 ```
+
+#### Managing Schedules
+
+```bash
+# List all schedules
+uv run python -m around_the_grounds.temporal.schedule_manager list
+
+# Describe a specific schedule
+uv run python -m around_the_grounds.temporal.schedule_manager describe --schedule-id daily-scrape
+
+# Pause a schedule with a note
+uv run python -m around_the_grounds.temporal.schedule_manager pause --schedule-id daily-scrape --note "Maintenance window"
+
+# Unpause a schedule
+uv run python -m around_the_grounds.temporal.schedule_manager unpause --schedule-id daily-scrape
+
+# Trigger immediate execution
+uv run python -m around_the_grounds.temporal.schedule_manager trigger --schedule-id daily-scrape
+
+# Update schedule interval to 45 minutes
+uv run python -m around_the_grounds.temporal.schedule_manager update --schedule-id daily-scrape --interval 45
+
+# Delete a schedule
+uv run python -m around_the_grounds.temporal.schedule_manager delete --schedule-id daily-scrape
+```
+
+#### Schedule Features
+
+- **Configurable Intervals**: Set any interval in minutes (e.g., 5, 30, 60, 120)
+- **Multiple Deployment Modes**: Works with local, Temporal Cloud, and mTLS configurations
+- **Comprehensive Management**: Create, list, describe, pause, unpause, trigger, update, and delete
+- **Production Ready**: Built-in error handling and detailed logging
+- **Custom Configuration**: Support for custom brewery configs and workflow parameters
 
 ### Manual Scheduling
 
@@ -309,35 +447,26 @@ uv run python -m around_the_grounds.temporal.starter | grep "Found"
 
 ## Production Deployment
 
-### Worker Deployment
+### Running a Worker Locally
 
-For production deployment:
-
-```bash
-# Run worker as systemd service
-[Unit]
-Description=Food Truck Temporal Worker
-After=network.target
-
-[Service]
-Type=simple
-User=temporal
-WorkingDirectory=/path/to/project
-ExecStart=/usr/local/bin/uv run python -m around_the_grounds.temporal.worker
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-### Environment Configuration
+For production use, simply run the worker with appropriate environment variables:
 
 ```bash
-# Production environment variables
-export TEMPORAL_ADDRESS="production-temporal:7233"
+# Set your production environment variables
+export TEMPORAL_ADDRESS="your-namespace.acct.tmprl.cloud:7233"
+export TEMPORAL_NAMESPACE="your-namespace"
+export TEMPORAL_API_KEY="your-api-key"
 export ANTHROPIC_API_KEY="your-production-api-key"
-export LOG_LEVEL="INFO"
+
+# Run the worker
+uv run python -m around_the_grounds.temporal.worker
 ```
+
+The worker will:
+- Connect to your configured Temporal server
+- Run continuously processing workflows
+- Handle graceful shutdown with Ctrl+C
+- Automatically reconnect on connection issues
 
 ### Monitoring
 

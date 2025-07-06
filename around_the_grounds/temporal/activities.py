@@ -145,27 +145,28 @@ class DeploymentActivities:
             
             # Push to origin (handle upstream branch issues)
             try:
-                subprocess.run(['git', 'push'], check=True)
+                result = subprocess.run(['git', 'push'], capture_output=True, text=True, check=True)
                 activity.logger.info("Deployed to git! Changes will be live shortly.")
             except subprocess.CalledProcessError as e:
-                # If push fails, try to set upstream and push again
-                if "no upstream branch" in str(e) or "has no upstream branch" in str(e):
+                # Capture the actual stderr to check for upstream branch issues
+                error_output = e.stderr.strip() if e.stderr else str(e)
+                
+                # If push fails due to no upstream branch, try to set upstream and push again
+                if "no upstream branch" in error_output or "has no upstream branch" in error_output:
                     try:
                         # Get current branch name
                         branch_result = subprocess.run(['git', 'branch', '--show-current'], capture_output=True, text=True, check=True)
                         current_branch = branch_result.stdout.strip()
                         
                         # Set upstream and push
-                        subprocess.run(['git', 'push', '--set-upstream', 'origin', current_branch], check=True)
+                        subprocess.run(['git', 'push', '--set-upstream', 'origin', current_branch], capture_output=True, text=True, check=True)
                         activity.logger.info("Set upstream branch and deployed to git! Changes will be live shortly.")
                     except subprocess.CalledProcessError as upstream_error:
-                        activity.logger.warning(f"Git push failed, but commit succeeded: {upstream_error}")
-                        activity.logger.info("Data committed locally but not pushed to remote")
-                        return True  # Still consider success since commit worked
+                        activity.logger.error(f"Git push failed: {upstream_error.stderr if upstream_error.stderr else upstream_error}")
+                        raise ValueError(f"Failed to push to git repository: {upstream_error.stderr if upstream_error.stderr else upstream_error}")
                 else:
-                    activity.logger.warning(f"Git push failed, but commit succeeded: {e}")
-                    activity.logger.info("Data committed locally but not pushed to remote")
-                    return True  # Still consider success since commit worked
+                    activity.logger.error(f"Git push failed: {error_output}")
+                    raise ValueError(f"Failed to push to git repository: {error_output}")
             
             return True
             
