@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List
 import aiohttp
 import json
@@ -140,11 +140,18 @@ class BaleBreakerParser(BaseParser):
             if not start_timestamp:
                 return None
             
-            # Squarespace timestamps are in milliseconds
-            start_date = datetime.fromtimestamp(start_timestamp / 1000)
+            # Squarespace timestamps are in milliseconds and in UTC
+            # Convert to UTC first, then to Pacific time, then remove timezone info
+            start_date_utc = datetime.fromtimestamp(start_timestamp / 1000, tz=timezone.utc)
+            pacific_offset = timedelta(hours=-7)  # Pacific Daylight Time (UTC-7) for summer months
+            start_date_pacific = start_date_utc.astimezone(timezone(pacific_offset))
+            start_date = start_date_pacific.replace(tzinfo=None)  # Remove timezone info for compatibility
+            
             end_date = None
             if end_timestamp:
-                end_date = datetime.fromtimestamp(end_timestamp / 1000)
+                end_date_utc = datetime.fromtimestamp(end_timestamp / 1000, tz=timezone.utc)
+                end_date_pacific = end_date_utc.astimezone(timezone(pacific_offset))
+                end_date = end_date_pacific.replace(tzinfo=None)  # Remove timezone info for compatibility
             
             # Create event
             event = FoodTruckEvent(
