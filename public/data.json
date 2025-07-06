@@ -4,6 +4,14 @@
       "date": "2025-07-06T00:00:00",
       "description": null,
       "end_time": "07:00 PM",
+      "location": "Obec Brewing",
+      "start_time": "03:00 AM",
+      "vendor": "Sabor Boricua (Puerto Rican!)"
+    },
+    {
+      "date": "2025-07-06T00:00:00",
+      "description": null,
+      "end_time": "07:00 PM",
       "location": "Stoup Brewing - Ballard",
       "start_time": "01:00 PM",
       "vendor": "Burger Planet"
@@ -15,14 +23,6 @@
       "location": "Urban Family Brewing",
       "start_time": "01:00 PM",
       "vendor": "Kaosamia"
-    },
-    {
-      "date": "2025-07-06T00:00:00",
-      "description": null,
-      "end_time": "08:00 PM",
-      "location": "Obec Brewing",
-      "start_time": "04:00 PM",
-      "vendor": "Kaosamai Thai"
     },
     {
       "date": "2025-07-06T13:00:00.516000",
@@ -113,7 +113,7 @@
       "extraction_method": "vision",
       "location": "Urban Family Brewing",
       "start_time": "04:00 PM",
-      "vendor": "Whatoke \ud83d\uddbc\ufe0f\ud83e\udd16"
+      "vendor": "Whateke \ud83d\uddbc\ufe0f\ud83e\udd16"
     },
     {
       "date": "2025-07-10T16:00:00.835000",
@@ -198,5 +198,5 @@
     }
   ],
   "total_events": 24,
-  "updated": "2025-07-06T00:30:12.287328"
+  "updated": "2025-07-06T00:50:12.470094"
 }
