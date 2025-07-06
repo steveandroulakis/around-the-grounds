@@ -113,7 +113,7 @@
       "extraction_method": "vision",
       "location": "Urban Family Brewing",
       "start_time": "04:00 PM",
-      "vendor": "Whatake \ud83d\uddbc\ufe0f\ud83e\udd16"
+      "vendor": "Whatoke \ud83d\uddbc\ufe0f\ud83e\udd16"
     },
     {
       "date": "2025-07-10T23:00:00.835000",
@@ -198,5 +198,5 @@
     }
   ],
   "total_events": 24,
-  "updated": "2025-07-06T09:01:47.226114"
+  "updated": "2025-07-06T12:00:28.792859"
 }
