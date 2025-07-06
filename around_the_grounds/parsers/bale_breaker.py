@@ -83,6 +83,10 @@ class BaleBreakerParser(BaseParser):
         return events
     
     def _create_event_from_text(self, text: str) -> FoodTruckEvent:
+        # Return None for empty or whitespace-only text
+        if not text or not text.strip():
+            return None
+            
         # Extract potential food truck name
         food_truck_name = text.strip()
         
@@ -96,6 +100,10 @@ class BaleBreakerParser(BaseParser):
         )
     
     def _parse_date(self, date_str: str) -> datetime:
+        # Return None for invalid inputs
+        if not date_str or date_str is None:
+            return None
+            
         # Try different date formats
         formats = [
             '%m/%d/%Y',
@@ -112,8 +120,8 @@ class BaleBreakerParser(BaseParser):
                 if date.year == 1900:
                     date = date.replace(year=datetime.now().year)
                 return date
-            except ValueError:
+            except (ValueError, TypeError):
                 continue
         
-        # If no format matches, return current date
-        return datetime.now()
+        # If no format matches, return None
+        return None

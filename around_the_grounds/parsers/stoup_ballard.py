@@ -16,8 +16,10 @@ class StoupBallardParser(BaseParser):
             if not soup:
                 raise ValueError("Failed to fetch page content")
             
-            # Find all food truck entries
-            food_truck_entries = soup.find_all('div', class_='food-truck-entry')
+            # Find all food truck entries - try new format first, then old format
+            food_truck_entries = soup.find_all('div', class_='food-truck-day')
+            if not food_truck_entries:
+                food_truck_entries = soup.find_all('div', class_='food-truck-entry')
             
             # If the exact class isn't found, try a more general approach
             if not food_truck_entries:
@@ -94,6 +96,55 @@ class StoupBallardParser(BaseParser):
         return events
     
     def _parse_entry(self, entry) -> FoodTruckEvent:
+        # Look for the lunch-truck-info div (new format)
+        info_div = entry.find('div', class_='lunch-truck-info')
+        if info_div:
+            return self._parse_new_format_entry(entry, info_div)
+        else:
+            return self._parse_old_format_entry(entry)
+    
+    def _parse_new_format_entry(self, entry, info_div) -> FoodTruckEvent:
+        # Extract date
+        date_elem = info_div.find('h4')
+        if not date_elem:
+            return None
+        
+        date_str = date_elem.get_text().strip()
+        date = self._parse_date_from_text(date_str)
+        if not date:
+            return None
+        
+        # Extract time
+        time_elem = info_div.find('div', class_='hrs')
+        time_str = time_elem.get_text().strip() if time_elem else ""
+        start_time, end_time = self._parse_time_from_text(date, time_str)
+        
+        # Extract food truck name - it's the text after the time div
+        truck_name_elem = info_div.find('div', class_='truck')
+        if truck_name_elem:
+            truck_name = truck_name_elem.get_text().strip()
+        else:
+            # Get all text content from info_div
+            all_text = info_div.get_text()
+            
+            # The text comes as one line like "Sat 07.051 — 8pmWoodshop BBQ"
+            # Extract truck name using regex - it's everything after the time portion
+            truck_match = re.search(r'(?:\d{1,2}:?\d{0,2}?\s*—\s*\d{1,2}:?\d{0,2}?(?:am|pm)|noon\s*—\s*\d{1,2}:?\d{0,2}?(?:am|pm))(.+)', all_text)
+            if truck_match:
+                truck_name = truck_match.group(1).strip()
+            else:
+                truck_name = "Unknown"
+        
+        return FoodTruckEvent(
+            brewery_key=self.brewery.key,
+            brewery_name=self.brewery.name,
+            food_truck_name=truck_name,
+            date=date,
+            start_time=start_time,
+            end_time=end_time
+        )
+    
+    def _parse_old_format_entry(self, entry) -> FoodTruckEvent:
         # Extract date
         date_elem = entry.find('h4')
         if not date_elem:
@@ -101,6 +152,8 @@ class StoupBallardParser(BaseParser):
         
         date_str = date_elem.get_text().strip()
         date = self._parse_date_from_text(date_str)
+        if not date:
+            return None
         
         # Extract time
         time_elem = entry.find('p')
@@ -121,26 +174,70 @@ class StoupBallardParser(BaseParser):
         )
     
     def _parse_date(self, date_str: str) -> datetime:
-        # Parse "07.05" format
-        month, day = map(int, date_str.split('.'))
-        current_year = datetime.now().year
-        
-        # Handle year rollover
-        current_month = datetime.now().month
-        if month < current_month:
-            current_year += 1
-        
-        return datetime(current_year, month, day)
+        try:
+            # Parse "07.05" format
+            if '.' not in date_str:
+                return None
+            
+            month, day = map(int, date_str.split('.'))
+            
+            # Validate month and day
+            if not (1 <= month <= 12) or not (1 <= day <= 31):
+                return None
+                
+            current_year = datetime.now().year
+            
+            # Handle year rollover
+            current_month = datetime.now().month
+            if month < current_month:
+                current_year += 1
+            
+            return datetime(current_year, month, day)
+        except (ValueError, TypeError):
+            return None
     
     def _parse_date_from_text(self, text: str) -> datetime:
         # Extract date from text like "Sat 07.05"
         date_match = re.search(r'(\d{2}\.\d{2})', text)
         if date_match:
             return self._parse_date(date_match.group(1))
-        return datetime.now()
+        return None
     
     def _parse_time(self, date: datetime, time_tuple: tuple) -> tuple:
-        start_hour, end_hour, period = time_tuple
+        if not date or not time_tuple:
+            return None, None
+            
+        try:
+            start_hour, end_hour, period = time_tuple
+            
+            # Validate period
+            if period not in ['am', 'pm']:
+                return None, None
+            
+            # Convert to 24-hour format
+            if period == 'pm' and start_hour != 12:
+                start_hour += 12
+            elif period == 'am' and start_hour == 12:
+                start_hour = 0
+            
+            if period == 'pm' and end_hour != 12:
+                end_hour += 12
+            elif period == 'am' and end_hour == 12:
+                end_hour = 0
+            
+            # Validate hour ranges
+            if start_hour < 0 or start_hour > 23 or end_hour < 0 or end_hour > 23:
+                return None, None
+            
+            start_time = date.replace(hour=start_hour, minute=0, second=0, microsecond=0)
+            end_time = date.replace(hour=end_hour, minute=0, second=0, microsecond=0)
+            
+            return start_time, end_time
+        except (ValueError, TypeError):
+            return None, None
+    
+    def _parse_time_with_minutes(self, date: datetime, time_tuple: tuple) -> tuple:
+        start_hour, start_min, end_hour, end_min, period = time_tuple
         
         # Convert to 24-hour format
         if period == 'pm' and start_hour != 12:
@@ -153,15 +250,32 @@ class StoupBallardParser(BaseParser):
         elif period == 'am' and end_hour == 12:
             end_hour = 0
         
-        start_time = date.replace(hour=start_hour, minute=0, second=0, microsecond=0)
-        end_time = date.replace(hour=end_hour, minute=0, second=0, microsecond=0)
+        start_time = date.replace(hour=start_hour, minute=start_min, second=0, microsecond=0)
+        end_time = date.replace(hour=end_hour, minute=end_min, second=0, microsecond=0)
         
         return start_time, end_time
     
     def _parse_time_from_text(self, date: datetime, time_str: str) -> tuple:
-        # Parse time from text like "1 — 8pm"
+        # Handle special cases like "noon" and different time formats
+        if 'noon' in time_str.lower():
+            # Handle "noon — 4pm" format
+            noon_match = re.search(r'noon\s*—\s*(\d{1,2})(am|pm)', time_str)
+            if noon_match:
+                end_hour, period = noon_match.groups()
+                return self._parse_time(date, (12, int(end_hour), period))
+        
+        # Handle "4:30 — 8:30pm" format
+        time_match = re.search(r'(\d{1,2}):?(\d{2})?\s*—\s*(\d{1,2}):?(\d{2})?(am|pm)', time_str)
+        if time_match:
+            start_hour, start_min, end_hour, end_min, period = time_match.groups()
+            start_min = int(start_min) if start_min else 0
+            end_min = int(end_min) if end_min else 0
+            return self._parse_time_with_minutes(date, (int(start_hour), start_min, int(end_hour), end_min, period))
+        
+        # Handle simple "1 — 8pm" format
         time_match = re.search(r'(\d{1,2})\s*—\s*(\d{1,2})(am|pm)', time_str)
         if time_match:
             start_hour, end_hour, period = time_match.groups()
             return self._parse_time(date, (int(start_hour), int(end_hour), period))
+        
         return None, None

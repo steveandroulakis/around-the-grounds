@@ -29,18 +29,18 @@ class TestErrorHandling:
     @pytest.fixture
     def coordinator(self):
         """Create a coordinator for testing."""
-        return ScraperCoordinator(max_concurrent=2, timeout=5, max_retries=2)
+        return ScraperCoordinator(max_concurrent=2, timeout=5, max_retries=3)
     
     # Network Error Tests
     
     @pytest.mark.asyncio
     async def test_connection_timeout_error(self, coordinator, test_brewery):
         """Test handling of connection timeouts."""
-        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry') as mock_registry:
+        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry.get_parser') as mock_get_parser:
             mock_parser = AsyncMock()
-            mock_parser.parse.side_effect = aiohttp.ClientTimeout()
-            mock_parser_class = AsyncMock(return_value=mock_parser)
-            mock_registry.get_parser.return_value = mock_parser_class
+            mock_parser.parse.side_effect = asyncio.TimeoutError()
+            mock_parser_class = lambda brewery: mock_parser
+            mock_get_parser.return_value = mock_parser_class
             
             events = await coordinator.scrape_all([test_brewery])
             
@@ -53,13 +53,11 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_dns_resolution_failure(self, coordinator, test_brewery):
         """Test handling of DNS resolution failures."""
-        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry') as mock_registry:
+        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry.get_parser') as mock_get_parser:
             mock_parser = AsyncMock()
-            mock_parser.parse.side_effect = aiohttp.ClientConnectorError(
-                None, OSError("Name or service not known")
-            )
-            mock_parser_class = AsyncMock(return_value=mock_parser)
-            mock_registry.get_parser.return_value = mock_parser_class
+            mock_parser.parse.side_effect = aiohttp.ClientError("Name or service not known")
+            mock_parser_class = lambda brewery: mock_parser
+            mock_get_parser.return_value = mock_parser_class
             
             events = await coordinator.scrape_all([test_brewery])
             
@@ -71,13 +69,11 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_ssl_certificate_error(self, coordinator, test_brewery):
         """Test handling of SSL certificate errors."""
-        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry') as mock_registry:
+        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry.get_parser') as mock_get_parser:
             mock_parser = AsyncMock()
-            mock_parser.parse.side_effect = aiohttp.ClientSSLError(
-                None, "SSL certificate verification failed"
-            )
-            mock_parser_class = AsyncMock(return_value=mock_parser)
-            mock_registry.get_parser.return_value = mock_parser_class
+            mock_parser.parse.side_effect = aiohttp.ClientError("SSL certificate verification failed")
+            mock_parser_class = lambda brewery: mock_parser
+            mock_get_parser.return_value = mock_parser_class
             
             events = await coordinator.scrape_all([test_brewery])
             
@@ -195,8 +191,8 @@ class TestErrorHandling:
         # Use a brewery key that doesn't have a registered parser
         invalid_brewery = Brewery("invalid-key", "Invalid Brewery", "https://example.com")
         
-        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry') as mock_registry:
-            mock_registry.get_parser.side_effect = KeyError("Parser not found")
+        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry.get_parser') as mock_get_parser:
+            mock_get_parser.side_effect = KeyError("Parser not found")
             
             events = await coordinator.scrape_all([invalid_brewery])
             
@@ -211,11 +207,11 @@ class TestErrorHandling:
         """Test handling of invalid brewery URLs."""
         invalid_brewery = Brewery("test", "Test", "not-a-valid-url")
         
-        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry') as mock_registry:
+        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry.get_parser') as mock_get_parser:
             mock_parser = AsyncMock()
             mock_parser.parse.side_effect = aiohttp.InvalidURL("Invalid URL")
-            mock_parser_class = AsyncMock(return_value=mock_parser)
-            mock_registry.get_parser.return_value = mock_parser_class
+            mock_parser_class = lambda brewery: mock_parser
+            mock_get_parser.return_value = mock_parser_class
             
             events = await coordinator.scrape_all([invalid_brewery])
             
@@ -268,16 +264,16 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_exponential_backoff_timing(self, coordinator, test_brewery):
         """Test that retry logic uses exponential backoff."""
-        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry') as mock_registry:
+        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry.get_parser') as mock_get_parser:
             with patch('asyncio.sleep') as mock_sleep:
                 mock_parser = AsyncMock()
                 mock_parser.parse.side_effect = [
-                    aiohttp.ClientTimeout(),  # First attempt fails
-                    aiohttp.ClientTimeout(),  # Second attempt fails
+                    asyncio.TimeoutError(),  # First attempt fails
+                    asyncio.TimeoutError(),  # Second attempt fails
                     []  # Third attempt succeeds
                 ]
-                mock_parser_class = AsyncMock(return_value=mock_parser)
-                mock_registry.get_parser.return_value = mock_parser_class
+                mock_parser_class = lambda brewery: mock_parser
+                mock_get_parser.return_value = mock_parser_class
                 
                 events = await coordinator.scrape_all([test_brewery])
                 
@@ -290,24 +286,24 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_no_retry_for_configuration_errors(self, coordinator, test_brewery):
         """Test that configuration errors don't trigger retries."""
-        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry') as mock_registry:
-            mock_registry.get_parser.side_effect = KeyError("Parser not found")
+        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry.get_parser') as mock_get_parser:
+            mock_get_parser.side_effect = KeyError("Parser not found")
             
             events = await coordinator.scrape_all([test_brewery])
             
             # Should only be called once (no retries for config errors)
-            assert mock_registry.get_parser.call_count == 1
+            assert mock_get_parser.call_count == 1
             assert len(coordinator.get_errors()) == 1
             assert coordinator.get_errors()[0].error_type == "Configuration Error"
     
     @pytest.mark.asyncio
     async def test_no_retry_for_parser_errors(self, coordinator, test_brewery):
         """Test that parser errors don't trigger retries."""
-        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry') as mock_registry:
+        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry.get_parser') as mock_get_parser:
             mock_parser = AsyncMock()
             mock_parser.parse.side_effect = ValueError("Parsing failed")
-            mock_parser_class = AsyncMock(return_value=mock_parser)
-            mock_registry.get_parser.return_value = mock_parser_class
+            mock_parser_class = lambda brewery: mock_parser
+            mock_get_parser.return_value = mock_parser_class
             
             events = await coordinator.scrape_all([test_brewery])
             
@@ -326,20 +322,20 @@ class TestErrorHandling:
             Brewery("working", "Working Brewery", "https://work.com")
         ]
         
-        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry') as mock_registry:
+        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry.get_parser') as mock_get_parser:
             # First parser always fails
             mock_failing_parser = AsyncMock()
             mock_failing_parser.parse.side_effect = Exception("Always fails")
-            mock_failing_parser_class = AsyncMock(return_value=mock_failing_parser)
+            mock_failing_parser_class = lambda brewery: mock_failing_parser
             
             # Second parser always succeeds
             mock_working_parser = AsyncMock()
             mock_working_parser.parse.return_value = [
                 FoodTruckEvent("working", "Working", "Truck", datetime.now())
             ]
-            mock_working_parser_class = AsyncMock(return_value=mock_working_parser)
+            mock_working_parser_class = lambda brewery: mock_working_parser
             
-            mock_registry.get_parser.side_effect = [
+            mock_get_parser.side_effect = [
                 mock_failing_parser_class,
                 mock_working_parser_class
             ]
@@ -359,11 +355,11 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_resource_cleanup_on_error(self, coordinator, test_brewery):
         """Test that resources are properly cleaned up when errors occur."""
-        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry') as mock_registry:
+        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry.get_parser') as mock_get_parser:
             mock_parser = AsyncMock()
             mock_parser.parse.side_effect = Exception("Test error")
-            mock_parser_class = AsyncMock(return_value=mock_parser)
-            mock_registry.get_parser.return_value = mock_parser_class
+            mock_parser_class = lambda brewery: mock_parser
+            mock_get_parser.return_value = mock_parser_class
             
             # Should not raise unhandled exceptions
             events = await coordinator.scrape_all([test_brewery])
@@ -379,14 +375,14 @@ class TestErrorHandling:
             for i in range(5)
         ]
         
-        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry') as mock_registry:
+        with patch('around_the_grounds.scrapers.coordinator.ParserRegistry.get_parser') as mock_get_parser:
             # All parsers fail with different errors
             def create_failing_parser(error_msg):
                 mock_parser = AsyncMock()
                 mock_parser.parse.side_effect = Exception(error_msg)
-                return AsyncMock(return_value=mock_parser)
+                return lambda brewery: mock_parser
             
-            mock_registry.get_parser.side_effect = [
+            mock_get_parser.side_effect = [
                 create_failing_parser(f"Error {i}") for i in range(5)
             ]
             

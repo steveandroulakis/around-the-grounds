@@ -14,7 +14,7 @@ class FoodTruckEvent:
     description: Optional[str] = None
     
     def __str__(self) -> str:
-        date_str = self.date.strftime("%Y-%m-%d")
+        date_str = self.date.strftime("%Y-%m-%d") if self.date else "None"
         time_str = ""
         if self.start_time:
             time_str = f" {self.start_time.strftime('%H:%M')}"

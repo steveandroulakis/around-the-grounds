@@ -16,6 +16,9 @@ class ScrapingError:
         self.message = message
         self.details = details
         self.timestamp = datetime.now()
+    
+    def __str__(self):
+        return f"{self.error_type}: {self.message}"
 
 
 class ScraperCoordinator:
@@ -71,14 +74,30 @@ class ScraperCoordinator:
         """
         Scrape a single brewery with comprehensive error handling and retry logic.
         """
+        # Create parser once outside retry loop - handle config errors first
+        try:
+            parser_class = ParserRegistry.get_parser(brewery.key)
+            parser = parser_class(brewery)
+        except KeyError as e:
+            # Configuration error - don't retry
+            error = ScrapingError(
+                brewery=brewery,
+                error_type="Configuration Error",
+                message=f"Parser not found for brewery key: {brewery.key}",
+                details=str(e)
+            )
+            self.errors.append(error)
+            self.logger.error(f"Configuration error for {brewery.name}: {str(e)}")
+            return []
+        
         for attempt in range(self.max_retries):
             try:
                 self.logger.info(f"Scraping {brewery.name} (attempt {attempt + 1}/{self.max_retries})...")
-                events = await self._scrape_brewery(session, brewery)
+                events = await parser.parse(session)
                 self.logger.info(f"Found {len(events)} events for {brewery.name}")
                 return events
                 
-            except aiohttp.ClientTimeout:
+            except (asyncio.TimeoutError, aiohttp.ServerTimeoutError):
                 error_msg = f"Connection timeout after {self.timeout.total}s"
                 if attempt == self.max_retries - 1:
                     error = ScrapingError(
@@ -124,25 +143,14 @@ class ScraperCoordinator:
                 self.logger.error(f"Parser error for {brewery.name}: {str(e)}")
                 return []
                 
-            except KeyError as e:
-                # Configuration error - don't retry
-                error = ScrapingError(
-                    brewery=brewery,
-                    error_type="Configuration Error",
-                    message=f"Parser not found for brewery key: {brewery.key}",
-                    details=str(e)
-                )
-                self.errors.append(error)
-                self.logger.error(f"Configuration error for {brewery.name}: {str(e)}")
-                return []
                 
             except Exception as e:
-                # Unknown error
+                # Unknown error - still retry for potential network issues
                 error_msg = f"Unexpected error: {str(e)}"
                 if attempt == self.max_retries - 1:
                     error = ScrapingError(
                         brewery=brewery,
-                        error_type="Unknown Error",
+                        error_type="Unexpected Error",
                         message=error_msg,
                         details=str(e)
                     )
@@ -156,15 +164,6 @@ class ScraperCoordinator:
         
         return []
     
-    async def _scrape_brewery(self, session: aiohttp.ClientSession, brewery: Brewery) -> List[FoodTruckEvent]:
-        """
-        Scrape a single brewery using its appropriate parser.
-        """
-        parser_class = ParserRegistry.get_parser(brewery.key)
-        parser = parser_class(brewery)
-        
-        events = await parser.parse(session)
-        return events
     
     def _filter_and_sort_events(self, events: List[FoodTruckEvent]) -> List[FoodTruckEvent]:
         """

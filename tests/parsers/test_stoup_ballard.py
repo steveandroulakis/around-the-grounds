@@ -148,18 +148,18 @@ class TestStoupBallardParser:
     
     def test_parse_date_invalid_format(self, parser):
         """Test parsing invalid date format."""
-        with pytest.raises(ValueError):
-            parser._parse_date("invalid")
+        result = parser._parse_date("invalid")
+        assert result is None
     
     def test_parse_date_invalid_month(self, parser):
         """Test parsing invalid month."""
-        with pytest.raises(ValueError):
-            parser._parse_date("13.05")  # Month 13 doesn't exist
+        result = parser._parse_date("13.05")  # Month 13 doesn't exist
+        assert result is None
     
     def test_parse_date_invalid_day(self, parser):
         """Test parsing invalid day."""
-        with pytest.raises(ValueError):
-            parser._parse_date("02.30")  # February 30th doesn't exist
+        result = parser._parse_date("02.30")  # February 30th doesn't exist
+        assert result is None
     
     @freeze_time("2025-07-05")
     def test_parse_time_pm_range(self, parser):

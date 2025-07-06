@@ -6,10 +6,11 @@
       "url": "https://www.stoupbrewing.com/ballard/",
       "parser_config": {
         "selectors": {
-          "food_truck_entry": ".food-truck-entry",
+          "food_truck_entry": ".food-truck-day",
+          "info_container": ".lunch-truck-info",
           "date": "h4",
-          "time": "p",
-          "truck_name": "p:last-child"
+          "time": ".hrs",
+          "truck_name": ".truck"
         }
       }
     },
