@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from around_the_grounds.models import Brewery, FoodTruckEvent
 from around_the_grounds.scrapers import ScraperCoordinator  
 from around_the_grounds.main import load_brewery_config, generate_web_data, deploy_to_web
+from around_the_grounds.utils.github_auth import setup_github_auth
 
 
 class ScrapeActivities:
@@ -113,6 +114,9 @@ class DeploymentActivities:
         """Deploy web data to git repository."""
         # Write the web data to public/data.json
         try:
+            # Set up GitHub App authentication
+            setup_github_auth()
+            
             # Ensure public directory exists
             public_dir = Path("public")
             public_dir.mkdir(exist_ok=True)

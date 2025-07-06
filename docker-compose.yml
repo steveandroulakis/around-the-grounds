@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  temporal-worker:
+    build: .
+    container_name: around-the-grounds-worker
+    environment:
+      # Temporal Configuration
+      - TEMPORAL_ADDRESS=${TEMPORAL_ADDRESS}
+      - TEMPORAL_NAMESPACE=${TEMPORAL_NAMESPACE:-default}
+      - TEMPORAL_TASK_QUEUE=${TEMPORAL_TASK_QUEUE:-food-truck-task-queue}
+      - TEMPORAL_API_KEY=${TEMPORAL_API_KEY}
+      - TEMPORAL_TLS_CERT=${TEMPORAL_TLS_CERT}
+      - TEMPORAL_TLS_KEY=${TEMPORAL_TLS_KEY}
+      
+      # GitHub App Configuration
+      - GITHUB_APP_ID=${GITHUB_APP_ID:-1531147}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-Iv23lihIZ0x4zfmWyUPe}
+      - GITHUB_APP_PRIVATE_KEY_B64=${GITHUB_APP_PRIVATE_KEY_B64}
+      
+      # Claude Vision API
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - VISION_ANALYSIS_ENABLED=${VISION_ANALYSIS_ENABLED:-true}
+      - VISION_MAX_RETRIES=${VISION_MAX_RETRIES:-2}
+      - VISION_TIMEOUT=${VISION_TIMEOUT:-30}
+      
+      # Git Configuration
+      - GIT_AUTHOR_NAME=steveandroulakis
+      - GIT_AUTHOR_EMAIL=steve.androulakis@gmail.com
+      - GIT_COMMITTER_NAME=steveandroulakis
+      - GIT_COMMITTER_EMAIL=steve.androulakis@gmail.com
+    
+    restart: unless-stopped
+    
+    # Volume mounts for certificates (if using mTLS)
+    volumes:
+      - ${CERT_DIR:-./certs}:/certs:ro
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import around_the_grounds.temporal.config; around_the_grounds.temporal.config.validate_configuration()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

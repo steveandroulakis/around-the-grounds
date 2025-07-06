@@ -17,6 +17,14 @@ except ImportError:
     # dotenv is optional, fall back to os.environ
     pass
 
+# Debug: Print environment variables at startup
+print("🔍 DEBUG: Environment variables:")
+print(f"   TEMPORAL_ADDRESS (env): {os.getenv('TEMPORAL_ADDRESS', 'NOT_SET')}")
+print(f"   TEMPORAL_NAMESPACE (env): {os.getenv('TEMPORAL_NAMESPACE', 'NOT_SET')}")
+print(f"   TEMPORAL_TLS_CERT (env): {os.getenv('TEMPORAL_TLS_CERT', 'NOT_SET')}")
+print(f"   TEMPORAL_TLS_KEY (env): {os.getenv('TEMPORAL_TLS_KEY', 'NOT_SET')}")
+print(f"   TEMPORAL_API_KEY (env): {'SET' if os.getenv('TEMPORAL_API_KEY') else 'NOT_SET'}")
+
 # Temporal connection settings
 TEMPORAL_ADDRESS = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
 TEMPORAL_NAMESPACE = os.getenv("TEMPORAL_NAMESPACE", "default")
@@ -26,6 +34,12 @@ TEMPORAL_TASK_QUEUE = os.getenv("TEMPORAL_TASK_QUEUE", "food-truck-task-queue")
 TEMPORAL_TLS_CERT = os.getenv("TEMPORAL_TLS_CERT", "")
 TEMPORAL_TLS_KEY = os.getenv("TEMPORAL_TLS_KEY", "")
 TEMPORAL_API_KEY = os.getenv("TEMPORAL_API_KEY", "")
+
+print("🔍 DEBUG: Final configuration values:")
+print(f"   TEMPORAL_ADDRESS: {TEMPORAL_ADDRESS}")
+print(f"   TEMPORAL_NAMESPACE: {TEMPORAL_NAMESPACE}")
+print(f"   TEMPORAL_TLS_CERT: {TEMPORAL_TLS_CERT}")
+print(f"   TEMPORAL_TLS_KEY: {TEMPORAL_TLS_KEY}")
 
 
 async def get_temporal_client() -> Client:
