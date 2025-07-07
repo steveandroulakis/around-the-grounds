@@ -13,7 +13,7 @@ class FoodTruckEvent:
     end_time: Optional[datetime] = None
     description: Optional[str] = None
     ai_generated_name: bool = False
-    
+
     def __str__(self) -> str:
         date_str = self.date.strftime("%Y-%m-%d") if self.date else "None"
         time_str = ""
@@ -21,5 +21,5 @@ class FoodTruckEvent:
             time_str = f" {self.start_time.strftime('%H:%M')}"
             if self.end_time:
                 time_str += f"-{self.end_time.strftime('%H:%M')}"
-        
+
         return f"{date_str}{time_str}: {self.food_truck_name} @ {self.brewery_name}"

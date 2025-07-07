@@ -7,11 +7,13 @@ Supports multiple authentication methods:
 """
 
 import os
+
 from temporalio.client import Client
 from temporalio.service import TLSConfig
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv(override=True)
 except ImportError:
     # dotenv is optional, fall back to os.environ
@@ -23,7 +25,9 @@ print(f"   TEMPORAL_ADDRESS (env): {os.getenv('TEMPORAL_ADDRESS', 'NOT_SET')}")
 print(f"   TEMPORAL_NAMESPACE (env): {os.getenv('TEMPORAL_NAMESPACE', 'NOT_SET')}")
 print(f"   TEMPORAL_TLS_CERT (env): {os.getenv('TEMPORAL_TLS_CERT', 'NOT_SET')}")
 print(f"   TEMPORAL_TLS_KEY (env): {os.getenv('TEMPORAL_TLS_KEY', 'NOT_SET')}")
-print(f"   TEMPORAL_API_KEY (env): {'SET' if os.getenv('TEMPORAL_API_KEY') else 'NOT_SET'}")
+print(
+    f"   TEMPORAL_API_KEY (env): {'SET' if os.getenv('TEMPORAL_API_KEY') else 'NOT_SET'}"
+)
 
 # Temporal connection settings
 TEMPORAL_ADDRESS = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
@@ -46,22 +50,22 @@ async def get_temporal_client() -> Client:
     """
     Creates a Temporal client based on environment configuration.
     Supports local server, mTLS, and API key authentication methods.
-    
+
     Returns:
         Client: Configured Temporal client
-        
+
     Raises:
         Exception: If connection fails or configuration is invalid
     """
     # Default to no TLS for local development
     tls_config = False
-    
+
     # Debug logging for connection details
     print(f"🔗 Connecting to Temporal server:")
     print(f"   Address: {TEMPORAL_ADDRESS}")
     print(f"   Namespace: {TEMPORAL_NAMESPACE}")
     print(f"   Task Queue: {TEMPORAL_TASK_QUEUE}")
-    
+
     if TEMPORAL_ADDRESS == "localhost:7233":
         print("   Mode: Local development (no authentication)")
     else:
@@ -72,7 +76,7 @@ async def get_temporal_client() -> Client:
         print(f"   TLS Certificate: {TEMPORAL_TLS_CERT}")
         print(f"   TLS Key: {TEMPORAL_TLS_KEY}")
         print("   Authentication: mTLS")
-        
+
         try:
             with open(TEMPORAL_TLS_CERT, "rb") as f:
                 client_cert = f.read()
@@ -91,7 +95,7 @@ async def get_temporal_client() -> Client:
     if TEMPORAL_API_KEY:
         print(f"   API Key: {TEMPORAL_API_KEY[:8]}...")
         print("   Authentication: API Key")
-        
+
         try:
             return await Client.connect(
                 TEMPORAL_ADDRESS,
@@ -111,7 +115,9 @@ async def get_temporal_client() -> Client:
         )
     except Exception as e:
         if TEMPORAL_ADDRESS == "localhost:7233":
-            raise Exception(f"Failed to connect to local Temporal server. Is it running? Error: {e}")
+            raise Exception(
+                f"Failed to connect to local Temporal server. Is it running? Error: {e}"
+            )
         else:
             raise Exception(f"Failed to connect to Temporal server: {e}")
 
@@ -119,38 +125,44 @@ async def get_temporal_client() -> Client:
 def validate_configuration() -> None:
     """
     Validates the current configuration for common issues.
-    
+
     Raises:
         Exception: If configuration is invalid
     """
     # Check for conflicting authentication methods
     has_mtls = bool(TEMPORAL_TLS_CERT and TEMPORAL_TLS_KEY)
     has_api_key = bool(TEMPORAL_API_KEY)
-    
+
     if has_mtls and has_api_key:
-        raise Exception("Cannot use both mTLS and API key authentication. Please set only one.")
-    
+        raise Exception(
+            "Cannot use both mTLS and API key authentication. Please set only one."
+        )
+
     # Check for incomplete mTLS configuration
     if TEMPORAL_TLS_CERT and not TEMPORAL_TLS_KEY:
-        raise Exception("TLS certificate provided but key is missing. Both TEMPORAL_TLS_CERT and TEMPORAL_TLS_KEY are required.")
-    
+        raise Exception(
+            "TLS certificate provided but key is missing. Both TEMPORAL_TLS_CERT and TEMPORAL_TLS_KEY are required."
+        )
+
     if TEMPORAL_TLS_KEY and not TEMPORAL_TLS_CERT:
-        raise Exception("TLS key provided but certificate is missing. Both TEMPORAL_TLS_CERT and TEMPORAL_TLS_KEY are required.")
-    
+        raise Exception(
+            "TLS key provided but certificate is missing. Both TEMPORAL_TLS_CERT and TEMPORAL_TLS_KEY are required."
+        )
+
     # Check certificate files exist
     if TEMPORAL_TLS_CERT and not os.path.exists(TEMPORAL_TLS_CERT):
         raise Exception(f"TLS certificate file not found: {TEMPORAL_TLS_CERT}")
-    
+
     if TEMPORAL_TLS_KEY and not os.path.exists(TEMPORAL_TLS_KEY):
         raise Exception(f"TLS key file not found: {TEMPORAL_TLS_KEY}")
-    
+
     print("✅ Configuration validation passed")
 
 
 def get_configuration_summary() -> dict:
     """
     Returns a summary of the current configuration for debugging.
-    
+
     Returns:
         dict: Configuration summary (sensitive values masked)
     """
@@ -159,9 +171,9 @@ def get_configuration_summary() -> dict:
         "namespace": TEMPORAL_NAMESPACE,
         "task_queue": TEMPORAL_TASK_QUEUE,
         "auth_method": (
-            "api_key" if TEMPORAL_API_KEY else
-            "mtls" if TEMPORAL_TLS_CERT and TEMPORAL_TLS_KEY else
-            "none"
+            "api_key"
+            if TEMPORAL_API_KEY
+            else "mtls" if TEMPORAL_TLS_CERT and TEMPORAL_TLS_KEY else "none"
         ),
         "tls_cert_path": TEMPORAL_TLS_CERT or None,
         "tls_key_path": TEMPORAL_TLS_KEY or None,

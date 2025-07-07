@@ -7,36 +7,34 @@ This script provides comprehensive schedule management capabilities:
 - Integration with existing workflow and configuration system
 """
 
-import asyncio
 import argparse
+import asyncio
 import logging
 import sys
 from datetime import timedelta
-from typing import Optional, List
+from typing import List, Optional
+
 from temporalio.client import (
-    Client,
     Schedule,
     ScheduleActionStartWorkflow,
     ScheduleIntervalSpec,
     ScheduleSpec,
     ScheduleState,
-    ScheduleHandle,
 )
-from temporalio.service import WorkflowService
 
-from .config import get_temporal_client, TEMPORAL_TASK_QUEUE, validate_configuration
-from .workflows import FoodTruckWorkflow
+from .config import TEMPORAL_TASK_QUEUE, get_temporal_client, validate_configuration
 from .shared import WorkflowParams
+from .workflows import FoodTruckWorkflow
 
 logger = logging.getLogger(__name__)
 
 
 class ScheduleManager:
     """Comprehensive schedule management for Food Truck workflows."""
-    
+
     def __init__(self):
         self.client = None
-    
+
     async def connect(self):
         """Connect to Temporal server using configuration system."""
         try:
@@ -46,7 +44,7 @@ class ScheduleManager:
         except Exception as e:
             logger.error(f"❌ Failed to connect to Temporal: {e}")
             raise
-    
+
     async def create_schedule(
         self,
         schedule_id: str,
@@ -58,7 +56,7 @@ class ScheduleManager:
     ) -> str:
         """
         Create a new schedule for the Food Truck workflow.
-        
+
         Args:
             schedule_id: Unique identifier for the schedule
             interval_minutes: Interval in minutes between workflow executions
@@ -66,24 +64,21 @@ class ScheduleManager:
             deploy: Whether to deploy results to web
             note: Optional note about the schedule
             paused: Whether to create the schedule in paused state
-            
+
         Returns:
             Schedule ID of the created schedule
         """
         if not self.client:
             await self.connect()
-        
+
         try:
             # Create workflow parameters
-            params = WorkflowParams(
-                config_path=config_path,
-                deploy=deploy
-            )
-            
+            params = WorkflowParams(config_path=config_path, deploy=deploy)
+
             # Default note if not provided
             if not note:
                 note = f"Food Truck data scraping and deployment every {interval_minutes} minutes"
-            
+
             # Create schedule configuration
             schedule = Schedule(
                 action=ScheduleActionStartWorkflow(
@@ -93,58 +88,62 @@ class ScheduleManager:
                     task_queue=TEMPORAL_TASK_QUEUE,
                 ),
                 spec=ScheduleSpec(
-                    intervals=[ScheduleIntervalSpec(every=timedelta(minutes=interval_minutes))]
+                    intervals=[
+                        ScheduleIntervalSpec(every=timedelta(minutes=interval_minutes))
+                    ]
                 ),
                 state=ScheduleState(
                     note=note,
                     paused=paused,
                 ),
             )
-            
+
             # Create the schedule
             await self.client.create_schedule(schedule_id, schedule)
-            
-            logger.info(f"✅ Created schedule '{schedule_id}' with {interval_minutes} minute interval")
+
+            logger.info(
+                f"✅ Created schedule '{schedule_id}' with {interval_minutes} minute interval"
+            )
             logger.info(f"📋 Note: {note}")
             if paused:
                 logger.info("⏸️  Schedule created in paused state")
-            
+
             return schedule_id
-            
+
         except Exception as e:
             logger.error(f"❌ Failed to create schedule: {e}")
             raise
-    
+
     async def list_schedules(self) -> List[str]:
         """List all existing schedules."""
         if not self.client:
             await self.connect()
-        
+
         try:
             schedules = []
             async for schedule in await self.client.list_schedules():
                 schedules.append(schedule.id)
                 logger.info(f"📅 Schedule: {schedule.id}")
                 logger.info(f"   Info: {schedule.info}")
-            
+
             if not schedules:
                 logger.info("📭 No schedules found")
-                
+
             return schedules
-            
+
         except Exception as e:
             logger.error(f"❌ Failed to list schedules: {e}")
             raise
-    
+
     async def describe_schedule(self, schedule_id: str) -> dict:
         """Get detailed information about a specific schedule."""
         if not self.client:
             await self.connect()
-        
+
         try:
             handle = self.client.get_schedule_handle(schedule_id)
             desc = await handle.describe()
-            
+
             # Extract key information
             info = {
                 "id": schedule_id,
@@ -154,60 +153,74 @@ class ScheduleManager:
                 "next_actions": [],
                 "recent_actions": [],
             }
-            
+
             # Get interval information
             if desc.schedule.spec.intervals:
                 for interval in desc.schedule.spec.intervals:
-                    info["intervals"].append({
-                        "every": str(interval.every),
-                        "offset": str(interval.offset) if interval.offset else None,
-                    })
-            
+                    info["intervals"].append(
+                        {
+                            "every": str(interval.every),
+                            "offset": str(interval.offset) if interval.offset else None,
+                        }
+                    )
+
             # Get next actions
             for action in desc.info.next_action_times[:5]:  # Show next 5
                 info["next_actions"].append(action.isoformat())
-            
+
             # Get recent actions
             for action in desc.info.recent_actions[-5:]:  # Show last 5
-                info["recent_actions"].append({
-                    "scheduled_time": action.scheduled_time.isoformat(),
-                    "actual_time": action.actual_time.isoformat(),
-                    "workflow_id": action.start_workflow_result.workflow_id if action.start_workflow_result else None,
-                })
-            
+                info["recent_actions"].append(
+                    {
+                        "scheduled_time": action.scheduled_time.isoformat(),
+                        "actual_time": action.actual_time.isoformat(),
+                        "workflow_id": (
+                            action.start_workflow_result.workflow_id
+                            if action.start_workflow_result
+                            else None
+                        ),
+                    }
+                )
+
             logger.info(f"📋 Schedule Details for '{schedule_id}':")
             logger.info(f"   Note: {info['note']}")
             logger.info(f"   Paused: {info['paused']}")
             logger.info(f"   Intervals: {info['intervals']}")
-            logger.info(f"   Next {len(info['next_actions'])} actions: {info['next_actions']}")
-            logger.info(f"   Recent {len(info['recent_actions'])} actions: {len(info['recent_actions'])}")
-            
+            logger.info(
+                f"   Next {len(info['next_actions'])} actions: {info['next_actions']}"
+            )
+            logger.info(
+                f"   Recent {len(info['recent_actions'])} actions: {len(info['recent_actions'])}"
+            )
+
             return info
-            
+
         except Exception as e:
             logger.error(f"❌ Failed to describe schedule '{schedule_id}': {e}")
             raise
-    
+
     async def delete_schedule(self, schedule_id: str) -> bool:
         """Delete a schedule."""
         if not self.client:
             await self.connect()
-        
+
         try:
             handle = self.client.get_schedule_handle(schedule_id)
             await handle.delete()
             logger.info(f"🗑️  Deleted schedule '{schedule_id}'")
             return True
-            
+
         except Exception as e:
             logger.error(f"❌ Failed to delete schedule '{schedule_id}': {e}")
             raise
-    
-    async def pause_schedule(self, schedule_id: str, note: Optional[str] = None) -> bool:
+
+    async def pause_schedule(
+        self, schedule_id: str, note: Optional[str] = None
+    ) -> bool:
         """Pause a schedule."""
         if not self.client:
             await self.connect()
-        
+
         try:
             handle = self.client.get_schedule_handle(schedule_id)
             await handle.pause(note=note)
@@ -215,16 +228,18 @@ class ScheduleManager:
             if note:
                 logger.info(f"📝 Note: {note}")
             return True
-            
+
         except Exception as e:
             logger.error(f"❌ Failed to pause schedule '{schedule_id}': {e}")
             raise
-    
-    async def unpause_schedule(self, schedule_id: str, note: Optional[str] = None) -> bool:
+
+    async def unpause_schedule(
+        self, schedule_id: str, note: Optional[str] = None
+    ) -> bool:
         """Unpause a schedule."""
         if not self.client:
             await self.connect()
-        
+
         try:
             handle = self.client.get_schedule_handle(schedule_id)
             await handle.unpause(note=note)
@@ -232,51 +247,53 @@ class ScheduleManager:
             if note:
                 logger.info(f"📝 Note: {note}")
             return True
-            
+
         except Exception as e:
             logger.error(f"❌ Failed to unpause schedule '{schedule_id}': {e}")
             raise
-    
+
     async def trigger_schedule(self, schedule_id: str) -> bool:
         """Trigger an immediate execution of a schedule."""
         if not self.client:
             await self.connect()
-        
+
         try:
             handle = self.client.get_schedule_handle(schedule_id)
             await handle.trigger()
             logger.info(f"🚀 Triggered immediate execution of schedule '{schedule_id}'")
             return True
-            
+
         except Exception as e:
             logger.error(f"❌ Failed to trigger schedule '{schedule_id}': {e}")
             raise
-    
-    async def update_schedule_interval(self, schedule_id: str, new_interval_minutes: int) -> bool:
+
+    async def update_schedule_interval(
+        self, schedule_id: str, new_interval_minutes: int
+    ) -> bool:
         """Update the interval of an existing schedule."""
         if not self.client:
             await self.connect()
-        
+
         try:
             handle = self.client.get_schedule_handle(schedule_id)
-            
+
             # Get current schedule
             desc = await handle.describe()
             current_schedule = desc.schedule
-            
+
             # Update the interval
             current_schedule.spec.intervals = [
                 ScheduleIntervalSpec(every=timedelta(minutes=new_interval_minutes))
             ]
-            
+
             # Update the schedule
-            await handle.update(
-                updater=lambda schedule: current_schedule
+            await handle.update(updater=lambda schedule: current_schedule)
+
+            logger.info(
+                f"🔄 Updated schedule '{schedule_id}' to {new_interval_minutes} minute interval"
             )
-            
-            logger.info(f"🔄 Updated schedule '{schedule_id}' to {new_interval_minutes} minute interval")
             return True
-            
+
         except Exception as e:
             logger.error(f"❌ Failed to update schedule '{schedule_id}': {e}")
             raise
@@ -315,68 +332,98 @@ Examples:
   
   # Delete a schedule
   python -m around_the_grounds.temporal.schedule_manager delete --schedule-id daily-scrape
-        """
+        """,
     )
-    
+
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
-    
+
     # Create schedule command
     create_parser = subparsers.add_parser("create", help="Create a new schedule")
-    create_parser.add_argument("--schedule-id", required=True, help="Unique schedule identifier")
-    create_parser.add_argument("--interval", type=int, required=True, help="Interval in minutes between executions")
+    create_parser.add_argument(
+        "--schedule-id", required=True, help="Unique schedule identifier"
+    )
+    create_parser.add_argument(
+        "--interval",
+        type=int,
+        required=True,
+        help="Interval in minutes between executions",
+    )
     create_parser.add_argument("--config", help="Path to brewery configuration file")
-    create_parser.add_argument("--no-deploy", action="store_true", help="Don't deploy results to web")
+    create_parser.add_argument(
+        "--no-deploy", action="store_true", help="Don't deploy results to web"
+    )
     create_parser.add_argument("--note", help="Optional note about the schedule")
-    create_parser.add_argument("--paused", action="store_true", help="Create schedule in paused state")
-    
+    create_parser.add_argument(
+        "--paused", action="store_true", help="Create schedule in paused state"
+    )
+
     # List schedules command
     list_parser = subparsers.add_parser("list", help="List all schedules")
-    
+
     # Describe schedule command
-    describe_parser = subparsers.add_parser("describe", help="Describe a specific schedule")
-    describe_parser.add_argument("--schedule-id", required=True, help="Schedule identifier")
-    
+    describe_parser = subparsers.add_parser(
+        "describe", help="Describe a specific schedule"
+    )
+    describe_parser.add_argument(
+        "--schedule-id", required=True, help="Schedule identifier"
+    )
+
     # Delete schedule command
     delete_parser = subparsers.add_parser("delete", help="Delete a schedule")
-    delete_parser.add_argument("--schedule-id", required=True, help="Schedule identifier")
-    
+    delete_parser.add_argument(
+        "--schedule-id", required=True, help="Schedule identifier"
+    )
+
     # Pause schedule command
     pause_parser = subparsers.add_parser("pause", help="Pause a schedule")
-    pause_parser.add_argument("--schedule-id", required=True, help="Schedule identifier")
+    pause_parser.add_argument(
+        "--schedule-id", required=True, help="Schedule identifier"
+    )
     pause_parser.add_argument("--note", help="Optional note about why pausing")
-    
+
     # Unpause schedule command
     unpause_parser = subparsers.add_parser("unpause", help="Unpause a schedule")
-    unpause_parser.add_argument("--schedule-id", required=True, help="Schedule identifier")
+    unpause_parser.add_argument(
+        "--schedule-id", required=True, help="Schedule identifier"
+    )
     unpause_parser.add_argument("--note", help="Optional note about why unpausing")
-    
+
     # Trigger schedule command
-    trigger_parser = subparsers.add_parser("trigger", help="Trigger immediate execution")
-    trigger_parser.add_argument("--schedule-id", required=True, help="Schedule identifier")
-    
+    trigger_parser = subparsers.add_parser(
+        "trigger", help="Trigger immediate execution"
+    )
+    trigger_parser.add_argument(
+        "--schedule-id", required=True, help="Schedule identifier"
+    )
+
     # Update schedule command
     update_parser = subparsers.add_parser("update", help="Update schedule interval")
-    update_parser.add_argument("--schedule-id", required=True, help="Schedule identifier")
-    update_parser.add_argument("--interval", type=int, required=True, help="New interval in minutes")
-    
+    update_parser.add_argument(
+        "--schedule-id", required=True, help="Schedule identifier"
+    )
+    update_parser.add_argument(
+        "--interval", type=int, required=True, help="New interval in minutes"
+    )
+
     # Global arguments
-    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
-    
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Enable verbose logging"
+    )
+
     args = parser.parse_args()
-    
+
     # Setup logging
     log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
-        level=log_level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        level=log_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
-    
+
     if not args.command:
         parser.print_help()
         return
-    
+
     manager = ScheduleManager()
-    
+
     try:
         if args.command == "create":
             await manager.create_schedule(
@@ -403,7 +450,7 @@ Examples:
             await manager.update_schedule_interval(args.schedule_id, args.interval)
         else:
             parser.print_help()
-            
+
     except Exception as e:
         logger.error(f"❌ Command failed: {e}")
         sys.exit(1)

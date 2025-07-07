@@ -2,9 +2,9 @@
 """Test vision analysis with real Urban Family data."""
 
 import asyncio
+import logging
 import os
 import sys
-import logging
 
 # Add the project root to the Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -30,7 +30,7 @@ async def test_real_image():
         
         if result:
             print(f"✅ Vision analysis result: '{result}'")
-            print(f"🎯 Expected result: 'Georgia's' - Match: {result == 'Georgia\\'s'}")
+            print(f"🎯 Expected result: 'Georgia's' - Match: {result == \"Georgia's\"}")
         else:
             print("❌ Vision analysis failed or returned no result")
             

@@ -3,10 +3,19 @@
 import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
+
 from temporalio.worker import Worker
+
+from around_the_grounds.temporal.activities import (
+    DeploymentActivities,
+    ScrapeActivities,
+)
+from around_the_grounds.temporal.config import (
+    TEMPORAL_TASK_QUEUE,
+    get_temporal_client,
+    validate_configuration,
+)
 from around_the_grounds.temporal.workflows import FoodTruckWorkflow
-from around_the_grounds.temporal.activities import ScrapeActivities, DeploymentActivities
-from around_the_grounds.temporal.config import get_temporal_client, TEMPORAL_TASK_QUEUE, validate_configuration
 
 logger = logging.getLogger(__name__)
 
@@ -19,18 +28,18 @@ async def main():
     except Exception as e:
         logger.error(f"❌ Configuration validation failed: {e}")
         raise
-    
+
     # Create the client using configuration
     client = await get_temporal_client()
-    
+
     # Initialize activities
     scrape_activities = ScrapeActivities()
     deploy_activities = DeploymentActivities()
-    
+
     logger.info("🔧 Starting Temporal worker for food truck workflows...")
     logger.info(f"📋 Task queue: {TEMPORAL_TASK_QUEUE}")
     logger.info("💼 Max workers: 10")
-    
+
     # Run the worker with proper cleanup
     try:
         with ThreadPoolExecutor(max_workers=10) as activity_executor:
@@ -47,10 +56,10 @@ async def main():
                 ],
                 activity_executor=activity_executor,
             )
-            
+
             logger.info("Worker ready to process tasks!")
             await worker.run()
-            
+
     except KeyboardInterrupt:
         logger.info("🛑 Worker interrupted by user")
     except Exception as e:
@@ -63,6 +72,6 @@ async def main():
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
     asyncio.run(main())

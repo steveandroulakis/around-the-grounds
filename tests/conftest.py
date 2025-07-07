@@ -1,9 +1,10 @@
 """Pytest configuration and shared fixtures."""
 
-import pytest
-import aiohttp
 from datetime import datetime, timedelta
 from pathlib import Path
+
+import aiohttp
+import pytest
 
 from around_the_grounds.models import Brewery, FoodTruckEvent
 
@@ -15,7 +16,7 @@ def sample_brewery():
         key="test-brewery",
         name="Test Brewery",
         url="https://example.com/food-trucks",
-        parser_config={"test": "config"}
+        parser_config={"test": "config"},
     )
 
 
@@ -29,7 +30,7 @@ def sample_food_truck_event():
         date=datetime.now() + timedelta(days=1),
         start_time=datetime.now() + timedelta(days=1, hours=12),
         end_time=datetime.now() + timedelta(days=1, hours=20),
-        description="Test event description"
+        description="Test event description",
     )
 
 
@@ -107,13 +108,13 @@ def test_breweries_config():
                 "key": "test-brewery-1",
                 "name": "Test Brewery 1",
                 "url": "https://example1.com/food-trucks",
-                "parser_config": {"test": "config1"}
+                "parser_config": {"test": "config1"},
             },
             {
-                "key": "test-brewery-2", 
+                "key": "test-brewery-2",
                 "name": "Test Brewery 2",
                 "url": "https://example2.com/food-trucks",
-                "parser_config": {"test": "config2"}
-            }
+                "parser_config": {"test": "config2"},
+            },
         ]
     }
