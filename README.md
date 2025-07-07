@@ -91,8 +91,33 @@ uv run around-the-grounds --preview
 cd public && python -m http.server 8000
 # Visit: http://localhost:8000
 
-# Or automated testing (server runs for 10 seconds)
-cd public && (timeout 10 python -m http.server 8000 &) && sleep 2 && curl -s http://localhost:8000/
+# Automated testing methods:
+# Test data.json endpoint
+cd public && timeout 10s python -m http.server 8000 > /dev/null 2>&1 & sleep 1 && curl -s http://localhost:8000/data.json | head -20 && pkill -f "python -m http.server" || true
+
+# Test for specific event data (e.g., Sunday events)
+cd public && timeout 10s python -m http.server 8000 > /dev/null 2>&1 & sleep 1 && curl -s http://localhost:8000/data.json | grep "2025-07-06" && pkill -f "python -m http.server" || true
+
+# Test full homepage (basic connectivity)
+cd public && timeout 10s python -m http.server 8000 > /dev/null 2>&1 & sleep 1 && curl -s http://localhost:8000/ > /dev/null && echo "✅ Homepage loads" && pkill -f "python -m http.server" || echo "❌ Homepage failed"
+
+# Test JavaScript rendering (requires Node.js/puppeteer - optional)
+# npm install -g puppeteer
+cd public && timeout 15s python -m http.server 8000 > /dev/null 2>&1 & sleep 2 && \
+  node -e "
+const puppeteer = require('puppeteer');
+(async () => {
+  const browser = await puppeteer.launch({headless: true});
+  const page = await browser.newPage();
+  await page.goto('http://localhost:8000');
+  await page.waitForSelector('.day-section', {timeout: 5000});
+  const dayHeaders = await page.$$eval('.day-header', els => els.map(el => el.textContent));
+  console.log('✅ Rendered days:', dayHeaders.slice(0,2).join(', '));
+  const eventCount = await page.$$eval('.truck-item', els => els.length);
+  console.log('✅ Rendered events:', eventCount);
+  await browser.close();
+})().catch(e => console.log('❌ JS render test failed:', e.message));
+" && pkill -f "python -m http.server" || echo "❌ Install puppeteer for JS testing: npm install -g puppeteer"
 ```
 
 **What `--preview` does:**
@@ -102,6 +127,34 @@ cd public && (timeout 10 python -m http.server 8000 &) && sleep 2 && curl -s htt
 4. Creates complete website in `public/` directory (git-ignored)
 
 This allows you to test web interface changes, verify data accuracy, and debug issues before deploying to production.
+
+### Why Client-Side Testing Matters
+
+The web interface performs critical JavaScript processing that raw `data.json` testing doesn't validate:
+
+**Key Client-Side Operations:**
+- **Date grouping**: Events organized by day using `eventsByDate` object
+- **Timezone rendering**: Browser's `toLocaleDateString()` formatting
+- **Vendor name cleaning**: Emoji removal and text processing  
+- **Dynamic HTML generation**: DOM creation and injection
+- **Responsive calculations**: Mobile/desktop layout adjustments
+
+**Common Issues Caught by Browser Testing:**
+- **Timezone bugs**: Server vs. browser time differences (our 5pm Sunday bug)
+- **JavaScript errors**: Runtime failures in data processing
+- **Locale differences**: Date formatting varies by user's browser
+- **CSS/layout problems**: Elements not displaying correctly
+- **Data transformation bugs**: Errors in grouping or sorting logic
+
+**Headless Testing with Puppeteer:**
+```bash
+# Validates complete user experience
+node -e "/* headless browser test */"
+# Output: ✅ Rendered days: Sunday, July 06, 2025, Monday, July 07, 2025
+#         ✅ Rendered events: 24
+```
+
+This comprehensive testing ensures the final user experience matches expectations.
 
 ## Scheduled Updates
 
@@ -216,6 +269,9 @@ uv sync --dev                          # Install dev dependencies
 # 2. Test locally with preview
 uv run around-the-grounds --preview
 cd public && python -m http.server 8000
+
+# Quick verification tests:
+cd public && timeout 10s python -m http.server 8000 > /dev/null 2>&1 & sleep 1 && curl -s http://localhost:8000/data.json | head -5 && pkill -f "python -m http.server" || true
 
 # 3. Run tests
 uv run python -m pytest

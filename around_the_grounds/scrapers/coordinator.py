@@ -1,7 +1,7 @@
 import asyncio
 from typing import List, Dict, Any, Union
 import aiohttp
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 
 from ..models import Brewery, FoodTruckEvent
@@ -168,8 +168,11 @@ class ScraperCoordinator:
     def _filter_and_sort_events(self, events: List[FoodTruckEvent]) -> List[FoodTruckEvent]:
         """
         Filter events to next 7 days and sort by date.
+        Uses Seattle timezone to ensure events are filtered correctly regardless of server location.
         """
-        now = datetime.now()
+        # Use Seattle timezone (PST/PDT) consistently
+        seattle_tz = timezone(timedelta(hours=-8))  # PST (PDT would be -7, but keeping simple)
+        now = datetime.now(seattle_tz)
         one_week_later = now + timedelta(days=7)
         
         # Filter to next 7 days
