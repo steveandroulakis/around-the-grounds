@@ -86,7 +86,7 @@ class VisionAnalyzer:
                             {
                                 "type": "text",
                                 "text": """Look at this food truck or restaurant logo/image. 
-                                Extract ONLY the business name (e.g., "Georgia's", "Marination", "Paseo"). 
+                                Extract ONLY the business name (e.g., "Georgia's Greek", "Marination", "Paseo", "Whateke"). 
                                 Do not include words like "Food Truck", "Kitchen", "Catering" unless they're part of the actual business name.
                                 If you cannot clearly identify a business name, respond with "UNKNOWN".
                                 Respond with just the business name, nothing else.""",
