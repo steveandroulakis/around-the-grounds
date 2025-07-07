@@ -24,24 +24,26 @@ uv sync --dev  # Install all dependencies including dev tools
 
 ### Running the Application
 ```bash
-uv run around-the-grounds              # Run the CLI tool
-uv run around-the-grounds --verbose    # Run with verbose logging
-uv run around-the-grounds --config /path/to/config.json  # Use custom config
-uv run around-the-grounds --preview    # Generate local preview files
-uv run around-the-grounds --deploy     # Run and deploy to web
+uv run around-the-grounds              # Run the CLI tool (~60s to scrape all sites)
+uv run around-the-grounds --verbose    # Run with verbose logging (~60s)
+uv run around-the-grounds --config /path/to/config.json  # Use custom config (~60s)
+uv run around-the-grounds --preview    # Generate local preview files (~60s)
+uv run around-the-grounds --deploy     # Run and deploy to web (~90s total)
 
 # With AI vision analysis (optional)
 export ANTHROPIC_API_KEY="your-api-key"
-uv run around-the-grounds --verbose    # Run with vision analysis enabled
-uv run around-the-grounds --deploy     # Run with vision analysis and deploy to web
+uv run around-the-grounds --verbose    # Run with vision analysis enabled (~60-90s)
+uv run around-the-grounds --deploy     # Run with vision analysis and deploy to web (~90-60s)
 ```
+
+**⏱️ Execution Times:** CLI operations typically take 60-90 seconds to scrape all brewery websites concurrently. Add extra time for vision analysis and git operations when using `--deploy`.
 
 ### Local Preview & Testing
 
 Before deploying, generate and test web files locally:
 
 ```bash
-# Generate web files locally for testing
+# Generate web files locally for testing (~60s to scrape all sites)
 uv run around-the-grounds --preview
 
 # Serve locally and view in browser
@@ -168,7 +170,7 @@ Web deployment uses GitHub App authentication for secure repository access:
 1. Go to your GitHub App settings
 2. Click "Install App" 
 3. Select your target repository (e.g., `ballard-food-trucks`)
-4. Note the **Installation ID** from the URL after installation
+4. The installation ID will be automatically retrieved by the system
 
 #### 3. Configure Environment Variables
 ```bash
@@ -177,13 +179,15 @@ cp .env.example .env
 
 # Add GitHub App credentials to .env:
 GITHUB_APP_ID=123456
-GITHUB_APP_INSTALLATION_ID=12345678
+GITHUB_CLIENT_ID=your-github-client-id
 GITHUB_APP_PRIVATE_KEY_B64=$(base64 -i path/to/your-app.private-key.pem)
 GIT_REPOSITORY_URL=https://github.com/username/ballard-food-trucks.git
 
 # Optional: AI vision analysis
 ANTHROPIC_API_KEY=your-anthropic-api-key
 ```
+
+**Note:** The system includes working defaults for `GITHUB_APP_ID` and `GITHUB_CLIENT_ID`. You only need to override these if you're using a different GitHub App. The installation ID is automatically retrieved via the GitHub API - you don't need to configure it manually.
 
 #### 4. Target Repository Setup
 
@@ -235,8 +239,15 @@ The system supports multiple Temporal deployment scenarios through environment-b
 #### Local Development (Default)
 ```bash
 # No configuration needed - connects to localhost:7233
-# Start Temporal worker (run in separate terminal)
+
+# Method 1: Run worker in background (for testing)
+# Start Temporal worker (run in separate terminal - runs continuously, not good for agents)
 uv run python -m around_the_grounds.temporal.worker
+
+# Method 2: Test with timeout (recommended for development and agents)
+# Start workflow first, then run worker with timeout to process it
+uv run python -m around_the_grounds.temporal.starter --deploy --verbose &
+timeout 60s uv run python -m around_the_grounds.temporal.worker
 
 # Execute workflow manually
 uv run python -m around_the_grounds.temporal.starter --deploy --verbose
@@ -248,6 +259,8 @@ uv run python -m around_the_grounds.temporal.starter --config /path/to/config.js
 uv run python -m around_the_grounds.temporal.starter --workflow-id daily-update-2025 --deploy
 ```
 
+**Note:** The Temporal worker runs as a foreground service and will not exit until manually stopped (Ctrl+C). For testing purposes, use `timeout 60s` to limit worker execution time, allowing enough time for the full scraping and deployment workflow (~90-60s).
+
 #### Temporal Cloud Deployment
 ```bash
 # Set environment variables for Temporal Cloud
@@ -255,7 +268,7 @@ export TEMPORAL_ADDRESS="your-namespace.acct.tmprl.cloud:7233"
 export TEMPORAL_NAMESPACE="your-namespace"
 export TEMPORAL_API_KEY="your-api-key"
 
-# Start worker - automatically connects to Temporal Cloud
+# Start worker - automatically connects to Temporal Cloud (runs continuously)
 uv run python -m around_the_grounds.temporal.worker
 
 # Execute workflows - uses cloud configuration

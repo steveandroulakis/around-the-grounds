@@ -67,10 +67,12 @@ To deploy a live website, you need a **target repository** and **GitHub App** fo
    cp .env.example .env
    # Edit .env with your GitHub App credentials:
    # GITHUB_APP_ID=123456
-   # GITHUB_APP_INSTALLATION_ID=12345678  
+   # GITHUB_CLIENT_ID=your-github-client-id
    # GITHUB_APP_PRIVATE_KEY_B64=<base64-encoded-private-key>
    # GIT_REPOSITORY_URL=https://github.com/username/ballard-food-trucks.git
    ```
+   
+   **Note:** The system includes working defaults for `GITHUB_APP_ID` and `GITHUB_CLIENT_ID`. You only need to override these if using a different GitHub App.
 
 3. **Deploy Data**
    ```bash
@@ -210,7 +212,7 @@ ANTHROPIC_API_KEY=your-anthropic-api-key
 
 # Required for web deployment
 GITHUB_APP_ID=123456
-GITHUB_APP_INSTALLATION_ID=12345678
+GITHUB_CLIENT_ID=your-github-client-id
 GITHUB_APP_PRIVATE_KEY_B64=base64-encoded-private-key
 GIT_REPOSITORY_URL=https://github.com/username/target-repo.git
 
