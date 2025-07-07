@@ -128,34 +128,6 @@ const puppeteer = require('puppeteer');
 
 This allows you to test web interface changes, verify data accuracy, and debug issues before deploying to production.
 
-### Why Client-Side Testing Matters
-
-The web interface performs critical JavaScript processing that raw `data.json` testing doesn't validate:
-
-**Key Client-Side Operations:**
-- **Date grouping**: Events organized by day using `eventsByDate` object
-- **Timezone rendering**: Browser's `toLocaleDateString()` formatting
-- **Vendor name cleaning**: Emoji removal and text processing  
-- **Dynamic HTML generation**: DOM creation and injection
-- **Responsive calculations**: Mobile/desktop layout adjustments
-
-**Common Issues Caught by Browser Testing:**
-- **Timezone bugs**: Server vs. browser time differences (our 5pm Sunday bug)
-- **JavaScript errors**: Runtime failures in data processing
-- **Locale differences**: Date formatting varies by user's browser
-- **CSS/layout problems**: Elements not displaying correctly
-- **Data transformation bugs**: Errors in grouping or sorting logic
-
-**Headless Testing with Puppeteer:**
-```bash
-# Validates complete user experience
-node -e "/* headless browser test */"
-# Output: ✅ Rendered days: Sunday, July 06, 2025, Monday, July 07, 2025
-#         ✅ Rendered events: 24
-```
-
-This comprehensive testing ensures the final user experience matches expectations.
-
 ## Scheduled Updates
 
 Use **Temporal workflows** to run automatic updates with a persistent worker system.
@@ -229,6 +201,7 @@ docker logs -f around-the-grounds-worker
 - **Yonder Cider & Bale Breaker - Ballard**: Squarespace API integration  
 - **Obec Brewing**: Text-based parsing
 - **Urban Family Brewing**: Hivey API with AI vision analysis fallback
+- **Wheelie Pop Brewing**: HTML parsing with date/time extraction
 
 ### Environment Variables
 ```bash
