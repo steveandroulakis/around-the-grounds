@@ -13,7 +13,8 @@ from around_the_grounds.temporal.config import (
     get_temporal_client,
     validate_configuration,
 )
-from around_the_grounds.temporal.shared import WorkflowParams
+from temporalio.client import Client
+from around_the_grounds.temporal.shared import WorkflowParams, WorkflowResult
 from around_the_grounds.temporal.workflows import FoodTruckWorkflow
 
 logger = logging.getLogger(__name__)
@@ -26,9 +27,9 @@ class FoodTruckStarter:
         # temporal_address parameter kept for backward compatibility
         # but actual connection uses environment configuration
         self.legacy_address = temporal_address
-        self.client = None
+        self.client: Optional[Client] = None
 
-    async def connect(self):
+    async def connect(self) -> None:
         """Connect to Temporal server using configuration system."""
         try:
             # Validate configuration before connecting
@@ -42,7 +43,7 @@ class FoodTruckStarter:
                     f"⚠️  CLI --temporal-address={self.legacy_address} is deprecated."
                 )
                 logger.warning(
-                    f"⚠️  Please use TEMPORAL_ADDRESS environment variable instead."
+                    "⚠️  Please use TEMPORAL_ADDRESS environment variable instead."
                 )
 
         except Exception as e:
@@ -55,10 +56,11 @@ class FoodTruckStarter:
         deploy: bool = False,
         workflow_id: Optional[str] = None,
         git_repository_url: Optional[str] = None,
-    ):
+    ) -> WorkflowResult:
         """Execute the food truck workflow."""
         if not self.client:
             await self.connect()
+        assert self.client is not None  # Type checker hint
 
         if not workflow_id:
             workflow_id = (
@@ -88,10 +90,10 @@ class FoodTruckStarter:
                 task_queue=TEMPORAL_TASK_QUEUE,
             )
 
-            logger.info(f"⏳ Workflow started, waiting for completion...")
+            logger.info("⏳ Workflow started, waiting for completion...")
             result = await handle.result()
 
-            logger.info(f"✅ Workflow completed!")
+            logger.info("✅ Workflow completed!")
             logger.info(f"📊 Result: {result}")
 
             return result
@@ -101,7 +103,7 @@ class FoodTruckStarter:
             raise
 
 
-async def main():
+async def main() -> None:
     """Main starter entry point with enhanced CLI arguments."""
     parser = argparse.ArgumentParser(description="Execute Food Truck Temporal Workflow")
     parser.add_argument(
@@ -134,8 +136,8 @@ async def main():
 
     # Show deprecation warning if --temporal-address is used with non-default value
     if args.temporal_address != "localhost:7233":
-        logger.warning(f"⚠️  --temporal-address CLI argument is deprecated.")
-        logger.warning(f"⚠️  Please use TEMPORAL_ADDRESS environment variable instead.")
+        logger.warning("⚠️  --temporal-address CLI argument is deprecated.")
+        logger.warning("⚠️  Please use TEMPORAL_ADDRESS environment variable instead.")
 
     starter = FoodTruckStarter(args.temporal_address)
 
@@ -148,10 +150,10 @@ async def main():
         )
 
         if result.success:
-            print(f"✅ Workflow completed successfully!")
+            print("✅ Workflow completed successfully!")
             print(f"📊 Found {result.events_count} events")
             if result.deployed:
-                print(f"🚀 Successfully deployed to web")
+                print("🚀 Successfully deployed to web")
             if result.errors:
                 print(f"⚠️  {len(result.errors)} errors occurred:")
                 for error in result.errors:

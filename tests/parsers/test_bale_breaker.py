@@ -1,6 +1,8 @@
 """Tests for Bale Breaker parser."""
 
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List
 
 import aiohttp
 import pytest
@@ -14,7 +16,7 @@ class TestBaleBreakerParser:
     """Test the BaleBreakerParser class."""
 
     @pytest.fixture
-    def brewery(self):
+    def brewery(self) -> Brewery:
         """Create a test brewery for Bale Breaker."""
         return Brewery(
             key="yonder-balebreaker",
@@ -24,12 +26,12 @@ class TestBaleBreakerParser:
         )
 
     @pytest.fixture
-    def parser(self, brewery):
+    def parser(self, brewery: Brewery) -> BaleBreakerParser:
         """Create a parser instance."""
         return BaleBreakerParser(brewery)
 
     @pytest.fixture
-    def sample_html_with_calendar(self):
+    def sample_html_with_calendar(self) -> str:
         """Sample HTML with calendar block."""
         return """
         <html><body>
@@ -43,7 +45,7 @@ class TestBaleBreakerParser:
         """
 
     @pytest.fixture
-    def sample_api_response(self):
+    def sample_api_response(self) -> List[Dict[str, Any]]:
         """Sample API response with food truck events."""
         return [
             {
@@ -64,8 +66,11 @@ class TestBaleBreakerParser:
 
     @pytest.mark.asyncio
     async def test_parse_success_with_api_data(
-        self, parser, sample_html_with_calendar, sample_api_response
-    ):
+        self,
+        parser: BaleBreakerParser,
+        sample_html_with_calendar: str,
+        sample_api_response: List[Dict[str, Any]],
+    ) -> None:
         """Test successful parsing with API data."""
         with aioresponses() as m:
             # Mock the main page request
@@ -89,7 +94,9 @@ class TestBaleBreakerParser:
                 assert events[1].food_truck_name == "Wood Shop BBQ"
 
     @pytest.mark.asyncio
-    async def test_parse_no_collection_id_fallback(self, parser):
+    async def test_parse_no_collection_id_fallback(
+        self, parser: BaleBreakerParser
+    ) -> None:
         """Test fallback when no collection ID is found."""
         html_without_calendar = "<html><body><p>No calendar here</p></body></html>"
 
@@ -105,7 +112,9 @@ class TestBaleBreakerParser:
                 assert events[0].brewery_key == "yonder-balebreaker"
 
     @pytest.mark.asyncio
-    async def test_parse_api_error_fallback(self, parser, sample_html_with_calendar):
+    async def test_parse_api_error_fallback(
+        self, parser: BaleBreakerParser, sample_html_with_calendar: str
+    ) -> None:
         """Test fallback when API requests fail."""
         with aioresponses() as m:
             # Mock successful main page request
@@ -125,7 +134,9 @@ class TestBaleBreakerParser:
                 assert "Check Instagram @BaleBreaker" in events[0].food_truck_name
 
     @pytest.mark.asyncio
-    async def test_parse_network_error_fallback(self, parser):
+    async def test_parse_network_error_fallback(
+        self, parser: BaleBreakerParser
+    ) -> None:
         """Test handling of network errors with fallback."""
         with aioresponses() as m:
             m.get(parser.brewery.url, exception=aiohttp.ClientError("Network error"))
@@ -137,7 +148,9 @@ class TestBaleBreakerParser:
                 assert len(events) == 1
                 assert "Check Instagram @BaleBreaker" in events[0].food_truck_name
 
-    def test_extract_collection_id_from_calendar_block(self, parser):
+    def test_extract_collection_id_from_calendar_block(
+        self, parser: BaleBreakerParser
+    ) -> None:
         """Test extracting collection ID from calendar block."""
         from bs4 import BeautifulSoup
 
@@ -150,7 +163,7 @@ class TestBaleBreakerParser:
         collection_id = parser._extract_collection_id(soup)
         assert collection_id == "test123"
 
-    def test_extract_collection_id_from_script(self, parser):
+    def test_extract_collection_id_from_script(self, parser: BaleBreakerParser) -> None:
         """Test extracting collection ID from script tag."""
         from bs4 import BeautifulSoup
 
@@ -164,7 +177,7 @@ class TestBaleBreakerParser:
         collection_id = parser._extract_collection_id(soup)
         assert collection_id == "script456"
 
-    def test_extract_collection_id_not_found(self, parser):
+    def test_extract_collection_id_not_found(self, parser: BaleBreakerParser) -> None:
         """Test when collection ID is not found."""
         from bs4 import BeautifulSoup
 
@@ -174,7 +187,7 @@ class TestBaleBreakerParser:
         collection_id = parser._extract_collection_id(soup)
         assert collection_id is None
 
-    def test_parse_api_event_valid(self, parser):
+    def test_parse_api_event_valid(self, parser: BaleBreakerParser) -> None:
         """Test parsing a valid API event."""
         event_data = {
             "title": "Test Food Truck",
@@ -190,32 +203,34 @@ class TestBaleBreakerParser:
         assert isinstance(event.date, datetime)
         assert isinstance(event.end_time, datetime)
 
-    def test_parse_api_event_no_title(self, parser):
+    def test_parse_api_event_no_title(self, parser: BaleBreakerParser) -> None:
         """Test parsing API event with no title."""
         event_data = {"startDate": 1720800000000}
 
         event = parser._parse_api_event(event_data)
         assert event is None
 
-    def test_parse_api_event_no_start_date(self, parser):
+    def test_parse_api_event_no_start_date(self, parser: BaleBreakerParser) -> None:
         """Test parsing API event with no start date."""
         event_data = {"title": "Test Food Truck"}
 
         event = parser._parse_api_event(event_data)
         assert event is None
 
-    def test_create_fallback_event(self, parser):
+    def test_create_fallback_event(self, parser: BaleBreakerParser) -> None:
         """Test creating fallback event."""
         events = parser._create_fallback_event()
 
         assert len(events) == 1
         event = events[0]
         assert "Check Instagram @BaleBreaker" in event.food_truck_name
-        assert "check Instagram" in event.description
+        assert event.description is not None and "check Instagram" in event.description
         assert event.brewery_key == "yonder-balebreaker"
 
     @pytest.mark.asyncio
-    async def test_fetch_calendar_events_success(self, parser, sample_api_response):
+    async def test_fetch_calendar_events_success(
+        self, parser: BaleBreakerParser, sample_api_response: List[Dict[str, Any]]
+    ) -> None:
         """Test successful calendar events fetch."""
         collection_id = "test123"
 
@@ -235,7 +250,9 @@ class TestBaleBreakerParser:
                 assert events[1].food_truck_name == "Wood Shop BBQ"
 
     @pytest.mark.asyncio
-    async def test_fetch_calendar_events_api_error(self, parser):
+    async def test_fetch_calendar_events_api_error(
+        self, parser: BaleBreakerParser
+    ) -> None:
         """Test calendar events fetch with API errors."""
         collection_id = "test123"
 
@@ -253,7 +270,9 @@ class TestBaleBreakerParser:
                 assert len(events) == 0
 
     @pytest.mark.asyncio
-    async def test_parse_real_html_fixture(self, parser, html_fixtures_dir):
+    async def test_parse_real_html_fixture(
+        self, parser: BaleBreakerParser, html_fixtures_dir: Path
+    ) -> None:
         """Test parsing with real HTML fixture from the website."""
         fixture_path = html_fixtures_dir / "bale_breaker_sample.html"
 

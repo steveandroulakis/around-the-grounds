@@ -1,6 +1,7 @@
 """Tests for Stoup Ballard parser."""
 
 from datetime import datetime
+from pathlib import Path
 
 import aiohttp
 import pytest
@@ -15,7 +16,7 @@ class TestStoupBallardParser:
     """Test the StoupBallardParser class."""
 
     @pytest.fixture
-    def brewery(self):
+    def brewery(self) -> Brewery:
         """Create a test brewery for Stoup Ballard."""
         return Brewery(
             key="stoup-ballard",
@@ -31,19 +32,21 @@ class TestStoupBallardParser:
         )
 
     @pytest.fixture
-    def parser(self, brewery):
+    def parser(self, brewery: Brewery) -> StoupBallardParser:
         """Create a parser instance."""
         return StoupBallardParser(brewery)
 
     @pytest.fixture
-    def structured_html(self, html_fixtures_dir):
+    def structured_html(self, html_fixtures_dir: Path) -> str:
         """Load structured HTML fixture."""
         fixture_path = html_fixtures_dir / "stoup_structured.html"
         return fixture_path.read_text()
 
     @pytest.mark.asyncio
     @freeze_time("2025-07-05")
-    async def test_parse_structured_data(self, parser, structured_html):
+    async def test_parse_structured_data(
+        self, parser: StoupBallardParser, structured_html: str
+    ) -> None:
         """Test parsing structured HTML data."""
         with aioresponses() as m:
             m.get(parser.brewery.url, status=200, body=structured_html)
@@ -60,18 +63,22 @@ class TestStoupBallardParser:
                 assert event1.food_truck_name == "Woodshop BBQ"
                 assert event1.date.month == 7
                 assert event1.date.day == 5
+                assert event1.start_time is not None
                 assert event1.start_time.hour == 13  # 1pm
+                assert event1.end_time is not None
                 assert event1.end_time.hour == 20  # 8pm
 
                 # Check second event
                 event2 = events[1]
                 assert event2.food_truck_name == "Taco Truck Supreme"
                 assert event2.date.day == 6
+                assert event2.start_time is not None
                 assert event2.start_time.hour == 12  # 12pm
+                assert event2.end_time is not None
                 assert event2.end_time.hour == 21  # 9pm
 
     @pytest.mark.asyncio
-    async def test_parse_empty_schedule(self, parser):
+    async def test_parse_empty_schedule(self, parser: StoupBallardParser) -> None:
         """Test parsing when no food truck entries are found."""
         empty_html = "<html><body><p>No food trucks today</p></body></html>"
 
@@ -84,7 +91,7 @@ class TestStoupBallardParser:
                 assert len(events) == 0
 
     @pytest.mark.asyncio
-    async def test_parse_malformed_date(self, parser):
+    async def test_parse_malformed_date(self, parser: StoupBallardParser) -> None:
         """Test parsing with malformed date format."""
         malformed_html = """
         <html><body>
@@ -106,7 +113,7 @@ class TestStoupBallardParser:
                 assert len(events) == 0
 
     @pytest.mark.asyncio
-    async def test_parse_missing_time_info(self, parser):
+    async def test_parse_missing_time_info(self, parser: StoupBallardParser) -> None:
         """Test parsing with missing time information."""
         missing_time_html = """
         <html><body>
@@ -131,28 +138,30 @@ class TestStoupBallardParser:
                 assert event.end_time is None
 
     @freeze_time("2025-07-05")
-    def test_parse_date_current_year(self, parser):
+    def test_parse_date_current_year(self, parser: StoupBallardParser) -> None:
         """Test date parsing for current year."""
         result = parser._parse_date("07.05")
+        assert result is not None
         assert result.year == 2025
         assert result.month == 7
         assert result.day == 5
 
     @freeze_time("2025-12-25")
-    def test_parse_date_next_year_rollover(self, parser):
+    def test_parse_date_next_year_rollover(self, parser: StoupBallardParser) -> None:
         """Test date parsing with year rollover."""
         result = parser._parse_date("01.15")
+        assert result is not None
         assert result.year == 2026  # Should be next year
         assert result.month == 1
         assert result.day == 15
 
-    def test_parse_date_invalid_format(self, parser):
+    def test_parse_date_invalid_format(self, parser: StoupBallardParser) -> None:
         """Test parsing invalid date format."""
         result = parser._parse_date("invalid")
         assert result is None
 
     @freeze_time("2025-07-05")
-    def test_parse_time_pm_range(self, parser):
+    def test_parse_time_pm_range(self, parser: StoupBallardParser) -> None:
         """Test parsing PM time range."""
         date = datetime(2025, 7, 5)
         start_time, end_time = parser._parse_time(date, (1, 8, "pm"))
@@ -161,7 +170,7 @@ class TestStoupBallardParser:
         assert end_time.hour == 20  # 8pm
 
     @freeze_time("2025-07-05")
-    def test_parse_time_am_range(self, parser):
+    def test_parse_time_am_range(self, parser: StoupBallardParser) -> None:
         """Test parsing AM time range."""
         date = datetime(2025, 7, 5)
         start_time, end_time = parser._parse_time(date, (8, 11, "am"))
@@ -169,7 +178,7 @@ class TestStoupBallardParser:
         assert start_time.hour == 8  # 8am
         assert end_time.hour == 11  # 11am
 
-    def test_parse_time_invalid_hour(self, parser):
+    def test_parse_time_invalid_hour(self, parser: StoupBallardParser) -> None:
         """Test parsing invalid hour."""
         date = datetime(2025, 7, 5)
         start_time, end_time = parser._parse_time(
@@ -180,7 +189,7 @@ class TestStoupBallardParser:
         assert end_time is None
 
     @freeze_time("2025-07-05")
-    def test_parse_time_from_text_valid(self, parser):
+    def test_parse_time_from_text_valid(self, parser: StoupBallardParser) -> None:
         """Test parsing time from valid text."""
         date = datetime(2025, 7, 5)
         start_time, end_time = parser._parse_time_from_text(date, "1 — 8pm")
@@ -189,7 +198,7 @@ class TestStoupBallardParser:
         assert end_time.hour == 20
 
     @pytest.mark.asyncio
-    async def test_parse_network_error(self, parser):
+    async def test_parse_network_error(self, parser: StoupBallardParser) -> None:
         """Test handling of network errors."""
         with aioresponses() as m:
             m.get(parser.brewery.url, exception=aiohttp.ClientError("Network error"))
@@ -201,7 +210,7 @@ class TestStoupBallardParser:
                     await parser.parse(session)
 
     @pytest.mark.asyncio
-    async def test_parse_fallback_extraction(self, parser):
+    async def test_parse_fallback_extraction(self, parser: StoupBallardParser) -> None:
         """Test fallback extraction when structured data is not found."""
         fallback_html = """
         <html><body>
@@ -226,7 +235,9 @@ class TestStoupBallardParser:
                 )  # May or may not find events depending on parsing logic
 
     @pytest.mark.asyncio
-    async def test_parse_real_html_fixture(self, parser, html_fixtures_dir):
+    async def test_parse_real_html_fixture(
+        self, parser: StoupBallardParser, html_fixtures_dir: Path
+    ) -> None:
         """Test parsing with real HTML fixture from the website."""
         fixture_path = html_fixtures_dir / "stoup_ballard_sample.html"
 

@@ -1,6 +1,7 @@
 """Tests for Temporal activities."""
 
 from datetime import datetime
+from typing import Any, Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -12,7 +13,7 @@ from around_the_grounds.temporal.activities import (
 
 
 @pytest.fixture
-def mock_brewery_configs():
+def mock_brewery_configs() -> List[Dict[str, Any]]:
     """Fixture providing mock brewery configurations."""
     return [
         {
@@ -31,7 +32,7 @@ def mock_brewery_configs():
 
 
 @pytest.fixture
-def mock_events():
+def mock_events() -> List[Dict[str, Any]]:
     """Fixture providing mock food truck events."""
     return [
         {
@@ -61,7 +62,7 @@ class TestScrapeActivities:
     """Tests for ScrapeActivities."""
 
     @pytest.mark.asyncio
-    async def test_load_brewery_config_default(self):
+    async def test_load_brewery_config_default(self) -> None:
         """Test loading brewery configuration with default path."""
         activities = ScrapeActivities()
 
@@ -109,7 +110,7 @@ class TestScrapeActivities:
             mock_load.assert_called_once_with(None)
 
     @pytest.mark.asyncio
-    async def test_load_brewery_config_custom_path(self):
+    async def test_load_brewery_config_custom_path(self) -> None:
         """Test loading brewery configuration with custom path."""
         activities = ScrapeActivities()
         custom_path = "/path/to/custom/config.json"
@@ -125,7 +126,9 @@ class TestScrapeActivities:
             mock_load.assert_called_once_with(custom_path)
 
     @pytest.mark.asyncio
-    async def test_scrape_food_trucks_success(self, mock_brewery_configs):
+    async def test_scrape_food_trucks_success(
+        self, mock_brewery_configs: List[Dict[str, Any]]
+    ) -> None:
         """Test successful food truck scraping."""
         activities = ScrapeActivities()
 
@@ -195,7 +198,9 @@ class TestScrapeActivities:
             assert event2["ai_generated_name"] is True
 
     @pytest.mark.asyncio
-    async def test_scrape_food_trucks_with_errors(self, mock_brewery_configs):
+    async def test_scrape_food_trucks_with_errors(
+        self, mock_brewery_configs: List[Dict[str, Any]]
+    ) -> None:
         """Test food truck scraping with errors."""
         activities = ScrapeActivities()
 
@@ -243,7 +248,7 @@ class TestDeploymentActivities:
     """Tests for DeploymentActivities."""
 
     @pytest.mark.asyncio
-    async def test_generate_web_data(self, mock_events):
+    async def test_generate_web_data(self, mock_events: List[Dict[str, Any]]) -> None:
         """Test web data generation from events."""
         activities = DeploymentActivities()
 
@@ -300,7 +305,7 @@ class TestDeploymentActivities:
             assert event2.ai_generated_name is True
 
     @pytest.mark.asyncio
-    async def test_deploy_to_git_success(self):
+    async def test_deploy_to_git_success(self) -> None:
         """Test successful git deployment."""
         activities = DeploymentActivities()
 
@@ -319,49 +324,50 @@ class TestDeploymentActivities:
             "updated": "2025-07-06T00:00:00",
         }
 
-        with patch("around_the_grounds.temporal.activities.Path") as mock_path, patch(
+        with patch("around_the_grounds.temporal.activities.Path") as _mock_path, patch(
             "around_the_grounds.temporal.activities.json"
-        ) as mock_json, patch(
+        ) as _mock_json, patch(
             "around_the_grounds.temporal.activities.subprocess"
         ) as mock_subprocess, patch(
             "around_the_grounds.utils.github_auth.GitHubAppAuth"
-        ) as mock_auth_class, patch(
+        ) as _mock_auth_class, patch(
             "tempfile.TemporaryDirectory"
-        ) as mock_tempdir, patch(
-            "builtins.open", create=True
-        ) as mock_open, patch(
+        ) as mock_tempdir, patch("builtins.open", create=True) as _mock_open, patch(
             "around_the_grounds.temporal.activities.shutil.copytree"
-        ) as mock_copytree:
-
+        ) as _mock_copytree:
             # Mock temporary directory
             mock_tempdir.return_value.__enter__.return_value = "/tmp/test"
             mock_tempdir.return_value.__exit__.return_value = None
 
             # Mock Path operations
             mock_repo_dir = MagicMock()
-            mock_repo_dir.__str__.return_value = "/tmp/test/repo"
+            mock_repo_dir.configure_mock(**{"__str__.return_value": "/tmp/test/repo"})
             mock_repo_dir.__truediv__.return_value = MagicMock()
-            mock_repo_dir.__truediv__.return_value.__str__.return_value = "/tmp/test/repo/public"
-            
+            mock_repo_dir.__truediv__.return_value.configure_mock(
+                **{"__str__.return_value": "/tmp/test/repo/public"}
+            )
+
             # Mock Path.cwd() to return a proper path
             mock_cwd = MagicMock()
-            mock_cwd.__str__.return_value = "/current/dir"
+            mock_cwd.configure_mock(**{"__str__.return_value": "/current/dir"})
             mock_cwd.__truediv__.return_value = MagicMock()
-            mock_cwd.__truediv__.return_value.__str__.return_value = "/current/dir/public_template"
-            mock_path.cwd.return_value = mock_cwd
-            
+            mock_cwd.__truediv__.return_value.configure_mock(
+                **{"__str__.return_value": "/current/dir/public_template"}
+            )
+            _mock_path.cwd.return_value = mock_cwd
+
             # Mock Path constructor
-            mock_path.side_effect = lambda x: (
+            _mock_path.side_effect = lambda x: (
                 mock_repo_dir if str(x).endswith("repo") else MagicMock()
             )
 
             # Mock file operations
             mock_file = MagicMock()
-            mock_open.return_value.__enter__.return_value = mock_file
+            _mock_open.return_value.__enter__.return_value = mock_file
 
             # Mock GitHub App authentication
             mock_auth = MagicMock()
-            mock_auth_class.return_value = mock_auth
+            _mock_auth_class.return_value = mock_auth
             mock_auth.get_access_token.return_value = "test_token"
             mock_auth.repo_owner = "test"
             mock_auth.repo_name = "test-repo"
@@ -369,9 +375,11 @@ class TestDeploymentActivities:
             # Mock git operations
             mock_subprocess.run.return_value.returncode = 0
 
-            result = await activities.deploy_to_git(
-                mock_web_data, "https://github.com/test/test-repo.git"
-            )
+            params = {
+                "web_data": mock_web_data,
+                "repository_url": "https://github.com/test/repo.git"
+            }
+            result = await activities.deploy_to_git(params)  # type: ignore
 
             assert result is True
 
@@ -379,7 +387,7 @@ class TestDeploymentActivities:
             # (The implementation changed significantly, so we mainly test it doesn't crash)
 
     @pytest.mark.asyncio
-    async def test_deploy_to_git_git_clone_failure(self):
+    async def test_deploy_to_git_git_clone_failure(self) -> None:
         """Test git deployment when git clone fails."""
         activities = DeploymentActivities()
 
@@ -389,18 +397,15 @@ class TestDeploymentActivities:
             "updated": "2025-07-06T00:00:00",
         }
 
-        with patch("around_the_grounds.temporal.activities.Path") as mock_path, patch(
+        with patch("around_the_grounds.temporal.activities.Path") as _mock_path, patch(
             "around_the_grounds.temporal.activities.json"
-        ) as mock_json, patch(
+        ) as _mock_json, patch(
             "around_the_grounds.temporal.activities.subprocess"
         ) as mock_subprocess, patch(
             "around_the_grounds.utils.github_auth.GitHubAppAuth"
-        ) as mock_auth_class, patch(
+        ) as _mock_auth_class, patch(
             "tempfile.TemporaryDirectory"
-        ) as mock_tempdir, patch(
-            "builtins.open", create=True
-        ) as mock_open:
-
+        ) as mock_tempdir, patch("builtins.open", create=True) as _mock_open:
             # Mock temporary directory
             mock_tempdir.return_value.__enter__.return_value = "/tmp/test"
 
@@ -411,12 +416,14 @@ class TestDeploymentActivities:
             mock_subprocess.CalledProcessError = CalledProcessError
 
             with pytest.raises(ValueError, match="Failed to deploy to git"):
-                await activities.deploy_to_git(
-                    mock_web_data, "https://github.com/test/test-repo.git"
-                )
+                params = {
+                    "web_data": mock_web_data,
+                    "repository_url": "https://github.com/test/repo.git"
+                }
+                await activities.deploy_to_git(params)  # type: ignore
 
     @pytest.mark.asyncio
-    async def test_deploy_to_git_no_changes(self):
+    async def test_deploy_to_git_no_changes(self) -> None:
         """Test git deployment when there are no changes to commit."""
         activities = DeploymentActivities()
 
@@ -426,44 +433,45 @@ class TestDeploymentActivities:
             "updated": "2025-07-06T00:00:00",
         }
 
-        with patch("around_the_grounds.temporal.activities.Path") as mock_path, patch(
+        with patch("around_the_grounds.temporal.activities.Path") as _mock_path, patch(
             "around_the_grounds.temporal.activities.json"
-        ) as mock_json, patch(
+        ) as _mock_json, patch(
             "around_the_grounds.temporal.activities.subprocess"
         ) as mock_subprocess, patch(
             "around_the_grounds.utils.github_auth.GitHubAppAuth"
-        ) as mock_auth_class, patch(
+        ) as _mock_auth_class, patch(
             "tempfile.TemporaryDirectory"
-        ) as mock_tempdir, patch(
-            "builtins.open", create=True
-        ) as mock_open, patch(
+        ) as mock_tempdir, patch("builtins.open", create=True) as _mock_open, patch(
             "around_the_grounds.temporal.activities.shutil.copytree"
-        ) as mock_copytree:
-
+        ) as _mock_copytree:
             # Mock temporary directory
             mock_tempdir.return_value.__enter__.return_value = "/tmp/test"
             mock_tempdir.return_value.__exit__.return_value = None
 
             # Mock Path operations
             mock_repo_dir = MagicMock()
-            mock_repo_dir.__str__.return_value = "/tmp/test/repo"
+            mock_repo_dir.configure_mock(**{"__str__.return_value": "/tmp/test/repo"})
             mock_repo_dir.__truediv__.return_value = MagicMock()
-            mock_repo_dir.__truediv__.return_value.__str__.return_value = "/tmp/test/repo/public"
-            
+            mock_repo_dir.__truediv__.return_value.configure_mock(
+                **{"__str__.return_value": "/tmp/test/repo/public"}
+            )
+
             # Mock Path.cwd() to return a proper path
             mock_cwd = MagicMock()
-            mock_cwd.__str__.return_value = "/current/dir"
+            mock_cwd.configure_mock(**{"__str__.return_value": "/current/dir"})
             mock_cwd.__truediv__.return_value = MagicMock()
-            mock_cwd.__truediv__.return_value.__str__.return_value = "/current/dir/public_template"
-            mock_path.cwd.return_value = mock_cwd
-            
+            mock_cwd.__truediv__.return_value.configure_mock(
+                **{"__str__.return_value": "/current/dir/public_template"}
+            )
+            _mock_path.cwd.return_value = mock_cwd
+
             # Mock Path constructor
-            mock_path.side_effect = lambda x: (
+            _mock_path.side_effect = lambda x: (
                 mock_repo_dir if str(x).endswith("repo") else MagicMock()
             )
 
             # Mock git operations - simulate no changes
-            def mock_run(cmd, cwd=None, **kwargs):
+            def mock_run(cmd: List[str], _cwd: Any = None, **_kwargs: Any) -> Any:
                 if "git diff --staged --quiet" in " ".join(cmd):
                     return MagicMock(returncode=0)  # no changes to commit
                 else:
@@ -473,19 +481,21 @@ class TestDeploymentActivities:
 
             # Mock authentication
             mock_auth = MagicMock()
-            mock_auth_class.return_value = mock_auth
+            _mock_auth_class.return_value = mock_auth
             mock_auth.get_access_token.return_value = "test_token"
             mock_auth.repo_owner = "test"
             mock_auth.repo_name = "test-repo"
 
-            result = await activities.deploy_to_git(
-                mock_web_data, "https://github.com/test/test-repo.git"
-            )
+            params = {
+                "web_data": mock_web_data,
+                "repository_url": "https://github.com/test/repo.git"
+            }
+            result = await activities.deploy_to_git(params)  # type: ignore
 
             assert result is True  # Still successful, just no changes
 
     @pytest.mark.asyncio
-    async def test_deploy_to_git_push_failure(self):
+    async def test_deploy_to_git_push_failure(self) -> None:
         """Test git deployment with push failure but successful commit."""
         activities = DeploymentActivities()
 
@@ -504,24 +514,21 @@ class TestDeploymentActivities:
             "updated": "2025-07-06T00:00:00",
         }
 
-        with patch("around_the_grounds.temporal.activities.Path") as mock_path, patch(
+        with patch("around_the_grounds.temporal.activities.Path") as _mock_path, patch(
             "around_the_grounds.temporal.activities.json"
-        ) as mock_json, patch(
+        ) as _mock_json, patch(
             "around_the_grounds.temporal.activities.subprocess"
         ) as mock_subprocess, patch(
             "around_the_grounds.utils.github_auth.GitHubAppAuth"
-        ) as mock_auth_class, patch(
+        ) as _mock_auth_class, patch(
             "tempfile.TemporaryDirectory"
-        ) as mock_tempdir, patch(
-            "builtins.open", create=True
-        ) as mock_open:
-
+        ) as mock_tempdir, patch("builtins.open", create=True) as _mock_open:
             # Mock temporary directory
             mock_tempdir.return_value.__enter__.return_value = "/tmp/test"
 
             # Mock authentication
             mock_auth = MagicMock()
-            mock_auth_class.return_value = mock_auth
+            _mock_auth_class.return_value = mock_auth
             mock_auth.get_access_token.return_value = "test_token"
             mock_auth.repo_owner = "test"
             mock_auth.repo_name = "test-repo"
@@ -529,7 +536,7 @@ class TestDeploymentActivities:
             # Mock git operations - simulate push failure
             from subprocess import CalledProcessError
 
-            def mock_run(cmd, cwd=None, **kwargs):
+            def mock_run(cmd: List[str], _cwd: Any = None, **_kwargs: Any) -> Any:
                 if "git push" in " ".join(cmd):
                     raise CalledProcessError(1, cmd, "Push failed")
                 elif "git diff --quiet" in " ".join(cmd):
@@ -541,6 +548,8 @@ class TestDeploymentActivities:
             mock_subprocess.CalledProcessError = CalledProcessError
 
             with pytest.raises(ValueError, match="Failed to deploy to git"):
-                await activities.deploy_to_git(
-                    mock_web_data, "https://github.com/test/test-repo.git"
-                )
+                params = {
+                    "web_data": mock_web_data,
+                    "repository_url": "https://github.com/test/repo.git"
+                }
+                await activities.deploy_to_git(params)  # type: ignore

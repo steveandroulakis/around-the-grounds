@@ -20,7 +20,7 @@ from around_the_grounds.temporal.workflows import FoodTruckWorkflow
 logger = logging.getLogger(__name__)
 
 
-async def main():
+async def main() -> None:
     """Main worker entry point."""
     # Validate configuration before connecting
     try:

@@ -97,7 +97,12 @@ class VisionAnalyzer:
             )
 
             # Extract the response text
-            response_text = message.content[0].text.strip()
+            content_block = message.content[0]
+            if hasattr(content_block, "text"):
+                response_text = content_block.text.strip()  # type: ignore
+            else:
+                # Handle different content types by converting to string
+                response_text = str(content_block).strip()
 
             # Clean up the response
             if response_text and response_text.upper() != "UNKNOWN":

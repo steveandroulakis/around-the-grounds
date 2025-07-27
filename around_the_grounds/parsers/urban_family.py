@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp
 
-from ..models import FoodTruckEvent
+from ..models import Brewery, FoodTruckEvent
 from ..utils.date_utils import DateUtils
 from ..utils.vision_analyzer import VisionAnalyzer
 from .base import BaseParser
@@ -17,13 +17,15 @@ class UrbanFamilyParser(BaseParser):
     Uses direct JSON API access instead of HTML scraping.
     """
 
-    def __init__(self, brewery):
+    def __init__(self, brewery: Brewery) -> None:
         super().__init__(brewery)
-        self._vision_analyzer = None
-        self._vision_cache = {}  # Cache for image URL -> vendor name mappings
+        self._vision_analyzer: Optional[VisionAnalyzer] = None
+        self._vision_cache: Dict[
+            str, Optional[str]
+        ] = {}  # Cache for image URL -> vendor name mappings
 
     @property
-    def vision_analyzer(self):
+    def vision_analyzer(self) -> VisionAnalyzer:
         """Lazy initialization of vision analyzer."""
         if self._vision_analyzer is None:
             self._vision_analyzer = VisionAnalyzer()
@@ -127,7 +129,7 @@ class UrbanFamilyParser(BaseParser):
 
         return events
 
-    def _parse_event_item(self, item: Dict[str, Any]) -> FoodTruckEvent:
+    def _parse_event_item(self, item: Dict[str, Any]) -> Optional[FoodTruckEvent]:
         """
         Parse a single event item from the JSON data.
         """
@@ -341,7 +343,7 @@ class UrbanFamilyParser(BaseParser):
 
         return None
 
-    def _extract_date(self, item: Dict[str, Any]) -> datetime:
+    def _extract_date(self, item: Dict[str, Any]) -> Optional[datetime]:
         """
         Extract date from various possible fields and formats.
         """
@@ -377,7 +379,7 @@ class UrbanFamilyParser(BaseParser):
 
         return None
 
-    def _parse_urban_family_date(self, date_str: str) -> datetime:
+    def _parse_urban_family_date(self, date_str: str) -> Optional[datetime]:
         """
         Parse Urban Family date format like "July 06, 2025".
         """
@@ -443,7 +445,7 @@ class UrbanFamilyParser(BaseParser):
 
         return start_time, end_time
 
-    def _extract_description(self, item: Dict[str, Any]) -> str:
+    def _extract_description(self, item: Dict[str, Any]) -> Optional[str]:
         """
         Extract description from various possible fields.
         """
@@ -457,7 +459,7 @@ class UrbanFamilyParser(BaseParser):
 
         return None
 
-    def _parse_time_string(self, time_str: str, date: datetime) -> datetime:
+    def _parse_time_string(self, time_str: str, date: datetime) -> Optional[datetime]:
         """
         Parse a time string and combine with the given date.
         """
@@ -483,9 +485,9 @@ class UrbanFamilyParser(BaseParser):
             # Handle 12-hour format with AM/PM
             time_match = re.search(r"(\d{1,2}):(\d{2})\s*(am|pm)", time_str.lower())
             if time_match:
-                hour, minute, period = time_match.groups()
-                hour = int(hour)
-                minute = int(minute)
+                hour_str, minute_str, period = time_match.groups()
+                hour = int(hour_str)
+                minute = int(minute_str)
 
                 # Convert to 24-hour format
                 if period == "pm" and hour != 12:

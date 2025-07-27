@@ -5,7 +5,7 @@ from typing import Optional, Tuple
 
 
 class DateUtils:
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logging.getLogger(__name__)
 
     @staticmethod

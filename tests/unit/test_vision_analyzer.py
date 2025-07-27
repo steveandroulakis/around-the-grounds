@@ -7,10 +7,10 @@ from around_the_grounds.utils.vision_analyzer import VisionAnalyzer
 
 class TestVisionAnalyzer:
     @pytest.fixture
-    def vision_analyzer(self):
+    def vision_analyzer(self) -> VisionAnalyzer:
         return VisionAnalyzer()
 
-    def test_is_valid_image_url(self, vision_analyzer):
+    def test_is_valid_image_url(self, vision_analyzer: VisionAnalyzer) -> None:
         # Valid image URLs
         assert vision_analyzer._is_valid_image_url("https://example.com/image.jpg")
         assert vision_analyzer._is_valid_image_url(
@@ -26,9 +26,9 @@ class TestVisionAnalyzer:
         assert not vision_analyzer._is_valid_image_url("not-a-url")
         assert not vision_analyzer._is_valid_image_url("")
         assert not vision_analyzer._is_valid_image_url("ftp://example.com/image.jpg")
-        assert not vision_analyzer._is_valid_image_url(None)
+        assert not vision_analyzer._is_valid_image_url(None)  # type: ignore
 
-    def test_clean_vendor_name(self, vision_analyzer):
+    def test_clean_vendor_name(self, vision_analyzer: VisionAnalyzer) -> None:
         # Test removing common suffixes
         assert vision_analyzer._clean_vendor_name("Georgia's Food Truck") == "Georgia's"
         assert vision_analyzer._clean_vendor_name("Marination Kitchen") == "Marination"
@@ -47,7 +47,9 @@ class TestVisionAnalyzer:
 
     @pytest.mark.asyncio
     @patch("anthropic.Anthropic")
-    async def test_analyze_image_success(self, mock_anthropic, vision_analyzer):
+    async def test_analyze_image_success(
+        self, mock_anthropic: Mock, vision_analyzer: VisionAnalyzer
+    ) -> None:
         # Mock successful API response
         mock_client = Mock()
         mock_message = Mock()
@@ -71,8 +73,8 @@ class TestVisionAnalyzer:
     @pytest.mark.asyncio
     @patch("anthropic.Anthropic")
     async def test_analyze_image_unknown_response(
-        self, mock_anthropic, vision_analyzer
-    ):
+        self, mock_anthropic: Mock, vision_analyzer: VisionAnalyzer
+    ) -> None:
         # Mock "UNKNOWN" response
         mock_client = Mock()
         mock_message = Mock()
@@ -90,8 +92,8 @@ class TestVisionAnalyzer:
     @pytest.mark.asyncio
     @patch("anthropic.Anthropic")
     async def test_analyze_image_with_suffix_cleaning(
-        self, mock_anthropic, vision_analyzer
-    ):
+        self, mock_anthropic: Mock, vision_analyzer: VisionAnalyzer
+    ) -> None:
         # Mock response with suffix that should be cleaned
         mock_client = Mock()
         mock_message = Mock()
@@ -108,7 +110,9 @@ class TestVisionAnalyzer:
 
     @pytest.mark.asyncio
     @patch("anthropic.Anthropic")
-    async def test_analyze_image_invalid_url(self, mock_anthropic, vision_analyzer):
+    async def test_analyze_image_invalid_url(
+        self, mock_anthropic: Mock, vision_analyzer: VisionAnalyzer
+    ) -> None:
         # Should return None for invalid URLs without calling API
         result = await vision_analyzer.analyze_food_truck_image("not-a-url")
         assert result is None
@@ -118,7 +122,9 @@ class TestVisionAnalyzer:
 
     @pytest.mark.asyncio
     @patch("anthropic.Anthropic")
-    async def test_analyze_image_api_error(self, mock_anthropic, vision_analyzer):
+    async def test_analyze_image_api_error(
+        self, mock_anthropic: Mock, vision_analyzer: VisionAnalyzer
+    ) -> None:
         # Mock API error
         mock_client = Mock()
         mock_client.messages.create.side_effect = Exception("API Error")
@@ -135,7 +141,9 @@ class TestVisionAnalyzer:
     @patch(
         "around_the_grounds.utils.vision_analyzer.VisionAnalyzer._analyze_image_by_url"
     )
-    async def test_analyze_image_retry_logic(self, mock_analyze, vision_analyzer):
+    async def test_analyze_image_retry_logic(
+        self, mock_analyze: Mock, vision_analyzer: VisionAnalyzer
+    ) -> None:
         # Mock generic exception that should trigger retry, followed by success
         mock_analyze.side_effect = [Exception("Timeout"), "Georgia's"]
 
@@ -153,8 +161,8 @@ class TestVisionAnalyzer:
         "around_the_grounds.utils.vision_analyzer.VisionAnalyzer._analyze_image_by_url"
     )
     async def test_analyze_image_max_retries_exceeded(
-        self, mock_analyze, vision_analyzer
-    ):
+        self, mock_analyze: Mock, vision_analyzer: VisionAnalyzer
+    ) -> None:
         # Mock persistent errors
         mock_analyze.side_effect = Exception("Persistent error")
 
@@ -172,8 +180,8 @@ class TestVisionAnalyzer:
         "around_the_grounds.utils.vision_analyzer.VisionAnalyzer._analyze_image_by_url"
     )
     async def test_analyze_image_general_exception_handling(
-        self, mock_analyze, vision_analyzer
-    ):
+        self, mock_analyze: Mock, vision_analyzer: VisionAnalyzer
+    ) -> None:
         # Mock any kind of exception
         mock_analyze.side_effect = RuntimeError("General API error")
 

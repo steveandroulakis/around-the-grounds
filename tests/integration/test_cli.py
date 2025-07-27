@@ -4,6 +4,7 @@ import json
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any, Dict, Generator, List
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -22,7 +23,9 @@ class TestCLI:
     """Test CLI functionality."""
 
     @pytest.fixture
-    def temp_config_file(self, test_breweries_config):
+    def temp_config_file(
+        self, test_breweries_config: List[Dict[str, Any]]
+    ) -> Generator[str, None, None]:
         """Create a temporary config file for testing."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(test_breweries_config, f)
@@ -34,7 +37,7 @@ class TestCLI:
         Path(temp_path).unlink()
 
     @pytest.fixture
-    def sample_cli_events(self):
+    def sample_cli_events(self) -> List[FoodTruckEvent]:
         """Create sample events for CLI testing."""
         future_date = datetime.now() + timedelta(days=1)
         return [
@@ -57,7 +60,7 @@ class TestCLI:
             ),
         ]
 
-    def test_load_brewery_config_success(self, temp_config_file):
+    def test_load_brewery_config_success(self, temp_config_file: str) -> None:
         """Test successful loading of brewery configuration."""
         breweries = load_brewery_config(temp_config_file)
 
@@ -67,7 +70,7 @@ class TestCLI:
         assert breweries[0].url == "https://example1.com/food-trucks"
         assert breweries[1].key == "test-brewery-2"
 
-    def test_load_brewery_config_default_path(self):
+    def test_load_brewery_config_default_path(self) -> None:
         """Test loading brewery config from default path."""
         # Should use the default config file
         with patch("around_the_grounds.main.Path") as mock_path:
@@ -106,12 +109,12 @@ class TestCLI:
                     assert len(breweries) == 1
                     assert breweries[0].key == "default"
 
-    def test_load_brewery_config_file_not_found(self):
+    def test_load_brewery_config_file_not_found(self) -> None:
         """Test loading config when file doesn't exist."""
         with pytest.raises(FileNotFoundError):
             load_brewery_config("/nonexistent/config.json")
 
-    def test_load_brewery_config_invalid_json(self):
+    def test_load_brewery_config_invalid_json(self) -> None:
         """Test loading config with invalid JSON."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             f.write("invalid json content")
@@ -123,7 +126,9 @@ class TestCLI:
         finally:
             Path(temp_path).unlink()
 
-    def test_format_events_output_with_events(self, sample_cli_events):
+    def test_format_events_output_with_events(
+        self, sample_cli_events: List[FoodTruckEvent]
+    ) -> None:
         """Test formatting events for output."""
         output = format_events_output(sample_cli_events)
 
@@ -134,13 +139,15 @@ class TestCLI:
         assert "🚚" in output  # Food truck emoji
         assert "📅" in output  # Calendar emoji
 
-    def test_format_events_output_no_events(self):
+    def test_format_events_output_no_events(self) -> None:
         """Test formatting when no events are found."""
         output = format_events_output([])
 
         assert "No food truck events found" in output
 
-    def test_format_events_output_with_errors(self, sample_cli_events):
+    def test_format_events_output_with_errors(
+        self, sample_cli_events: List[FoodTruckEvent]
+    ) -> None:
         """Test formatting with both events and errors."""
         brewery = Brewery("failed-brewery", "Failed Brewery", "https://example.com")
         errors = [
@@ -158,7 +165,7 @@ class TestCLI:
         assert "Failed Brewery: Connection timed out" in output
         assert "Failed Brewery: Failed to parse HTML" in output
 
-    def test_format_events_output_only_errors(self):
+    def test_format_events_output_only_errors(self) -> None:
         """Test formatting when only errors occur."""
         brewery = Brewery("failed-brewery", "Failed Brewery", "https://example.com")
         errors = [ScrapingError(brewery, "Network Error", "Network failed")]
@@ -169,7 +176,7 @@ class TestCLI:
         assert "❌ Errors:" in output
         assert "Failed Brewery: Network failed" in output
 
-    def test_format_events_output_instagram_fallback(self):
+    def test_format_events_output_instagram_fallback(self) -> None:
         """Test formatting Instagram fallback events."""
         future_date = datetime.now() + timedelta(days=1)
         instagram_event = FoodTruckEvent(
@@ -185,7 +192,7 @@ class TestCLI:
         assert "❌ Check Instagram @TestBrewery" in output
         assert "check Instagram" in output
 
-    def test_format_events_output_ai_generated_name(self):
+    def test_format_events_output_ai_generated_name(self) -> None:
         """Test formatting events with AI-generated vendor names."""
         future_date = datetime.now() + timedelta(days=1)
         ai_event = FoodTruckEvent(
@@ -219,8 +226,8 @@ class TestCLI:
 
     @pytest.mark.asyncio
     async def test_scrape_food_trucks_success(
-        self, temp_config_file, sample_cli_events
-    ):
+        self, temp_config_file: str, sample_cli_events: List[FoodTruckEvent]
+    ) -> None:
         """Test successful food truck scraping."""
         with patch(
             "around_the_grounds.main.ScraperCoordinator"
@@ -237,7 +244,7 @@ class TestCLI:
             assert events[0].food_truck_name == "Amazing BBQ Truck"
 
     @pytest.mark.asyncio
-    async def test_scrape_food_trucks_with_errors(self, temp_config_file):
+    async def test_scrape_food_trucks_with_errors(self, temp_config_file: str) -> None:
         """Test scraping with some errors."""
         brewery = Brewery("failed", "Failed", "https://example.com")
         errors = [ScrapingError(brewery, "Network Error", "Failed")]
@@ -256,7 +263,7 @@ class TestCLI:
             assert len(returned_errors) == 1
 
     @pytest.mark.asyncio
-    async def test_scrape_food_trucks_no_breweries(self):
+    async def test_scrape_food_trucks_no_breweries(self) -> None:
         """Test scraping with no breweries configured."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump({"breweries": []}, f)
@@ -269,7 +276,12 @@ class TestCLI:
         finally:
             Path(temp_path).unlink()
 
-    def test_main_success(self, temp_config_file, sample_cli_events, capsys):
+    def test_main_success(
+        self,
+        temp_config_file: str,
+        sample_cli_events: List[FoodTruckEvent],
+        capsys: Any,
+    ) -> None:
         """Test successful main function execution."""
         with patch("around_the_grounds.main.asyncio.run") as mock_run:
             mock_run.return_value = (sample_cli_events, [])
@@ -281,7 +293,7 @@ class TestCLI:
             assert "🍺 Around the Grounds - Food Truck Tracker" in captured.out
             assert "Found 2 food truck events:" in captured.out
 
-    def test_main_complete_failure(self, temp_config_file, capsys):
+    def test_main_complete_failure(self, temp_config_file: str, capsys: Any) -> None:
         """Test main function with complete failure."""
         brewery = Brewery("failed", "Failed", "https://example.com")
         errors = [ScrapingError(brewery, "Network Error", "Failed")]
@@ -295,7 +307,12 @@ class TestCLI:
             captured = capsys.readouterr()
             assert "❌ No events found - all breweries failed" in captured.out
 
-    def test_main_partial_failure(self, temp_config_file, sample_cli_events, capsys):
+    def test_main_partial_failure(
+        self,
+        temp_config_file: str,
+        sample_cli_events: List[FoodTruckEvent],
+        capsys: Any,
+    ) -> None:
         """Test main function with partial failure."""
         brewery = Brewery("failed", "Failed", "https://example.com")
         errors = [ScrapingError(brewery, "Network Error", "Failed")]
@@ -310,7 +327,7 @@ class TestCLI:
             assert "Found 2 food truck events:" in captured.out
             assert "⚠️  Processing Summary:" in captured.out
 
-    def test_main_critical_error(self, temp_config_file, capsys):
+    def test_main_critical_error(self, temp_config_file: str, capsys: Any) -> None:
         """Test main function with critical error."""
         with patch("around_the_grounds.main.asyncio.run") as mock_run:
             mock_run.side_effect = Exception("Critical error occurred")
@@ -321,7 +338,7 @@ class TestCLI:
             captured = capsys.readouterr()
             assert "Critical Error: Critical error occurred" in captured.out
 
-    def test_main_verbose_mode(self, temp_config_file, capsys):
+    def test_main_verbose_mode(self, temp_config_file: str, capsys: Any) -> None:
         """Test main function in verbose mode."""
         with patch("around_the_grounds.main.asyncio.run") as mock_run:
             mock_run.side_effect = Exception("Test error")
@@ -333,7 +350,7 @@ class TestCLI:
             # Should show traceback in verbose mode
             assert "Traceback" in captured.out or "Test error" in captured.out
 
-    def test_main_version_flag(self, capsys):
+    def test_main_version_flag(self, capsys: Any) -> None:
         """Test main function with version flag."""
         with pytest.raises(SystemExit) as exc_info:
             main(["--version"])
@@ -342,7 +359,7 @@ class TestCLI:
         captured = capsys.readouterr()
         assert "0.1.0" in captured.out
 
-    def test_main_help_flag(self, capsys):
+    def test_main_help_flag(self, capsys: Any) -> None:
         """Test main function with help flag."""
         with pytest.raises(SystemExit) as exc_info:
             main(["--help"])
@@ -353,7 +370,7 @@ class TestCLI:
         assert "--config" in captured.out
         assert "--verbose" in captured.out
 
-    def test_main_invalid_config_file(self, capsys):
+    def test_main_invalid_config_file(self, capsys: Any) -> None:
         """Test main function with invalid config file."""
         exit_code = main(["--config", "/nonexistent/config.json"])
 
@@ -362,7 +379,7 @@ class TestCLI:
         assert "Critical Error:" in captured.out
         assert "not found" in captured.out
 
-    def test_main_default_config(self, capsys):
+    def test_main_default_config(self, capsys: Any) -> None:
         """Test main function using default config path."""
         with patch("around_the_grounds.main.load_brewery_config") as mock_load:
             mock_load.side_effect = FileNotFoundError("Config not found")
@@ -374,7 +391,7 @@ class TestCLI:
             mock_load.assert_called_once_with(None)
 
     @pytest.mark.asyncio
-    async def test_main_integration_end_to_end(self, temp_config_file):
+    async def test_main_integration_end_to_end(self, temp_config_file: str) -> None:
         """Test end-to-end integration without mocking."""
         # This test uses real components but mocks the network calls
         from aioresponses import aioresponses

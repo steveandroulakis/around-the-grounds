@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -8,7 +8,7 @@ from around_the_grounds.parsers.urban_family import UrbanFamilyParser
 
 class TestVisionIntegration:
     @pytest.fixture
-    def parser(self):
+    def parser(self) -> UrbanFamilyParser:
         brewery = Brewery(
             key="urban-family", name="Urban Family", url="https://test.com"
         )
@@ -18,7 +18,9 @@ class TestVisionIntegration:
     @patch(
         "around_the_grounds.utils.vision_analyzer.VisionAnalyzer.analyze_food_truck_image"
     )
-    async def test_vision_fallback_in_parser(self, mock_vision, parser):
+    async def test_vision_fallback_in_parser(
+        self, mock_vision: Mock, parser: UrbanFamilyParser
+    ) -> None:
         # Mock vision analysis returning a vendor name
         mock_vision.return_value = "Georgia's"
 
@@ -31,14 +33,16 @@ class TestVisionIntegration:
 
         result, ai_generated = parser._extract_food_truck_name(test_item)
         assert result == "Georgia's"
-        assert ai_generated == True
+        assert ai_generated
         mock_vision.assert_called_once_with("https://example.com/logo_main_updated.jpg")
 
     @pytest.mark.asyncio
     @patch(
         "around_the_grounds.utils.vision_analyzer.VisionAnalyzer.analyze_food_truck_image"
     )
-    async def test_text_extraction_takes_precedence(self, mock_vision, parser):
+    async def test_text_extraction_takes_precedence(
+        self, mock_vision: Mock, parser: UrbanFamilyParser
+    ) -> None:
         # Mock vision analysis (should not be called if text extraction works)
         mock_vision.return_value = "Vision Result"
 
@@ -51,7 +55,7 @@ class TestVisionIntegration:
 
         result, ai_generated = parser._extract_food_truck_name(test_item)
         assert result == "Marination"
-        assert ai_generated == False
+        assert not ai_generated
         # Vision analysis should not be called when text extraction succeeds
         mock_vision.assert_not_called()
 
@@ -59,7 +63,9 @@ class TestVisionIntegration:
     @patch(
         "around_the_grounds.utils.vision_analyzer.VisionAnalyzer.analyze_food_truck_image"
     )
-    async def test_fallback_to_tbd_when_vision_fails(self, mock_vision, parser):
+    async def test_fallback_to_tbd_when_vision_fails(
+        self, mock_vision: Mock, parser: UrbanFamilyParser
+    ) -> None:
         # Mock vision analysis failing
         mock_vision.return_value = None
 
@@ -71,20 +77,22 @@ class TestVisionIntegration:
 
         result, ai_generated = parser._extract_food_truck_name(test_item)
         assert result is None
-        assert ai_generated == False
+        assert not ai_generated
         mock_vision.assert_called_once_with("https://example.com/logo_main_updated.jpg")
 
     @pytest.mark.asyncio
     @patch(
         "around_the_grounds.utils.vision_analyzer.VisionAnalyzer.analyze_food_truck_image"
     )
-    async def test_no_vision_when_no_image(self, mock_vision, parser):
+    async def test_no_vision_when_no_image(
+        self, mock_vision: Mock, parser: UrbanFamilyParser
+    ) -> None:
         # Test item with no image - should not call vision analysis
         test_item = {"eventTitle": "FOOD TRUCK", "applicantVendors": []}
 
         result, ai_generated = parser._extract_food_truck_name(test_item)
         assert result is None
-        assert ai_generated == False
+        assert not ai_generated
         # Vision analysis should not be called when no image is available
         mock_vision.assert_not_called()
 
@@ -92,7 +100,9 @@ class TestVisionIntegration:
     @patch(
         "around_the_grounds.utils.vision_analyzer.VisionAnalyzer.analyze_food_truck_image"
     )
-    async def test_vision_exception_handling(self, mock_vision, parser):
+    async def test_vision_exception_handling(
+        self, mock_vision: Mock, parser: UrbanFamilyParser
+    ) -> None:
         # Mock vision analysis raising an exception
         mock_vision.side_effect = Exception("Vision API Error")
 
@@ -105,14 +115,16 @@ class TestVisionIntegration:
         # Should handle exception gracefully and fall back to TBD
         result, ai_generated = parser._extract_food_truck_name(test_item)
         assert result is None
-        assert ai_generated == False
+        assert not ai_generated
         mock_vision.assert_called_once_with("https://example.com/logo_main_updated.jpg")
 
     @pytest.mark.asyncio
     @patch(
         "around_the_grounds.utils.vision_analyzer.VisionAnalyzer.analyze_food_truck_image"
     )
-    async def test_vision_with_complex_text_extraction(self, mock_vision, parser):
+    async def test_vision_with_complex_text_extraction(
+        self, mock_vision: Mock, parser: UrbanFamilyParser
+    ) -> None:
         # Test that vision is only called when ALL text methods fail
         mock_vision.return_value = "Vision Extracted Name"
 
@@ -125,14 +137,16 @@ class TestVisionIntegration:
 
         result, ai_generated = parser._extract_food_truck_name(test_item)
         assert result == "Vision Extracted Name"
-        assert ai_generated == True
+        assert ai_generated
         mock_vision.assert_called_once_with("https://example.com/logo_updated_main.jpg")
 
     @pytest.mark.asyncio
     @patch(
         "around_the_grounds.utils.vision_analyzer.VisionAnalyzer.analyze_food_truck_image"
     )
-    async def test_vision_with_filename_extraction_success(self, mock_vision, parser):
+    async def test_vision_with_filename_extraction_success(
+        self, mock_vision: Mock, parser: UrbanFamilyParser
+    ) -> None:
         # Test that vision is NOT called when filename extraction succeeds
         mock_vision.return_value = "Vision Result"
 
@@ -146,10 +160,12 @@ class TestVisionIntegration:
         result, ai_generated = parser._extract_food_truck_name(test_item)
         # Should extract from filename, not use vision
         assert result == "Georgias Greek Food"
-        assert ai_generated == False
+        assert not ai_generated
         mock_vision.assert_not_called()
 
-    def test_vision_analyzer_lazy_initialization(self, parser):
+    def test_vision_analyzer_lazy_initialization(
+        self, parser: UrbanFamilyParser
+    ) -> None:
         # Test that vision analyzer is only created when needed
         assert parser._vision_analyzer is None
 

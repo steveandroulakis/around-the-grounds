@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from typing import List
+from typing import Any, List, Optional
 
 import aiohttp
 
@@ -52,7 +52,7 @@ class StoupBallardParser(BaseParser):
             self.logger.error(f"Error parsing Stoup Ballard: {str(e)}")
             raise ValueError(f"Failed to parse Stoup Ballard website: {str(e)}")
 
-    def _extract_from_section(self, section) -> List[FoodTruckEvent]:
+    def _extract_from_section(self, section: Any) -> List[FoodTruckEvent]:
         events = []
         text = section.get_text()
 
@@ -105,7 +105,7 @@ class StoupBallardParser(BaseParser):
 
         return events
 
-    def _parse_entry(self, entry) -> FoodTruckEvent:
+    def _parse_entry(self, entry: Any) -> Optional[FoodTruckEvent]:
         # Look for the lunch-truck-info div (new format)
         info_div = entry.find("div", class_="lunch-truck-info")
         if info_div:
@@ -113,7 +113,9 @@ class StoupBallardParser(BaseParser):
         else:
             return self._parse_old_format_entry(entry)
 
-    def _parse_new_format_entry(self, entry, info_div) -> FoodTruckEvent:
+    def _parse_new_format_entry(
+        self, entry: Any, info_div: Any
+    ) -> Optional[FoodTruckEvent]:
         # Extract date
         date_elem = info_div.find("h4")
         if not date_elem:
@@ -158,7 +160,7 @@ class StoupBallardParser(BaseParser):
             ai_generated_name=False,
         )
 
-    def _parse_old_format_entry(self, entry) -> FoodTruckEvent:
+    def _parse_old_format_entry(self, entry: Any) -> Optional[FoodTruckEvent]:
         # Extract date
         date_elem = entry.find("h4")
         if not date_elem:
@@ -190,7 +192,7 @@ class StoupBallardParser(BaseParser):
             ai_generated_name=False,
         )
 
-    def _parse_date(self, date_str: str) -> datetime:
+    def _parse_date(self, date_str: str) -> Optional[datetime]:
         try:
             # Parse "07.05" format
             if "." not in date_str:
@@ -213,7 +215,7 @@ class StoupBallardParser(BaseParser):
         except (ValueError, TypeError):
             return None
 
-    def _parse_date_from_text(self, text: str) -> datetime:
+    def _parse_date_from_text(self, text: str) -> Optional[datetime]:
         # Extract date from text like "Sat 07.05"
         date_match = re.search(r"(\d{2}\.\d{2})", text)
         if date_match:

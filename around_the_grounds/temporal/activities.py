@@ -2,14 +2,14 @@
 
 import json
 import os
-import subprocess
 import shutil
-from subprocess import CalledProcessError
+import subprocess
 
 # Import functions we need (these are safe to import in activities)
 import sys
 from datetime import datetime
 from pathlib import Path
+from subprocess import CalledProcessError
 from typing import Any, Dict, List, Optional, Tuple
 
 from temporalio import activity
@@ -125,14 +125,15 @@ class DeploymentActivities:
         return generate_web_data(reconstructed_events)
 
     @activity.defn
-    async def deploy_to_git(
-        self, web_data: Dict[str, Any], repository_url: str
-    ) -> bool:
+    async def deploy_to_git(self, params: Dict[str, Any]) -> bool:
         """Deploy web data to git repository."""
-        import shutil
         import tempfile
 
         from around_the_grounds.utils.github_auth import GitHubAppAuth
+
+        # Extract parameters
+        web_data = params["web_data"]
+        repository_url = params["repository_url"]
 
         try:
             activity.logger.info(

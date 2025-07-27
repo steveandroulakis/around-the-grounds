@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, timedelta, timezone
-from typing import List
+from typing import Any, List, Optional
 
 import aiohttp
 
@@ -21,7 +21,7 @@ class BaleBreakerParser(BaseParser):
             # Handle 403 errors or other access issues gracefully
             if "403" in str(e) or "Access forbidden" in str(e):
                 self.logger.warning(
-                    f"Access to main page blocked (403), using fallback collection ID"
+                    "Access to main page blocked (403), using fallback collection ID"
                 )
                 # Use known collection ID as fallback
                 collection_id = "61328af17400707612fccbc6"
@@ -57,7 +57,7 @@ class BaleBreakerParser(BaseParser):
             # Return fallback event instead of failing completely
             return self._create_fallback_event()
 
-    def _extract_collection_id(self, soup) -> str:
+    def _extract_collection_id(self, soup: Any) -> Optional[str]:
         """Extract the Squarespace calendar collection ID from the page"""
         try:
             # Look for calendar block with data-block-json attribute
@@ -73,7 +73,7 @@ class BaleBreakerParser(BaseParser):
                     collection_id = block_data.get("collectionId")
                     if collection_id:
                         self.logger.debug(f"Found collection ID: {collection_id}")
-                        return collection_id
+                        return str(collection_id)
 
             # Fallback: look in script tags for collection info
             scripts = soup.find_all("script")
@@ -88,7 +88,7 @@ class BaleBreakerParser(BaseParser):
                         self.logger.debug(
                             f"Found collection ID in script: {collection_id}"
                         )
-                        return collection_id
+                        return str(collection_id)
 
             return None
 
@@ -126,7 +126,7 @@ class BaleBreakerParser(BaseParser):
                     "November",
                     "December",
                 ]
-                month_str = f"{month_names[month-1]}-{year}"  # MMMM-yyyy format
+                month_str = f"{month_names[month - 1]}-{year}"  # MMMM-yyyy format
                 api_url = f"https://www.bbycballard.com/api/open/GetItemsByMonth?month={month_str}&collectionId={collection_id}"
 
                 self.logger.debug(f"Fetching calendar data from: {api_url}")
@@ -155,7 +155,7 @@ class BaleBreakerParser(BaseParser):
             self.logger.error(f"Traceback: {traceback.format_exc()}")
             return []
 
-    def _parse_api_event(self, event_data: dict) -> FoodTruckEvent:
+    def _parse_api_event(self, event_data: dict) -> Optional[FoodTruckEvent]:
         """Parse a single event from the Squarespace API response"""
         try:
             title = event_data.get("title", "").strip()

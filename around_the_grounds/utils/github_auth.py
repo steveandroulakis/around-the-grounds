@@ -4,9 +4,10 @@ import base64
 import logging
 import os
 import time
+from typing import Tuple
 
 import jwt
-import requests
+import requests  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class GitHubAppAuth:
                 "GITHUB_APP_PRIVATE_KEY_B64 environment variable is required"
             )
 
-    def _parse_repository_url(self, repository_url: str) -> tuple[str, str]:
+    def _parse_repository_url(self, repository_url: str) -> Tuple[str, str]:
         """Parse GitHub repository URL to extract owner and repo name."""
         # Handle both https://github.com/owner/repo.git and https://github.com/owner/repo formats
         url = repository_url.replace("https://github.com/", "").replace(".git", "")
@@ -37,6 +38,8 @@ class GitHubAppAuth:
 
     def _get_private_key(self) -> str:
         """Decode the base64-encoded private key."""
+        if not self.private_key_b64:
+            raise ValueError("Private key not available")
         try:
             return base64.b64decode(self.private_key_b64).decode("utf-8")
         except Exception as e:
@@ -90,7 +93,7 @@ class GitHubAppAuth:
             response.raise_for_status()
 
             token_data = response.json()
-            return token_data["token"]
+            return str(token_data["token"])
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to get installation token: {e}")
             raise ValueError(f"Failed to get GitHub installation token: {e}")
@@ -136,10 +139,10 @@ class GitHubAppAuth:
             raise ValueError(f"Failed to configure git authentication: {e}")
 
 
-def setup_github_auth() -> None:
+def setup_github_auth(repository_url: str) -> None:
     """Set up GitHub App authentication for git operations."""
     try:
-        auth = GitHubAppAuth()
+        auth = GitHubAppAuth(repository_url)
         token = auth.get_access_token()
         auth.configure_git_auth(token)
 

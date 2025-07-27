@@ -27,14 +27,14 @@ from .scrapers import ScraperCoordinator
 def load_brewery_config(config_path: Optional[str] = None) -> List[Brewery]:
     """Load brewery configuration from JSON file."""
     if config_path is None:
-        config_path = Path(__file__).parent / "config" / "breweries.json"
+        config_path_obj = Path(__file__).parent / "config" / "breweries.json"
     else:
-        config_path = Path(config_path)
+        config_path_obj = Path(config_path)
 
-    if not config_path.exists():
-        raise FileNotFoundError(f"Config file not found: {config_path}")
+    if not config_path_obj.exists():
+        raise FileNotFoundError(f"Config file not found: {config_path_obj}")
 
-    with open(config_path, "r") as f:
+    with open(config_path_obj, "r") as f:
         config = json.load(f)
 
     breweries = []
@@ -50,7 +50,9 @@ def load_brewery_config(config_path: Optional[str] = None) -> List[Brewery]:
     return breweries
 
 
-def format_events_output(events: List[FoodTruckEvent], errors: list = None) -> str:
+def format_events_output(
+    events: List[FoodTruckEvent], errors: Optional[List] = None
+) -> str:
     """Format events and errors for display."""
     output = []
 
@@ -182,7 +184,7 @@ def _deploy_with_github_auth(web_data: dict, repository_url: str) -> bool:
     from .utils.github_auth import GitHubAppAuth
 
     try:
-        print(f"🔐 Using GitHub App authentication for deployment...")
+        print("🔐 Using GitHub App authentication for deployment...")
 
         # Create temporary directory for git operations
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -313,8 +315,8 @@ def preview_locally(events: List[FoodTruckEvent]) -> bool:
 
         print(f"✅ Generated local preview: {len(events)} events")
         print(f"📁 Preview files in: {local_public_dir}")
-        print(f"🌐 To serve locally: cd public && python -m http.server 8000")
-        print(f"🔗 Then visit: http://localhost:8000")
+        print("🌐 To serve locally: cd public && python -m http.server 8000")
+        print("🔗 Then visit: http://localhost:8000")
 
         return True
 
@@ -338,7 +340,7 @@ async def scrape_food_trucks(config_path: Optional[str] = None) -> tuple:
     return events, errors
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     """Main entry point for the CLI."""
     parser = argparse.ArgumentParser(
         description="Track food truck schedules and locations"

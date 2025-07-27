@@ -1,5 +1,6 @@
 """Tests for Wheelie Pop parser."""
 
+from pathlib import Path
 
 import aiohttp
 import pytest
@@ -14,7 +15,7 @@ class TestWheeliePopParser:
     """Test the WheeliePopParser class."""
 
     @pytest.fixture
-    def brewery(self):
+    def brewery(self) -> Brewery:
         """Create a test brewery for Wheelie Pop."""
         return Brewery(
             key="wheelie-pop",
@@ -27,19 +28,21 @@ class TestWheeliePopParser:
         )
 
     @pytest.fixture
-    def parser(self, brewery):
+    def parser(self, brewery: Brewery) -> WheeliePopParser:
         """Create a parser instance."""
         return WheeliePopParser(brewery)
 
     @pytest.fixture
-    def sample_html(self, html_fixtures_dir):
+    def sample_html(self, html_fixtures_dir: Path) -> str:
         """Load sample HTML fixture."""
         fixture_path = html_fixtures_dir / "wheelie_pop_sample.html"
         return fixture_path.read_text()
 
     @pytest.mark.asyncio
     @freeze_time("2025-07-05")
-    async def test_parse_sample_data(self, parser, sample_html):
+    async def test_parse_sample_data(
+        self, parser: WheeliePopParser, sample_html: str
+    ) -> None:
         """Test parsing the sample HTML data."""
         with aioresponses() as m:
             m.get(parser.brewery.url, status=200, body=sample_html)
@@ -73,7 +76,7 @@ class TestWheeliePopParser:
                 assert event3.date.day == 10
 
     @pytest.mark.asyncio
-    async def test_parse_no_food_truck_section(self, parser):
+    async def test_parse_no_food_truck_section(self, parser: WheeliePopParser) -> None:
         """Test parsing when no UPCOMING FOOD TRUCKS section is found."""
         no_section_html = """
         <html><body>
@@ -95,7 +98,9 @@ class TestWheeliePopParser:
                 assert len(events) == 0
 
     @pytest.mark.asyncio
-    async def test_parse_empty_food_truck_section(self, parser):
+    async def test_parse_empty_food_truck_section(
+        self, parser: WheeliePopParser
+    ) -> None:
         """Test parsing when UPCOMING FOOD TRUCKS section exists but is empty."""
         empty_section_html = """
         <html><body>
@@ -117,7 +122,9 @@ class TestWheeliePopParser:
 
     @pytest.mark.asyncio
     @freeze_time("2025-07-05")
-    async def test_parse_mixed_valid_invalid_entries(self, parser):
+    async def test_parse_mixed_valid_invalid_entries(
+        self, parser: WheeliePopParser
+    ) -> None:
         """Test parsing with a mix of valid and invalid entries."""
         mixed_html = """
         <html><body>
@@ -145,7 +152,7 @@ class TestWheeliePopParser:
                 assert events[1].food_truck_name == "Another Valid Truck"
 
     @pytest.mark.asyncio
-    async def test_parse_network_error(self, parser):
+    async def test_parse_network_error(self, parser: WheeliePopParser) -> None:
         """Test handling of network errors."""
         with aioresponses() as m:
             m.get(parser.brewery.url, exception=aiohttp.ClientError("Network error"))
@@ -157,7 +164,7 @@ class TestWheeliePopParser:
                     await parser.parse(session)
 
     @pytest.mark.asyncio
-    async def test_parse_http_error(self, parser):
+    async def test_parse_http_error(self, parser: WheeliePopParser) -> None:
         """Test handling of HTTP errors."""
         with aioresponses() as m:
             m.get(parser.brewery.url, status=404)
@@ -168,7 +175,7 @@ class TestWheeliePopParser:
                 ):
                     await parser.parse(session)
 
-    def test_parse_food_truck_line_valid(self, parser):
+    def test_parse_food_truck_line_valid(self, parser: WheeliePopParser) -> None:
         """Test parsing a valid food truck line."""
         result = parser._parse_food_truck_line("Thursday, 7/3: Tisket Tasket")
 
@@ -179,7 +186,9 @@ class TestWheeliePopParser:
         assert result.start_time is None
         assert result.end_time is None
 
-    def test_parse_food_truck_line_with_extra_spaces(self, parser):
+    def test_parse_food_truck_line_with_extra_spaces(
+        self, parser: WheeliePopParser
+    ) -> None:
         """Test parsing a line with extra spaces."""
         result = parser._parse_food_truck_line(
             "  Saturday,   7/5  :   Vandalz Taqueria  "
@@ -190,7 +199,9 @@ class TestWheeliePopParser:
         assert result.date.month == 7
         assert result.date.day == 5
 
-    def test_parse_food_truck_line_invalid_format(self, parser):
+    def test_parse_food_truck_line_invalid_format(
+        self, parser: WheeliePopParser
+    ) -> None:
         """Test parsing an invalid line format."""
         invalid_lines = [
             "Thursday 7/3 Tisket Tasket",  # Missing colon
@@ -206,30 +217,33 @@ class TestWheeliePopParser:
             assert result is None, f"Expected None for line: '{line}'"
 
     @freeze_time("2025-07-05")
-    def test_parse_date_current_year(self, parser):
+    def test_parse_date_current_year(self, parser: WheeliePopParser) -> None:
         """Test date parsing for current year."""
         result = parser._parse_date("7/10")
+        assert result is not None
         assert result.year == 2025
         assert result.month == 7
         assert result.day == 10
 
     @freeze_time("2025-12-25")
-    def test_parse_date_next_year_rollover(self, parser):
+    def test_parse_date_next_year_rollover(self, parser: WheeliePopParser) -> None:
         """Test date parsing with year rollover."""
         result = parser._parse_date("1/15")
+        assert result is not None
         assert result.year == 2026  # Should be next year
         assert result.month == 1
         assert result.day == 15
 
     @freeze_time("2025-07-05")
-    def test_parse_date_same_month(self, parser):
+    def test_parse_date_same_month(self, parser: WheeliePopParser) -> None:
         """Test date parsing for same month."""
         result = parser._parse_date("7/20")
+        assert result is not None
         assert result.year == 2025  # Should be current year
         assert result.month == 7
         assert result.day == 20
 
-    def test_parse_date_invalid_formats(self, parser):
+    def test_parse_date_invalid_formats(self, parser: WheeliePopParser) -> None:
         """Test parsing invalid date formats."""
         invalid_dates = [
             "invalid",
@@ -248,7 +262,9 @@ class TestWheeliePopParser:
             assert result is None, f"Expected None for date: '{date_str}'"
 
     @pytest.mark.asyncio
-    async def test_parse_stops_at_other_sections(self, parser):
+    async def test_parse_stops_at_other_sections(
+        self, parser: WheeliePopParser
+    ) -> None:
         """Test that parsing stops when it encounters other sections."""
         section_boundary_html = """
         <html><body>
@@ -277,7 +293,7 @@ class TestWheeliePopParser:
                 assert "This Should Not Be Parsed" in truck_names
 
     @pytest.mark.asyncio
-    async def test_parse_with_whitespace_lines(self, parser):
+    async def test_parse_with_whitespace_lines(self, parser: WheeliePopParser) -> None:
         """Test parsing with whitespace and empty lines."""
         whitespace_html = """
         <html><body>

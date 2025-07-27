@@ -11,7 +11,7 @@ from around_the_grounds.parsers.stoup_ballard import StoupBallardParser
 class TestParserRegistry:
     """Test the ParserRegistry class."""
 
-    def test_get_existing_parser(self):
+    def test_get_existing_parser(self) -> None:
         """Test getting an existing parser."""
         parser_class = ParserRegistry.get_parser("stoup-ballard")
         assert parser_class == StoupBallardParser
@@ -19,12 +19,12 @@ class TestParserRegistry:
         parser_class = ParserRegistry.get_parser("yonder-balebreaker")
         assert parser_class == BaleBreakerParser
 
-    def test_get_nonexistent_parser(self):
+    def test_get_nonexistent_parser(self) -> None:
         """Test getting a parser that doesn't exist."""
         with pytest.raises(ValueError):
             ParserRegistry.get_parser("nonexistent-parser")
 
-    def test_get_supported_keys(self):
+    def test_get_supported_keys(self) -> None:
         """Test getting all supported parser keys."""
         keys = ParserRegistry.get_supported_keys()
 
@@ -32,12 +32,12 @@ class TestParserRegistry:
         assert "yonder-balebreaker" in keys
         assert isinstance(keys, list)
 
-    def test_parser_registry_is_not_empty(self):
+    def test_parser_registry_is_not_empty(self) -> None:
         """Test that the parser registry is not empty."""
         keys = ParserRegistry.get_supported_keys()
         assert len(keys) > 0
 
-    def test_parsers_are_classes(self):
+    def test_parsers_are_classes(self) -> None:
         """Test that registered parsers are actually classes."""
         keys = ParserRegistry.get_supported_keys()
 
@@ -47,12 +47,12 @@ class TestParserRegistry:
             # Check that it's a class (has __name__ attribute)
             assert hasattr(parser_class, "__name__")
 
-    def test_register_parser(self):
+    def test_register_parser(self) -> None:
         """Test registering a new parser."""
 
         # Create a dummy parser class
         class DummyParser(BaseParser):
-            async def parse(self, session):
+            async def parse(self, session):  # type: ignore
                 return []
 
         # Register it
@@ -65,7 +65,7 @@ class TestParserRegistry:
         # Clean up - remove the dummy parser
         ParserRegistry._parsers.pop("dummy", None)
 
-    def test_case_sensitive_parser_keys(self):
+    def test_case_sensitive_parser_keys(self) -> None:
         """Test that parser keys are case sensitive."""
         # Should work with correct case
         parser_class = ParserRegistry.get_parser("stoup-ballard")

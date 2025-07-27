@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from typing import List
+from typing import List, Optional, Tuple
 
 import aiohttp
 
@@ -22,7 +22,8 @@ class ObecBrewingParser(BaseParser):
 
             # Use the regex pattern from config to find food truck information
             # Pattern: "Food truck:\s*([^0-9]+)\s*([0-9:]+\s*-\s*[0-9:]+)"
-            pattern = self.brewery.parser_config.get(
+            parser_config = self.brewery.parser_config or {}
+            pattern = parser_config.get(
                 "pattern", r"Food truck:\s*([^0-9]+)\s*([0-9:]+\s*-\s*[0-9:]+)"
             )
 
@@ -61,7 +62,9 @@ class ObecBrewingParser(BaseParser):
             self.logger.error(f"Error parsing Obec Brewing: {str(e)}")
             raise ValueError(f"Failed to parse Obec Brewing website: {str(e)}")
 
-    def _parse_time_range(self, time_range: str) -> tuple:
+    def _parse_time_range(
+        self, time_range: str
+    ) -> Tuple[Optional[datetime], Optional[datetime]]:
         """Parse time range like '4:00 - 8:00' into start and end datetime objects."""
         try:
             # Split on dash/hyphen
@@ -89,7 +92,7 @@ class ObecBrewingParser(BaseParser):
             self.logger.warning(f"Failed to parse time range '{time_range}': {str(e)}")
             return None, None
 
-    def _parse_single_time(self, time_str: str) -> tuple:
+    def _parse_single_time(self, time_str: str) -> Optional[Tuple[int, int]]:
         """Parse a single time like '4:00' or '16:00' into (hour, minute)."""
         try:
             # Handle formats like "4:00", "16:00", "4", etc.

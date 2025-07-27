@@ -7,6 +7,7 @@ Supports multiple authentication methods:
 """
 
 import os
+from typing import Union
 
 from temporalio.client import Client
 from temporalio.service import TLSConfig
@@ -58,10 +59,10 @@ async def get_temporal_client() -> Client:
         Exception: If connection fails or configuration is invalid
     """
     # Default to no TLS for local development
-    tls_config = False
+    tls_config: Union[bool, TLSConfig] = False
 
     # Debug logging for connection details
-    print(f"🔗 Connecting to Temporal server:")
+    print("🔗 Connecting to Temporal server:")
     print(f"   Address: {TEMPORAL_ADDRESS}")
     print(f"   Namespace: {TEMPORAL_NAMESPACE}")
     print(f"   Task Queue: {TEMPORAL_TASK_QUEUE}")
@@ -173,7 +174,9 @@ def get_configuration_summary() -> dict:
         "auth_method": (
             "api_key"
             if TEMPORAL_API_KEY
-            else "mtls" if TEMPORAL_TLS_CERT and TEMPORAL_TLS_KEY else "none"
+            else "mtls"
+            if TEMPORAL_TLS_CERT and TEMPORAL_TLS_KEY
+            else "none"
         ),
         "tls_cert_path": TEMPORAL_TLS_CERT or None,
         "tls_key_path": TEMPORAL_TLS_KEY or None,

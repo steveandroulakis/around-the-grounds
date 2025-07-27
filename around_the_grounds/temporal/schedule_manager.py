@@ -12,14 +12,16 @@ import asyncio
 import logging
 import sys
 from datetime import timedelta
-from typing import List, Optional
+from typing import Dict, List, Optional, Any, cast
 
 from temporalio.client import (
+    Client,
     Schedule,
     ScheduleActionStartWorkflow,
     ScheduleIntervalSpec,
     ScheduleSpec,
     ScheduleState,
+    ScheduleUpdate,
 )
 
 from .config import TEMPORAL_TASK_QUEUE, get_temporal_client, validate_configuration
@@ -32,10 +34,10 @@ logger = logging.getLogger(__name__)
 class ScheduleManager:
     """Comprehensive schedule management for Food Truck workflows."""
 
-    def __init__(self):
-        self.client = None
+    def __init__(self) -> None:
+        self.client: Optional[Client] = None
 
-    async def connect(self):
+    async def connect(self) -> None:
         """Connect to Temporal server using configuration system."""
         try:
             validate_configuration()
@@ -44,6 +46,11 @@ class ScheduleManager:
         except Exception as e:
             logger.error(f"❌ Failed to connect to Temporal: {e}")
             raise
+
+    async def _ensure_connected(self) -> None:
+        """Ensure client is connected."""
+        if self.client is None:
+            await self.connect()
 
     async def create_schedule(
         self,
@@ -68,8 +75,7 @@ class ScheduleManager:
         Returns:
             Schedule ID of the created schedule
         """
-        if not self.client:
-            await self.connect()
+        await self._ensure_connected()
 
         try:
             # Create workflow parameters
@@ -99,6 +105,8 @@ class ScheduleManager:
             )
 
             # Create the schedule
+            await self._ensure_connected()
+            assert self.client is not None  # Type checker hint
             await self.client.create_schedule(schedule_id, schedule)
 
             logger.info(
@@ -116,8 +124,8 @@ class ScheduleManager:
 
     async def list_schedules(self) -> List[str]:
         """List all existing schedules."""
-        if not self.client:
-            await self.connect()
+        await self._ensure_connected()
+        assert self.client is not None  # Type checker hint
 
         try:
             schedules = []
@@ -137,15 +145,15 @@ class ScheduleManager:
 
     async def describe_schedule(self, schedule_id: str) -> dict:
         """Get detailed information about a specific schedule."""
-        if not self.client:
-            await self.connect()
+        await self._ensure_connected()
+        assert self.client is not None  # Type checker hint
 
         try:
             handle = self.client.get_schedule_handle(schedule_id)
             desc = await handle.describe()
 
             # Extract key information
-            info = {
+            info: Dict[str, Any] = {
                 "id": schedule_id,
                 "note": desc.schedule.state.note,
                 "paused": desc.schedule.state.paused,
@@ -157,7 +165,7 @@ class ScheduleManager:
             # Get interval information
             if desc.schedule.spec.intervals:
                 for interval in desc.schedule.spec.intervals:
-                    info["intervals"].append(
+                    cast(List[Any], info["intervals"]).append(
                         {
                             "every": str(interval.every),
                             "offset": str(interval.offset) if interval.offset else None,
@@ -166,31 +174,58 @@ class ScheduleManager:
 
             # Get next actions
             for action in desc.info.next_action_times[:5]:  # Show next 5
-                info["next_actions"].append(action.isoformat())
+                cast(List[Any], info["next_actions"]).append(action.isoformat())
 
             # Get recent actions
-            for action in desc.info.recent_actions[-5:]:  # Show last 5
-                info["recent_actions"].append(
-                    {
-                        "scheduled_time": action.scheduled_time.isoformat(),
-                        "actual_time": action.actual_time.isoformat(),
-                        "workflow_id": (
-                            action.start_workflow_result.workflow_id
-                            if action.start_workflow_result
-                            else None
-                        ),
-                    }
-                )
+            for recent_action in desc.info.recent_actions[-5:]:  # Show last 5
+                action_info: Dict[str, Any] = {}
+
+                # Use try/except to handle attributes that may not exist in all SDK versions
+                try:
+                    if (
+                        hasattr(recent_action, "scheduled_time")
+                        and recent_action.scheduled_time  # type: ignore[attr-defined]
+                    ):
+                        action_info["scheduled_time"] = (
+                            recent_action.scheduled_time.isoformat()  # type: ignore[attr-defined]
+                        )
+                except AttributeError:
+                    pass
+
+                try:
+                    if (
+                        hasattr(recent_action, "actual_time")
+                        and recent_action.actual_time  # type: ignore[attr-defined]
+                    ):
+                        action_info["actual_time"] = (
+                            recent_action.actual_time.isoformat()  # type: ignore[attr-defined]
+                        )
+                except AttributeError:
+                    pass
+
+                try:
+                    if (
+                        hasattr(recent_action, "start_workflow_result")
+                        and recent_action.start_workflow_result  # type: ignore[attr-defined]
+                    ):
+                        if hasattr(recent_action.start_workflow_result, "workflow_id"):  # type: ignore[attr-defined]
+                            action_info["workflow_id"] = (
+                                recent_action.start_workflow_result.workflow_id  # type: ignore[attr-defined]
+                            )
+                except AttributeError:
+                    pass
+
+                cast(List[Any], info["recent_actions"]).append(action_info)
 
             logger.info(f"📋 Schedule Details for '{schedule_id}':")
             logger.info(f"   Note: {info['note']}")
             logger.info(f"   Paused: {info['paused']}")
             logger.info(f"   Intervals: {info['intervals']}")
             logger.info(
-                f"   Next {len(info['next_actions'])} actions: {info['next_actions']}"
+                f"   Next {len(cast(List[Any], info['next_actions']))} actions: {info['next_actions']}"
             )
             logger.info(
-                f"   Recent {len(info['recent_actions'])} actions: {len(info['recent_actions'])}"
+                f"   Recent {len(cast(List[Any], info['recent_actions']))} actions: {len(cast(List[Any], info['recent_actions']))}"
             )
 
             return info
@@ -201,8 +236,8 @@ class ScheduleManager:
 
     async def delete_schedule(self, schedule_id: str) -> bool:
         """Delete a schedule."""
-        if not self.client:
-            await self.connect()
+        await self._ensure_connected()
+        assert self.client is not None  # Type checker hint
 
         try:
             handle = self.client.get_schedule_handle(schedule_id)
@@ -218,8 +253,8 @@ class ScheduleManager:
         self, schedule_id: str, note: Optional[str] = None
     ) -> bool:
         """Pause a schedule."""
-        if not self.client:
-            await self.connect()
+        await self._ensure_connected()
+        assert self.client is not None  # Type checker hint
 
         try:
             handle = self.client.get_schedule_handle(schedule_id)
@@ -237,8 +272,8 @@ class ScheduleManager:
         self, schedule_id: str, note: Optional[str] = None
     ) -> bool:
         """Unpause a schedule."""
-        if not self.client:
-            await self.connect()
+        await self._ensure_connected()
+        assert self.client is not None  # Type checker hint
 
         try:
             handle = self.client.get_schedule_handle(schedule_id)
@@ -254,8 +289,8 @@ class ScheduleManager:
 
     async def trigger_schedule(self, schedule_id: str) -> bool:
         """Trigger an immediate execution of a schedule."""
-        if not self.client:
-            await self.connect()
+        await self._ensure_connected()
+        assert self.client is not None  # Type checker hint
 
         try:
             handle = self.client.get_schedule_handle(schedule_id)
@@ -271,8 +306,8 @@ class ScheduleManager:
         self, schedule_id: str, new_interval_minutes: int
     ) -> bool:
         """Update the interval of an existing schedule."""
-        if not self.client:
-            await self.connect()
+        await self._ensure_connected()
+        assert self.client is not None  # Type checker hint
 
         try:
             handle = self.client.get_schedule_handle(schedule_id)
@@ -287,7 +322,12 @@ class ScheduleManager:
             ]
 
             # Update the schedule
-            await handle.update(updater=lambda schedule: current_schedule)
+            from temporalio.client import ScheduleUpdateInput
+
+            async def updater(_input: ScheduleUpdateInput) -> ScheduleUpdate:
+                return ScheduleUpdate(schedule=current_schedule)
+
+            await handle.update(updater=updater)
 
             logger.info(
                 f"🔄 Updated schedule '{schedule_id}' to {new_interval_minutes} minute interval"
@@ -299,7 +339,7 @@ class ScheduleManager:
             raise
 
 
-async def main():
+async def main() -> None:
     """Main CLI interface for schedule management."""
     parser = argparse.ArgumentParser(
         description="Manage Food Truck Temporal workflow schedules",
@@ -358,7 +398,7 @@ Examples:
     )
 
     # List schedules command
-    list_parser = subparsers.add_parser("list", help="List all schedules")
+    _ = subparsers.add_parser("list", help="List all schedules")
 
     # Describe schedule command
     describe_parser = subparsers.add_parser(

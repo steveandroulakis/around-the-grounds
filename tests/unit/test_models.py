@@ -2,14 +2,13 @@
 
 from datetime import datetime
 
-
 from around_the_grounds.models import Brewery, FoodTruckEvent
 
 
 class TestBrewery:
     """Test the Brewery model."""
 
-    def test_brewery_creation(self):
+    def test_brewery_creation(self) -> None:
         """Test basic brewery creation."""
         brewery = Brewery(
             key="test-key", name="Test Brewery", url="https://example.com"
@@ -20,7 +19,7 @@ class TestBrewery:
         assert brewery.url == "https://example.com"
         assert brewery.parser_config == {}
 
-    def test_brewery_with_config(self):
+    def test_brewery_with_config(self) -> None:
         """Test brewery creation with parser config."""
         config = {"test": "value"}
         brewery = Brewery(
@@ -32,7 +31,7 @@ class TestBrewery:
 
         assert brewery.parser_config == config
 
-    def test_brewery_equality(self):
+    def test_brewery_equality(self) -> None:
         """Test brewery equality comparison."""
         brewery1 = Brewery("key1", "Name1", "url1")
         brewery2 = Brewery("key1", "Name1", "url1")
@@ -45,7 +44,7 @@ class TestBrewery:
 class TestFoodTruckEvent:
     """Test the FoodTruckEvent model."""
 
-    def test_food_truck_event_creation(self):
+    def test_food_truck_event_creation(self) -> None:
         """Test basic food truck event creation."""
         event_date = datetime(2025, 7, 5, 12, 0, 0)
 
@@ -64,7 +63,7 @@ class TestFoodTruckEvent:
         assert event.end_time is None
         assert event.description is None
 
-    def test_food_truck_event_with_times(self):
+    def test_food_truck_event_with_times(self) -> None:
         """Test food truck event with start and end times."""
         event_date = datetime(2025, 7, 5, 12, 0, 0)
         start_time = datetime(2025, 7, 5, 13, 0, 0)
@@ -84,7 +83,7 @@ class TestFoodTruckEvent:
         assert event.end_time == end_time
         assert event.description == "Test description"
 
-    def test_food_truck_event_equality(self):
+    def test_food_truck_event_equality(self) -> None:
         """Test food truck event equality comparison."""
         event_date = datetime(2025, 7, 5, 12, 0, 0)
 
@@ -95,7 +94,7 @@ class TestFoodTruckEvent:
         assert event1 == event2
         assert event1 != event3
 
-    def test_food_truck_event_string_representation(self):
+    def test_food_truck_event_string_representation(self) -> None:
         """Test string representation of food truck event."""
         event_date = datetime(2025, 7, 5, 12, 0, 0)
 

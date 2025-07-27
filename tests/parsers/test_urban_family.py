@@ -1,7 +1,8 @@
 """Tests for Urban Family parser."""
 
 from datetime import datetime
-from unittest.mock import patch
+from typing import Any, Dict, List
+from unittest.mock import Mock, patch
 
 import aiohttp
 import pytest
@@ -15,7 +16,7 @@ class TestUrbanFamilyParser:
     """Test the UrbanFamilyParser class."""
 
     @pytest.fixture
-    def brewery(self):
+    def brewery(self) -> Brewery:
         """Create a test brewery for Urban Family."""
         return Brewery(
             key="urban-family",
@@ -28,12 +29,12 @@ class TestUrbanFamilyParser:
         )
 
     @pytest.fixture
-    def parser(self, brewery):
+    def parser(self, brewery: Brewery) -> UrbanFamilyParser:
         """Create a parser instance."""
         return UrbanFamilyParser(brewery)
 
     @pytest.fixture
-    def sample_api_response(self):
+    def sample_api_response(self) -> List[Dict[str, Any]]:
         """Sample API response with food truck events."""
         return [
             {
@@ -81,7 +82,7 @@ class TestUrbanFamilyParser:
         ]
 
     @pytest.fixture
-    def sample_api_response_with_image_names(self):
+    def sample_api_response_with_image_names(self) -> List[Dict[str, Any]]:
         """API response where food truck names need to be extracted from image URLs."""
         return [
             {
@@ -111,8 +112,11 @@ class TestUrbanFamilyParser:
         "around_the_grounds.utils.vision_analyzer.VisionAnalyzer.analyze_food_truck_image"
     )
     async def test_parse_success_with_api_data(
-        self, mock_vision, parser, sample_api_response
-    ):
+        self,
+        mock_vision: Mock,
+        parser: UrbanFamilyParser,
+        sample_api_response: List[Dict[str, Any]],
+    ) -> None:
         """Test successful parsing of API data."""
         # Mock vision analysis to return None for the generic logo
         mock_vision.return_value = None
@@ -151,8 +155,10 @@ class TestUrbanFamilyParser:
 
     @pytest.mark.asyncio
     async def test_parse_with_image_name_extraction(
-        self, parser, sample_api_response_with_image_names
-    ):
+        self,
+        parser: UrbanFamilyParser,
+        sample_api_response_with_image_names: List[Dict[str, Any]],
+    ) -> None:
         """Test food truck name extraction from image URLs."""
         api_url = (
             "https://hivey-api-prod-pineapple.onrender.com/urbanfamily/public-calendar"
@@ -171,7 +177,7 @@ class TestUrbanFamilyParser:
         assert events[1].food_truck_name == "Woodshop Bbq"
 
     @pytest.mark.asyncio
-    async def test_parse_empty_response(self, parser):
+    async def test_parse_empty_response(self, parser: UrbanFamilyParser) -> None:
         """Test parsing empty API response."""
         api_url = (
             "https://hivey-api-prod-pineapple.onrender.com/urbanfamily/public-calendar"
@@ -186,7 +192,7 @@ class TestUrbanFamilyParser:
         assert len(events) == 0
 
     @pytest.mark.asyncio
-    async def test_parse_api_error_404(self, parser):
+    async def test_parse_api_error_404(self, parser: UrbanFamilyParser) -> None:
         """Test handling of 404 error from API."""
         api_url = (
             "https://hivey-api-prod-pineapple.onrender.com/urbanfamily/public-calendar"
@@ -202,7 +208,7 @@ class TestUrbanFamilyParser:
                     await parser.parse(session)
 
     @pytest.mark.asyncio
-    async def test_parse_api_error_403(self, parser):
+    async def test_parse_api_error_403(self, parser: UrbanFamilyParser) -> None:
         """Test handling of 403 error from API."""
         api_url = (
             "https://hivey-api-prod-pineapple.onrender.com/urbanfamily/public-calendar"
@@ -216,7 +222,7 @@ class TestUrbanFamilyParser:
                     await parser.parse(session)
 
     @pytest.mark.asyncio
-    async def test_parse_api_error_500(self, parser):
+    async def test_parse_api_error_500(self, parser: UrbanFamilyParser) -> None:
         """Test handling of 500 error from API."""
         api_url = (
             "https://hivey-api-prod-pineapple.onrender.com/urbanfamily/public-calendar"
@@ -230,7 +236,7 @@ class TestUrbanFamilyParser:
                     await parser.parse(session)
 
     @pytest.mark.asyncio
-    async def test_parse_invalid_json_response(self, parser):
+    async def test_parse_invalid_json_response(self, parser: UrbanFamilyParser) -> None:
         """Test handling of invalid JSON response."""
         api_url = (
             "https://hivey-api-prod-pineapple.onrender.com/urbanfamily/public-calendar"
@@ -244,7 +250,7 @@ class TestUrbanFamilyParser:
                     await parser.parse(session)
 
     @pytest.mark.asyncio
-    async def test_parse_network_error(self, parser):
+    async def test_parse_network_error(self, parser: UrbanFamilyParser) -> None:
         """Test handling of network errors."""
         api_url = (
             "https://hivey-api-prod-pineapple.onrender.com/urbanfamily/public-calendar"
@@ -260,7 +266,9 @@ class TestUrbanFamilyParser:
                     await parser.parse(session)
 
     @pytest.mark.asyncio
-    async def test_parse_filters_invalid_events(self, parser):
+    async def test_parse_filters_invalid_events(
+        self, parser: UrbanFamilyParser
+    ) -> None:
         """Test that invalid events are filtered out."""
         api_url = (
             "https://hivey-api-prod-pineapple.onrender.com/urbanfamily/public-calendar"
@@ -314,27 +322,31 @@ class TestUrbanFamilyParser:
         assert event_by_date[11].food_truck_name == "Good Eats"
         assert event_by_date[11].date == datetime(2025, 7, 11)
 
-    def test_extract_food_truck_name_from_title(self, parser):
+    def test_extract_food_truck_name_from_title(
+        self, parser: UrbanFamilyParser
+    ) -> None:
         """Test food truck name extraction from event title."""
         # Test explicit name in title
         item1 = {"eventTitle": "FOOD TRUCK - Awesome Tacos"}
         result, ai_generated = parser._extract_food_truck_name(item1)
         assert result == "Awesome Tacos"
-        assert ai_generated == False
+        assert not ai_generated
 
         # Test title that's not just "FOOD TRUCK"
         item2 = {"eventTitle": "Special Event - Pizza Night"}
         result, ai_generated = parser._extract_food_truck_name(item2)
         assert result == "Special Event - Pizza Night"
-        assert ai_generated == False
+        assert not ai_generated
 
         # Test generic "FOOD TRUCK" title (should return None for this test)
         item3 = {"eventTitle": "FOOD TRUCK"}
         result, ai_generated = parser._extract_food_truck_name(item3)
         assert result is None
-        assert ai_generated == False
+        assert not ai_generated
 
-    def test_extract_food_truck_name_from_image_url(self, parser):
+    def test_extract_food_truck_name_from_image_url(
+        self, parser: UrbanFamilyParser
+    ) -> None:
         """Test food truck name extraction from image URL."""
         item = {
             "eventTitle": "FOOD TRUCK",
@@ -342,9 +354,11 @@ class TestUrbanFamilyParser:
         }
         result, ai_generated = parser._extract_food_truck_name(item)
         assert result == "Awesome Tacos Logo"
-        assert ai_generated == False
+        assert not ai_generated
 
-    def test_extract_food_truck_name_no_valid_name(self, parser):
+    def test_extract_food_truck_name_no_valid_name(
+        self, parser: UrbanFamilyParser
+    ) -> None:
         """Test when no valid food truck name can be extracted."""
         item = {
             "eventTitle": "FOOD TRUCK",
@@ -352,9 +366,9 @@ class TestUrbanFamilyParser:
         }
         result, ai_generated = parser._extract_food_truck_name(item)
         assert result is None
-        assert ai_generated == False
+        assert not ai_generated
 
-    def test_parse_urban_family_date_formats(self, parser):
+    def test_parse_urban_family_date_formats(self, parser: UrbanFamilyParser) -> None:
         """Test parsing various date formats."""
         # Standard format
         assert parser._parse_urban_family_date("July 06, 2025") == datetime(2025, 7, 6)
@@ -370,7 +384,7 @@ class TestUrbanFamilyParser:
         # Invalid format should return None
         assert parser._parse_urban_family_date("invalid date") is None
 
-    def test_parse_time_string_24_hour_format(self, parser):
+    def test_parse_time_string_24_hour_format(self, parser: UrbanFamilyParser) -> None:
         """Test parsing 24-hour time format."""
         test_date = datetime(2025, 7, 6)
 
@@ -393,7 +407,7 @@ class TestUrbanFamilyParser:
             2025, 7, 6, 23, 59
         )
 
-    def test_parse_time_string_12_hour_format(self, parser):
+    def test_parse_time_string_12_hour_format(self, parser: UrbanFamilyParser) -> None:
         """Test parsing 12-hour time format with AM/PM."""
         test_date = datetime(2025, 7, 6)
 
@@ -413,7 +427,7 @@ class TestUrbanFamilyParser:
             2025, 7, 6, 0, 0
         )
 
-    def test_parse_time_string_invalid_formats(self, parser):
+    def test_parse_time_string_invalid_formats(self, parser: UrbanFamilyParser) -> None:
         """Test parsing invalid time formats."""
         test_date = datetime(2025, 7, 6)
 
@@ -423,7 +437,7 @@ class TestUrbanFamilyParser:
         assert parser._parse_time_string("invalid", test_date) is None
         assert parser._parse_time_string("", test_date) is None
 
-    def test_extract_times_from_event_dates(self, parser):
+    def test_extract_times_from_event_dates(self, parser: UrbanFamilyParser) -> None:
         """Test time extraction from eventDates structure."""
         test_date = datetime(2025, 7, 6)
 
@@ -437,18 +451,18 @@ class TestUrbanFamilyParser:
         assert start_time == datetime(2025, 7, 6, 13, 0)
         assert end_time == datetime(2025, 7, 6, 19, 0)
 
-    def test_extract_times_missing_data(self, parser):
+    def test_extract_times_missing_data(self, parser: UrbanFamilyParser) -> None:
         """Test time extraction when data is missing."""
         test_date = datetime(2025, 7, 6)
 
         # Missing eventDates
-        item1 = {}
+        item1: Dict[str, Any] = {}
         start_time, end_time = parser._extract_times(item1, test_date)
         assert start_time is None
         assert end_time is None
 
         # Empty eventDates
-        item2 = {"eventDates": []}
+        item2: Dict[str, Any] = {"eventDates": []}
         start_time, end_time = parser._extract_times(item2, test_date)
         assert start_time is None
         assert end_time is None
@@ -459,7 +473,7 @@ class TestUrbanFamilyParser:
         assert start_time is None
         assert end_time is None
 
-    def test_parse_json_data_dict_format(self, parser):
+    def test_parse_json_data_dict_format(self, parser: UrbanFamilyParser) -> None:
         """Test parsing JSON data in dict format with 'events' key."""
         data = {
             "events": [
@@ -481,7 +495,7 @@ class TestUrbanFamilyParser:
         assert len(events) == 1
         assert events[0].food_truck_name == "Test Truck"
 
-    def test_parse_json_data_invalid_structure(self, parser):
+    def test_parse_json_data_invalid_structure(self, parser: UrbanFamilyParser) -> None:
         """Test parsing invalid JSON data structure."""
         # String data should be handled gracefully (returns empty list)
         events = parser._parse_json_data("invalid data")

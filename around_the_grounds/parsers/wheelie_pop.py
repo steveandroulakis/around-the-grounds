@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 import aiohttp
 
@@ -19,7 +19,7 @@ class WheeliePopParser(BaseParser):
 
             # Look for the "UPCOMING FOOD TRUCKS" section in the HTML
             upcoming_element = soup.find(
-                string=lambda text: text and "UPCOMING FOOD TRUCKS" in text
+                string=lambda text: bool(text and "UPCOMING FOOD TRUCKS" in text)
             )
             if not upcoming_element:
                 self.logger.warning("Could not find 'UPCOMING FOOD TRUCKS' section")
@@ -65,7 +65,7 @@ class WheeliePopParser(BaseParser):
             self.logger.error(f"Error parsing Wheelie Pop: {str(e)}")
             raise ValueError(f"Failed to parse Wheelie Pop website: {str(e)}")
 
-    def _parse_food_truck_line(self, line: str) -> FoodTruckEvent:
+    def _parse_food_truck_line(self, line: str) -> Optional[FoodTruckEvent]:
         """
         Parse a line like "Thursday, 7/3: Tisket Tasket"
         """
@@ -107,7 +107,7 @@ class WheeliePopParser(BaseParser):
             self.logger.debug(f"Error parsing line '{line}': {str(e)}")
             return None
 
-    def _parse_date(self, date_str: str) -> datetime:
+    def _parse_date(self, date_str: str) -> Optional[datetime]:
         """
         Parse date string in M/D format (e.g., "7/3")
         """

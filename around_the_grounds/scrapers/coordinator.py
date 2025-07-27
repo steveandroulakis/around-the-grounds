@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import List
+from typing import List, Optional
 
 import aiohttp
 
@@ -13,15 +13,19 @@ class ScrapingError:
     """Represents an error that occurred during scraping."""
 
     def __init__(
-        self, brewery: Brewery, error_type: str, message: str, details: str = None
-    ):
+        self,
+        brewery: Brewery,
+        error_type: str,
+        message: str,
+        details: Optional[str] = None,
+    ) -> None:
         self.brewery = brewery
         self.error_type = error_type
         self.message = message
         self.details = details
         self.timestamp = datetime.now()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.error_type}: {self.message}"
 
 

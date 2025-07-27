@@ -21,7 +21,7 @@ class VisionConfig:
     api_key: Optional[str] = None
 
     @classmethod
-    def from_env(cls):
+    def from_env(cls) -> "VisionConfig":
         """Create configuration from environment variables."""
         return cls(
             enabled=os.getenv("VISION_ANALYSIS_ENABLED", "true").lower() == "true",
