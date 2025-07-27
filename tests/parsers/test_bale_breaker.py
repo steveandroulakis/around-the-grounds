@@ -1,10 +1,15 @@
 """Tests for Bale Breaker parser."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
 import aiohttp
+
+try:
+    from zoneinfo import ZoneInfo  # type: ignore
+except ImportError:
+    from backports.zoneinfo import ZoneInfo  # type: ignore
 import pytest
 from aioresponses import aioresponses
 
@@ -294,3 +299,83 @@ class TestBaleBreakerParser:
                     assert isinstance(events, list)
                     # Should at least have fallback event if no API data
                     assert len(events) >= 1
+
+    def test_timezone_conversion_pdt_summer(self, parser: BaleBreakerParser) -> None:
+        """Test timezone conversion during PDT (Pacific Daylight Time) period."""
+        # July 12, 2024 16:00 UTC (summer - PDT is UTC-7)
+        utc_timestamp_ms = 1720800000000  # July 12, 2024 16:00:00 UTC
+        
+        event_data = {
+            "title": "Test Summer Event",
+            "startDate": utc_timestamp_ms,
+            "endDate": utc_timestamp_ms + (4 * 60 * 60 * 1000),  # +4 hours
+        }
+
+        event = parser._parse_api_event(event_data)
+        
+        assert event is not None
+        # In PDT (UTC-7), 16:00 UTC should be 09:00 PDT
+        assert event.date.hour == 9
+        assert event.end_time is not None
+        assert event.end_time.hour == 13
+        
+        # Verify using proper timezone
+        utc_time = datetime.fromtimestamp(utc_timestamp_ms / 1000, tz=timezone.utc)
+        pacific_tz = ZoneInfo("America/Los_Angeles")
+        expected_pacific = utc_time.astimezone(pacific_tz)
+        
+        # Event times should match proper timezone conversion
+        assert event.date.hour == expected_pacific.hour
+        assert event.date.minute == expected_pacific.minute
+
+    def test_timezone_conversion_pst_winter(self, parser: BaleBreakerParser) -> None:
+        """Test timezone conversion during PST (Pacific Standard Time) period."""
+        # January 15, 2024 14:00 UTC (winter - PST is UTC-8)
+        utc_timestamp_ms = 1705327200000  # January 15, 2024 14:00:00 UTC
+        
+        event_data = {
+            "title": "Test Winter Event", 
+            "startDate": utc_timestamp_ms,
+            "endDate": utc_timestamp_ms + (4 * 60 * 60 * 1000),  # +4 hours
+        }
+
+        event = parser._parse_api_event(event_data)
+        
+        assert event is not None
+        # In PST (UTC-8), 14:00 UTC should be 06:00 PST
+        assert event.date.hour == 6
+        assert event.end_time is not None
+        assert event.end_time.hour == 10
+        
+        # Verify using proper timezone
+        utc_time = datetime.fromtimestamp(utc_timestamp_ms / 1000, tz=timezone.utc)
+        pacific_tz = ZoneInfo("America/Los_Angeles")
+        expected_pacific = utc_time.astimezone(pacific_tz)
+        
+        # Event times should match proper timezone conversion
+        assert event.date.hour == expected_pacific.hour
+        assert event.date.minute == expected_pacific.minute
+
+    def test_timezone_handles_dst_transition(self, parser: BaleBreakerParser) -> None:
+        """Test timezone conversion around DST transitions."""
+        # Test a time during DST transition (Spring forward: March 10, 2024)
+        # 10:00 UTC on March 10, 2024 (during transition)
+        utc_timestamp_ms = 1710072000000  # March 10, 2024 10:00:00 UTC
+        
+        event_data = {
+            "title": "DST Transition Test",
+            "startDate": utc_timestamp_ms,
+        }
+
+        event = parser._parse_api_event(event_data)
+        
+        assert event is not None
+        
+        # Verify the timezone conversion matches system expectations
+        utc_time = datetime.fromtimestamp(utc_timestamp_ms / 1000, tz=timezone.utc)
+        pacific_tz = ZoneInfo("America/Los_Angeles")
+        expected_pacific = utc_time.astimezone(pacific_tz)
+        
+        # Event should use the correct offset for that specific date
+        assert event.date.hour == expected_pacific.hour
+        assert event.date.day == expected_pacific.day

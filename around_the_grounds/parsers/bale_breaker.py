@@ -4,6 +4,11 @@ from typing import Any, List, Optional
 
 import aiohttp
 
+try:
+    from zoneinfo import ZoneInfo  # type: ignore
+except ImportError:
+    from backports.zoneinfo import ZoneInfo  # type: ignore
+
 from ..models import FoodTruckEvent
 from .base import BaseParser
 
@@ -174,10 +179,9 @@ class BaleBreakerParser(BaseParser):
             start_date_utc = datetime.fromtimestamp(
                 start_timestamp / 1000, tz=timezone.utc
             )
-            pacific_offset = timedelta(
-                hours=-7
-            )  # Pacific Daylight Time (UTC-7) for summer months
-            start_date_pacific = start_date_utc.astimezone(timezone(pacific_offset))
+            # Use proper Pacific timezone that handles PST/PDT automatically
+            pacific_tz = ZoneInfo("America/Los_Angeles")
+            start_date_pacific = start_date_utc.astimezone(pacific_tz)
             start_date = start_date_pacific.replace(
                 tzinfo=None
             )  # Remove timezone info for compatibility
@@ -187,7 +191,7 @@ class BaleBreakerParser(BaseParser):
                 end_date_utc = datetime.fromtimestamp(
                     end_timestamp / 1000, tz=timezone.utc
                 )
-                end_date_pacific = end_date_utc.astimezone(timezone(pacific_offset))
+                end_date_pacific = end_date_utc.astimezone(pacific_tz)
                 end_date = end_date_pacific.replace(
                     tzinfo=None
                 )  # Remove timezone info for compatibility
