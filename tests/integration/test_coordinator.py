@@ -83,6 +83,7 @@ class TestScraperCoordinator:
             # Mock parser classes
             def mock_parser_class_1(brewery: Brewery) -> AsyncMock:
                 return mock_parser_1
+
             def mock_parser_class_2(brewery: Brewery) -> AsyncMock:
                 return mock_parser_2
 
@@ -109,6 +110,7 @@ class TestScraperCoordinator:
             # First parser succeeds
             mock_parser_1 = AsyncMock()
             mock_parser_1.parse.return_value = [sample_events[0]]
+
             def mock_parser_class_1(brewery: Brewery) -> AsyncMock:
                 return mock_parser_1
 
@@ -182,6 +184,7 @@ class TestScraperCoordinator:
                 asyncio.TimeoutError(),  # First attempt fails
                 [sample_events[0]],  # Second attempt succeeds
             ]
+
             def mock_parser_class(brewery: Brewery) -> AsyncMock:
                 return mock_parser
 
@@ -207,6 +210,7 @@ class TestScraperCoordinator:
             # Parser always fails
             mock_parser = AsyncMock()
             mock_parser.parse.side_effect = asyncio.TimeoutError()
+
             def mock_parser_class(brewery: Brewery) -> AsyncMock:
                 return mock_parser
 
@@ -235,12 +239,14 @@ class TestScraperCoordinator:
             # First parser fails immediately
             mock_parser_1 = AsyncMock()
             mock_parser_1.parse.side_effect = ValueError("Parsing error")
+
             def mock_parser_class_1(brewery: Brewery) -> AsyncMock:
                 return mock_parser_1
 
             # Second parser succeeds
             mock_parser_2 = AsyncMock()
             mock_parser_2.parse.return_value = [sample_events[1]]
+
             def mock_parser_class_2(brewery: Brewery) -> AsyncMock:
                 return mock_parser_2
 
@@ -320,8 +326,10 @@ class TestScraperCoordinator:
             ) as mock_get_parser:
                 mock_parser = AsyncMock()
                 mock_parser.parse.side_effect = exception
+
                 def mock_parser_class(brewery: Brewery) -> AsyncMock:
                     return mock_parser
+
                 mock_get_parser.return_value = mock_parser_class
 
                 coordinator.errors = []  # Reset errors

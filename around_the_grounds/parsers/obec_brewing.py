@@ -5,6 +5,7 @@ from typing import List, Optional, Tuple
 import aiohttp
 
 from ..models import FoodTruckEvent
+from ..utils.timezone_utils import now_in_pacific_naive
 from .base import BaseParser
 
 
@@ -35,8 +36,8 @@ class ObecBrewingParser(BaseParser):
                 # Parse the time range (e.g., "4:00 - 8:00")
                 start_time, end_time = self._parse_time_range(time_range)
 
-                # Create event for today
-                today = datetime.now().replace(
+                # Create event for today in Pacific timezone
+                today = now_in_pacific_naive().replace(
                     hour=0, minute=0, second=0, microsecond=0
                 )
 
@@ -79,7 +80,7 @@ class ObecBrewingParser(BaseParser):
             end_time = self._parse_single_time(end_str.strip())
 
             if start_time and end_time:
-                today = datetime.now().replace(
+                today = now_in_pacific_naive().replace(
                     hour=0, minute=0, second=0, microsecond=0
                 )
                 start_datetime = today.replace(hour=start_time[0], minute=start_time[1])

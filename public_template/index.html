@@ -48,6 +48,13 @@
             opacity: 0.9;
         }
 
+        .timezone-note {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px !important;
+            font-style: italic;
+        }
+
         .content {
             padding: 0;
         }
@@ -221,6 +228,7 @@
     <div class="container">
         <div class="header">
             <h1>Ballard Food Trucks 🚚🍕</h1>
+            <p id="timezone-note" class="timezone-note" style="display: none;">All times shown in Pacific Time (PT)</p>
         </div>
 
             <div id="stats" class="stats" style="display: none;">
@@ -303,12 +311,15 @@ Unable to load food truck data. Please try again later.
             let html = '';
             
             Object.keys(eventsByDate).sort().forEach(dateKey => {
-                const date = new Date(dateKey + 'T00:00:00');
+                // Create date with explicit Pacific timezone context
+                // This ensures consistent date display regardless of user's timezone
+                const date = new Date(dateKey + 'T12:00:00-08:00'); // Use PST/PDT midday to avoid timezone boundary issues
                 const dayName = date.toLocaleDateString('en-US', { 
                     weekday: 'long',
                     month: 'long', 
                     day: 'numeric',
-                    year: 'numeric'
+                    year: 'numeric',
+                    timeZone: 'America/Los_Angeles' // Ensure Pacific timezone for date formatting
                 });
                 
                 html += `<div class="day-section">`;
@@ -346,6 +357,12 @@ Unable to load food truck data. Please try again later.
             scheduleEl.innerHTML = html;
             scheduleEl.style.display = 'block';
             
+            // Show timezone note
+            const timezoneNoteEl = document.getElementById('timezone-note');
+            if (timezoneNoteEl) {
+                timezoneNoteEl.style.display = 'block';
+            }
+            
             // Show updated time
             if (data.updated) {
                 const updatedEl = document.getElementById('updated');
@@ -376,6 +393,9 @@ Unable to load food truck data. Please try again later.
             if (!startTime && !endTime) return '';
             if (!startTime) return endTime;
             if (!endTime) return startTime;
+            
+            // The API now provides times with " PT" timezone indicators
+            // Use them directly, or fall back to raw times if available
             return `${startTime} - ${endTime}`;
         }
 

@@ -3,7 +3,8 @@
 import aiohttp
 import pytest
 from aioresponses import aioresponses
-from freezegun import freeze_time
+from datetime import datetime
+from unittest.mock import patch, Mock
 
 from around_the_grounds.models import Brewery
 from around_the_grounds.parsers.obec_brewing import ObecBrewingParser
@@ -31,9 +32,14 @@ class TestObecBrewingParser:
         return ObecBrewingParser(brewery)
 
     @pytest.mark.asyncio
-    @freeze_time("2025-07-05")
-    async def test_parse_valid_food_truck_info(self, parser: ObecBrewingParser) -> None:
+    @patch("around_the_grounds.parsers.obec_brewing.now_in_pacific_naive")
+    async def test_parse_valid_food_truck_info(
+        self, mock_now: Mock, parser: ObecBrewingParser
+    ) -> None:
         """Test parsing valid food truck information."""
+        # Mock Pacific time to July 5, 2025
+        mock_now.return_value = datetime(2025, 7, 5, 14, 30)
+
         html_content = """
         <html>
         <body>
@@ -64,9 +70,14 @@ class TestObecBrewingParser:
                 assert event.end_time.hour == 20  # 8pm
 
     @pytest.mark.asyncio
-    @freeze_time("2025-07-05")
-    async def test_parse_different_time_format(self, parser: ObecBrewingParser) -> None:
+    @patch("around_the_grounds.parsers.obec_brewing.now_in_pacific_naive")
+    async def test_parse_different_time_format(
+        self, mock_now: Mock, parser: ObecBrewingParser
+    ) -> None:
         """Test parsing with different time format."""
+        # Mock Pacific time to July 5, 2025
+        mock_now.return_value = datetime(2025, 7, 5, 14, 30)
+
         html_content = """
         <html>
         <body>
@@ -332,11 +343,14 @@ class TestObecBrewingParser:
                     await parser.parse(session)
 
     @pytest.mark.asyncio
-    @freeze_time("2025-07-05")
+    @patch("around_the_grounds.parsers.obec_brewing.now_in_pacific_naive")
     async def test_parse_multiple_food_truck_mentions(
-        self, parser: ObecBrewingParser
+        self, mock_now: Mock, parser: ObecBrewingParser
     ) -> None:
         """Test parsing when multiple food truck mentions exist (should find first)."""
+        # Mock Pacific time to July 5, 2025
+        mock_now.return_value = datetime(2025, 7, 5, 14, 30)
+
         html_content = """
         <html>
         <body>

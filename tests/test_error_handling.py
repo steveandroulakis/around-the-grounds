@@ -36,8 +36,10 @@ class TestErrorHandling:
         ) as mock_get_parser:
             mock_parser = AsyncMock()
             mock_parser.parse.side_effect = asyncio.TimeoutError()
+
             def mock_parser_class(brewery: Brewery) -> AsyncMock:
                 return mock_parser
+
             mock_get_parser.return_value = mock_parser_class
 
             events = await coordinator.scrape_all([test_brewery])

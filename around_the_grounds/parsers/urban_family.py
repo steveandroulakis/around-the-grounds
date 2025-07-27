@@ -7,6 +7,7 @@ import aiohttp
 
 from ..models import Brewery, FoodTruckEvent
 from ..utils.date_utils import DateUtils
+from ..utils.timezone_utils import PACIFIC_TZ
 from ..utils.vision_analyzer import VisionAnalyzer
 from .base import BaseParser
 
@@ -466,18 +467,25 @@ class UrbanFamilyParser(BaseParser):
         try:
             # Handle ISO format timestamps
             if "T" in time_str or "+" in time_str:
-                return datetime.fromisoformat(time_str.replace("Z", "+00:00"))
+                # Parse ISO format and convert to Pacific timezone
+                iso_dt = datetime.fromisoformat(time_str.replace("Z", "+00:00"))
+                if iso_dt.tzinfo is not None:
+                    # Convert to Pacific timezone and make naive
+                    pacific_dt = iso_dt.astimezone(PACIFIC_TZ)
+                    return pacific_dt.replace(tzinfo=None)
+                return iso_dt
 
             # Handle Urban Family time format like "13:00", "19:00"
             import re
 
-            # 24-hour format (HH:MM)
+            # 24-hour format (HH:MM) - assume Pacific timezone
             time_match = re.search(r"^(\d{1,2}):(\d{2})$", time_str.strip())
             if time_match:
                 hour, minute = map(int, time_match.groups())
 
                 # Validate hour and minute
                 if 0 <= hour <= 23 and 0 <= minute <= 59:
+                    # Create timezone-naive Pacific time
                     return date.replace(
                         hour=hour, minute=minute, second=0, microsecond=0
                     )
@@ -496,6 +504,7 @@ class UrbanFamilyParser(BaseParser):
                     hour = 0
 
                 if 0 <= hour <= 23 and 0 <= minute <= 59:
+                    # Create timezone-naive Pacific time
                     return date.replace(
                         hour=hour, minute=minute, second=0, microsecond=0
                     )

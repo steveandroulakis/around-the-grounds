@@ -5,6 +5,11 @@ from typing import List, Optional
 import aiohttp
 
 from ..models import FoodTruckEvent
+from ..utils.timezone_utils import (
+    get_pacific_year,
+    get_pacific_month,
+    parse_date_with_pacific_context,
+)
 from .base import BaseParser
 
 
@@ -123,15 +128,15 @@ class WheeliePopParser(BaseParser):
             if not (1 <= month <= 12) or not (1 <= day <= 31):
                 return None
 
-            # Determine the year - assume current year, but if month has passed, use next year
-            current_year = datetime.now().year
-            current_month = datetime.now().month
+            # Determine the year using Pacific timezone - assume current year, but if month has passed, use next year
+            current_year = get_pacific_year()
+            current_month = get_pacific_month()
 
             # If the month is before current month, assume next year
             if month < current_month:
                 current_year += 1
 
-            return datetime(current_year, month, day)
+            return parse_date_with_pacific_context(current_year, month, day)
 
         except (ValueError, TypeError) as e:
             self.logger.debug(f"Error parsing date '{date_str}': {str(e)}")

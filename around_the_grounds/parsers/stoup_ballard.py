@@ -5,6 +5,11 @@ from typing import Any, List, Optional
 import aiohttp
 
 from ..models import FoodTruckEvent
+from ..utils.timezone_utils import (
+    get_pacific_year,
+    get_pacific_month,
+    parse_date_with_pacific_context,
+)
 from .base import BaseParser
 
 
@@ -204,14 +209,14 @@ class StoupBallardParser(BaseParser):
             if not (1 <= month <= 12) or not (1 <= day <= 31):
                 return None
 
-            current_year = datetime.now().year
+            current_year = get_pacific_year()
 
             # Handle year rollover
-            current_month = datetime.now().month
+            current_month = get_pacific_month()
             if month < current_month:
                 current_year += 1
 
-            return datetime(current_year, month, day)
+            return parse_date_with_pacific_context(current_year, month, day)
         except (ValueError, TypeError):
             return None
 

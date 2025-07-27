@@ -377,7 +377,7 @@ class TestDeploymentActivities:
 
             params = {
                 "web_data": mock_web_data,
-                "repository_url": "https://github.com/test/repo.git"
+                "repository_url": "https://github.com/test/repo.git",
             }
             result = await activities.deploy_to_git(params)  # type: ignore
 
@@ -418,7 +418,7 @@ class TestDeploymentActivities:
             with pytest.raises(ValueError, match="Failed to deploy to git"):
                 params = {
                     "web_data": mock_web_data,
-                    "repository_url": "https://github.com/test/repo.git"
+                    "repository_url": "https://github.com/test/repo.git",
                 }
                 await activities.deploy_to_git(params)  # type: ignore
 
@@ -488,7 +488,7 @@ class TestDeploymentActivities:
 
             params = {
                 "web_data": mock_web_data,
-                "repository_url": "https://github.com/test/repo.git"
+                "repository_url": "https://github.com/test/repo.git",
             }
             result = await activities.deploy_to_git(params)  # type: ignore
 
@@ -550,6 +550,6 @@ class TestDeploymentActivities:
             with pytest.raises(ValueError, match="Failed to deploy to git"):
                 params = {
                     "web_data": mock_web_data,
-                    "repository_url": "https://github.com/test/repo.git"
+                    "repository_url": "https://github.com/test/repo.git",
                 }
                 await activities.deploy_to_git(params)  # type: ignore

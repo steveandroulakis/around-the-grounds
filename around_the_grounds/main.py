@@ -22,6 +22,7 @@ except ImportError:
 from .config.settings import get_git_repository_url
 from .models import Brewery, FoodTruckEvent
 from .scrapers import ScraperCoordinator
+from .utils.timezone_utils import format_time_with_timezone
 
 
 def load_brewery_config(config_path: Optional[str] = None) -> List[Brewery]:
@@ -121,20 +122,39 @@ def format_events_output(
 
 
 def generate_web_data(events: List[FoodTruckEvent]) -> dict:
-    """Generate web-friendly JSON data from events."""
+    """Generate web-friendly JSON data from events with Pacific timezone information."""
     web_events = []
 
     for event in events:
-        # Convert event to web format
+        # Convert event to web format with Pacific timezone indicators
         web_event = {
             "date": event.date.isoformat(),
             "vendor": event.food_truck_name,
             "location": event.brewery_name,
+            # Format times with Pacific timezone indicators
             "start_time": (
-                event.start_time.strftime("%I:%M %p") if event.start_time else None
+                format_time_with_timezone(event.start_time, include_timezone=True)
+                if event.start_time
+                else None
             ),
-            "end_time": event.end_time.strftime("%I:%M %p") if event.end_time else None,
+            "end_time": (
+                format_time_with_timezone(event.end_time, include_timezone=True)
+                if event.end_time
+                else None
+            ),
+            # Also include raw time strings without timezone for backward compatibility
+            "start_time_raw": (
+                event.start_time.strftime("%I:%M %p").lstrip("0")
+                if event.start_time
+                else None
+            ),
+            "end_time_raw": (
+                event.end_time.strftime("%I:%M %p").lstrip("0")
+                if event.end_time
+                else None
+            ),
             "description": event.description,
+            "timezone": "PT",  # Explicit timezone indicator
         }
 
         # Add AI extraction indicator
@@ -148,6 +168,8 @@ def generate_web_data(events: List[FoodTruckEvent]) -> dict:
         "events": web_events,
         "updated": datetime.now(timezone.utc).isoformat(),
         "total_events": len(web_events),
+        "timezone": "PT",  # Global timezone indicator
+        "timezone_note": "All event times are in Pacific Time (PT), which includes both PST and PDT depending on the date.",
     }
 
 

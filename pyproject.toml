@@ -72,6 +72,8 @@ python_version = "3.8"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+# Exclude temporal test files due to Temporal SDK internal type issues
+exclude = ["tests/temporal/test_workflows.py"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
