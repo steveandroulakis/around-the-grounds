@@ -52,6 +52,16 @@
           "food_truck_text": "UPCOMING FOOD TRUCKS"
         }
       }
+    },
+    {
+      "key": "chucks-greenwood",
+      "name": "Chuck's Hop Shop Greenwood",
+      "url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS8BmXLSrsUVJ1x_x8FslWooOXRLeEJV-Jq5NzhfUCI9TtO-qXr0ey2BzY8KI-GflT7ekl5015XX3uj/pub?gid=1143085558&single=true&output=csv",
+      "parser_config": {
+        "note": "Google Sheets CSV export with automatic monthly updates",
+        "csv_direct": true,
+        "event_type_filter": "Food Truck"
+      }
     }
   ]
 }

@@ -54,6 +54,12 @@ def config_fixtures_dir(fixtures_dir: Path) -> Path:
 
 
 @pytest.fixture
+def csv_fixtures_dir(fixtures_dir: Path) -> Path:
+    """Get the CSV fixtures directory path."""
+    return fixtures_dir / "csv"
+
+
+@pytest.fixture
 async def aiohttp_session() -> AsyncGenerator[aiohttp.ClientSession, None]:
     """Create an aiohttp session for testing."""
     async with aiohttp.ClientSession() as session:
