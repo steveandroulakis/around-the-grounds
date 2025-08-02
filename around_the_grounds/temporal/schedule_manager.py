@@ -12,7 +12,7 @@ import asyncio
 import logging
 import sys
 from datetime import timedelta
-from typing import Dict, List, Optional, Any, cast
+from typing import Any, Dict, List, Optional, cast
 
 from temporalio.client import (
     Client,

@@ -1,10 +1,11 @@
 """Tests for Obec Brewing parser."""
 
+from datetime import datetime
+from unittest.mock import Mock, patch
+
 import aiohttp
 import pytest
 from aioresponses import aioresponses
-from datetime import datetime
-from unittest.mock import patch, Mock
 
 from around_the_grounds.models import Brewery
 from around_the_grounds.parsers.obec_brewing import ObecBrewingParser

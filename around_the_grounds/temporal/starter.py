@@ -7,13 +7,14 @@ import sys
 from datetime import datetime
 from typing import Optional
 
+from temporalio.client import Client
+
 from around_the_grounds.config.settings import get_git_repository_url
 from around_the_grounds.temporal.config import (
     TEMPORAL_TASK_QUEUE,
     get_temporal_client,
     validate_configuration,
 )
-from temporalio.client import Client
 from around_the_grounds.temporal.shared import WorkflowParams, WorkflowResult
 from around_the_grounds.temporal.workflows import FoodTruckWorkflow
 

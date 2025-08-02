@@ -62,6 +62,17 @@
         "csv_direct": true,
         "event_type_filter": "Food Truck"
       }
+    },
+    {
+      "key": "salehs-corner",
+      "name": "Saleh's Corner",
+      "url": "https://www.seattlefoodtruck.com/api/events",
+      "parser_config": {
+        "note": "Seattle Food Truck API with structured JSON responses",
+        "api_type": "seattle_food_truck",
+        "location_id": 164,
+        "date_format": "M-D-YY"
+      }
     }
   ]
 }

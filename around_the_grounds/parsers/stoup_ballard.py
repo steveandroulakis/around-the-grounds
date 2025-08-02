@@ -6,8 +6,8 @@ import aiohttp
 
 from ..models import FoodTruckEvent
 from ..utils.timezone_utils import (
-    get_pacific_year,
     get_pacific_month,
+    get_pacific_year,
     parse_date_with_pacific_context,
 )
 from .base import BaseParser

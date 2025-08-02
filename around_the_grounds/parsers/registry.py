@@ -4,6 +4,7 @@ from .bale_breaker import BaleBreakerParser
 from .base import BaseParser
 from .chucks_greenwood import ChucksGreenwoodParser
 from .obec_brewing import ObecBrewingParser
+from .salehs_corner import SalehsCornerParser
 from .stoup_ballard import StoupBallardParser
 from .urban_family import UrbanFamilyParser
 from .wheelie_pop import WheeliePopParser
@@ -17,6 +18,7 @@ class ParserRegistry:
         "urban-family": UrbanFamilyParser,
         "wheelie-pop": WheeliePopParser,
         "chucks-greenwood": ChucksGreenwoodParser,
+        "salehs-corner": SalehsCornerParser,
     }
 
     @classmethod
