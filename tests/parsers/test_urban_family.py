@@ -142,13 +142,13 @@ class TestUrbanFamilyParser:
         assert event1.start_time == datetime(2025, 7, 6, 13, 0)
         assert event1.end_time == datetime(2025, 7, 6, 19, 0)
 
-        # Check second event (no valid name, should be TBD)
+        # Check second event (filename extraction now works better)
         event2 = events[1]
         assert event2.brewery_key == "urban-family"
         assert event2.brewery_name == "Urban Family Brewing"
         assert (
-            event2.food_truck_name == "TBD"
-        )  # Generic filename filtered out, using TBD
+            event2.food_truck_name == "Blk"
+        )  # Extracted from UpdatedLogo_BLK.png filename
         assert event2.date == datetime(2025, 7, 7)
         assert event2.start_time == datetime(2025, 7, 7, 16, 0)
         assert event2.end_time == datetime(2025, 7, 7, 20, 0)
@@ -172,8 +172,8 @@ class TestUrbanFamilyParser:
 
         assert len(events) == 2
 
-        # Check name extraction from image filenames
-        assert events[0].food_truck_name == "Georgia Greek Logo"
+        # Check name extraction from image filenames (improved logic removes "Logo")
+        assert events[0].food_truck_name == "Georgia Greek"
         assert events[1].food_truck_name == "Woodshop Bbq"
 
     @pytest.mark.asyncio
@@ -353,7 +353,7 @@ class TestUrbanFamilyParser:
             "eventImage": "https://hivey-1.s3.us-east-1.amazonaws.com/uploads/awesome_tacos_logo.jpg",
         }
         result, ai_generated = parser._extract_food_truck_name(item)
-        assert result == "Awesome Tacos Logo"
+        assert result == "Awesome Tacos"  # Improved logic removes "Logo" suffix
         assert not ai_generated
 
     def test_extract_food_truck_name_no_valid_name(

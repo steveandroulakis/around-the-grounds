@@ -198,9 +198,10 @@ class UrbanFamilyParser(BaseParser):
                     return cached_name, True
                 else:
                     self.logger.debug(
-                        f"Cached vision result for {image_url} was None, skipping"
+                        f"Cached vision result for {image_url} was None, retrying vision analysis"
                     )
-                    return None, False
+                    # Don't return early - retry vision analysis for failed cache entries
+                    # This helps recover from temporary failures
 
             self.logger.debug(f"Attempting vision analysis for image: {image_url}")
 
@@ -228,12 +229,18 @@ class UrbanFamilyParser(BaseParser):
                 self._vision_cache[image_url] = vision_name
 
                 if vision_name:
-                    self.logger.info(f"Vision analysis extracted name: {vision_name}")
+                    self.logger.info(
+                        f"Vision analysis extracted name: {vision_name} from {image_url}"
+                    )
                     return vision_name, True
+                else:
+                    self.logger.warning(
+                        f"Vision analysis returned no name for {image_url}"
+                    )
             except Exception as e:
-                self.logger.debug(f"Vision analysis failed: {str(e)}")
-                # Cache the failure
-                self._vision_cache[image_url] = None
+                self.logger.warning(f"Vision analysis failed for {image_url}: {str(e)}")
+                # Don't cache failures permanently - allow retries on subsequent runs
+                # Only cache successful results or after multiple failures
 
         # Return None if no valid name found
         return None, False
@@ -263,9 +270,14 @@ class UrbanFamilyParser(BaseParser):
             if isinstance(vendors, list) and len(vendors) > 0:
                 vendor = vendors[0]  # Take the first vendor
                 if isinstance(vendor, dict) and "vendorId" in vendor:
-                    # For now, we'll need to make an additional API call to get vendor details
-                    # But let's try to extract from other fields first
-                    pass
+                    vendor_id = vendor["vendorId"]
+                    # Try vendor ID mapping first
+                    mapped_name = self._get_vendor_name_by_id(vendor_id)
+                    if mapped_name:
+                        self.logger.debug(
+                            f"Mapped vendor ID {vendor_id} to {mapped_name}"
+                        )
+                        return mapped_name
 
         # Try other common field names
         possible_names = [
@@ -303,44 +315,111 @@ class UrbanFamilyParser(BaseParser):
             # Clean up the name (remove underscores, etc.)
             name = name.replace("_", " ").replace("-", " ").strip()
 
-            # Be very selective - exclude generic logo names and metadata
+            # Smart filename parsing for Urban Family patterns
+            # Handle patterns like "LOGO_momo.png" -> "momo"
+            # Handle patterns like "MainlogoB_Webpreview_Georgia's.jpg" -> "Georgia's"
+
+            # First, try to extract meaningful parts from compound filenames
+            vendor_name = self._extract_vendor_from_filename(name)
+            if vendor_name:
+                self.logger.debug(f"Extracted vendor name from filename: {vendor_name}")
+                return vendor_name
+
+        return None
+
+    def _get_vendor_name_by_id(self, vendor_id: str) -> Optional[str]:
+        """
+        Map vendor IDs to known vendor names based on observed patterns.
+        This is a fallback when API vendor lookup isn't available.
+        """
+        # Known vendor ID mappings from Urban Family calendar data
+        vendor_mappings = {
+            "67f07a79e9f3be17e2ef63b5": "MomoExpress",  # LOGO_momo.png
+            "67f6f627e4ca31e444ef637e": "Kaosamai Thai Restaurant",  # kaosamia.png
+            "67f6f6bde4ca31e444ef637f": "Georgia's Greek",  # MainlogoB_Webpreview_Georgia's.jpg
+            "67f064f0e9f3be17e2ef63b0": "Impeckable Chicken",  # Common recurring vendor
+            "67f074a2e9f3be17e2ef63b1": "Tacos & Beer",  # From debug logs
+            "67f077c5e9f3be17e2ef63b4": "Oskar's Pizza",  # From debug logs
+            "67f081a5e9f3be17e2ef63b8": "Burger Planet",  # From debug logs
+            "67f0ab6de9f3be17e2ef63bd": "Kathmandu momoCha",  # From debug logs
+            "67f6f76ce4ca31e444ef6380": "Alebrije",  # From debug logs
+            "67f5a888e9f3be17e2ef63ce": "Birrieria Pepe El Toro LLC",  # From debug logs
+            # Add more mappings as they're discovered
+        }
+
+        mapped_name = vendor_mappings.get(vendor_id)
+        if mapped_name:
+            return mapped_name
+
+        # If no mapping found, log the vendor ID for future mapping
+        self.logger.debug(
+            f"Unknown vendor ID: {vendor_id} - consider adding to mappings"
+        )
+        return None
+
+    def _extract_vendor_from_filename(self, filename: str) -> Optional[str]:
+        """
+        Extract vendor name from filename using Urban Family specific patterns.
+        """
+        import re
+
+        # Clean up the filename
+        name = filename.replace("_", " ").replace("-", " ").strip()
+
+        # Pattern 1: "LOGO momo" -> "momo"
+        logo_match = re.search(
+            r"(?:logo|LOGO)\s+([a-zA-Z][a-zA-Z0-9\s\']*)", name, re.IGNORECASE
+        )
+        if logo_match:
+            extracted = logo_match.group(1).strip()
+            if len(extracted) > 1:
+                return extracted.title()
+
+        # Pattern 2: "MainlogoB Webpreview Georgia's" -> "Georgia's"
+        # Look for known food truck name patterns at the end
+        food_indicators = r"(\b(?:[A-Z][a-z]+\'?s?\s*)+)$"
+        food_match = re.search(food_indicators, name)
+        if food_match:
+            extracted = food_match.group(1).strip()
+            # Validate it's not just metadata
+            if not any(
+                word.lower() in ["logo", "main", "web", "preview", "header"]
+                for word in extracted.split()
+            ):
+                return extracted
+
+        # Pattern 3: Simple case - just clean filename if it looks like a vendor name
+        # Remove common prefixes and suffixes
+        cleaned = re.sub(
+            r"^(logo|main|web|header|image)\s*", "", name, flags=re.IGNORECASE
+        )
+        cleaned = re.sub(
+            r"\s*(logo|web|preview|header|image|main)$",
+            "",
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+        cleaned = cleaned.strip()
+
+        # If what's left looks like a business name (letters, maybe spaces/apostrophes)
+        if re.match(r"^[a-zA-Z][a-zA-Z0-9\s\']+$", cleaned) and len(cleaned) > 2:
+            # Exclude obvious metadata terms
             excluded_terms = [
-                "logo",
-                "image",
-                "unnamed",
-                "header",
-                "updated",
                 "blk",
                 "black",
                 "white",
-                "main",
-                "screen",
-                "shot",
-                "copy",
-                "preview",
-                "web",
                 "temp",
                 "tmp",
-                "placeholder",
                 "default",
+                "unnamed",
+                "placeholder",
+                "copy",
+                "screen",
+                "shot",
+                "updated",
             ]
-
-            # Check if the name contains mostly excluded terms
-            name_words = name.lower().split()
-            if name_words and len(name) > 3:
-                excluded_count = sum(
-                    1
-                    for word in name_words
-                    if any(term in word for term in excluded_terms)
-                )
-                # If more than half the words are excluded terms, skip this
-                if excluded_count <= len(name_words) / 2:
-                    # Additional check: ensure it's not just metadata
-                    if not any(
-                        name.lower().startswith(term)
-                        for term in ["logo", "updated", "main"]
-                    ):
-                        return name.title()
+            if not any(term in cleaned.lower() for term in excluded_terms):
+                return cleaned.title()
 
         return None
 

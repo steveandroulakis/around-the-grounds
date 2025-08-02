@@ -86,8 +86,13 @@ class VisionAnalyzer:
                             {
                                 "type": "text",
                                 "text": """Look at this food truck or restaurant logo/image. 
-                                Extract ONLY the business name (e.g., "Georgia's Greek", "Marination", "Paseo", "Whateke"). 
-                                Do not include words like "Food Truck", "Kitchen", "Catering" unless they're part of the actual business name.
+                                Extract ONLY the business name. Common food truck vendors at this location include:
+                                MomoExpress, Kaosamai Thai Restaurant, Georgia's Greek, Impeckable Chicken, 
+                                Tacos & Beer, Oskar's Pizza, Burger Planet, Kathmandu momoCha, Alebrije, 
+                                Birrieria Pepe El Toro LLC, and Whateke Mexican Food.
+                                
+                                Return just the business name (e.g., "MomoExpress", "Georgia's Greek", "Oskar's Pizza").
+                                Do not include generic words like "Food Truck", "Kitchen", "Catering" unless they're part of the actual business name.
                                 If you cannot clearly identify a business name, respond with "UNKNOWN".
                                 Respond with just the business name, nothing else.""",
                             },

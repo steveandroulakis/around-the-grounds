@@ -14,7 +14,6 @@ from around_the_grounds.parsers.wheelie_pop import WheeliePopParser
 # ZoneInfo not used in this test file
 
 
-
 class TestParserTimezoneConsistency:
     """Test that all parsers handle timezones consistently."""
 

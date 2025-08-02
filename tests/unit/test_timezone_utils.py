@@ -20,7 +20,6 @@ from around_the_grounds.utils.timezone_utils import (
 # ZoneInfo not used in this test file
 
 
-
 class TestPacificTimezone:
     """Test Pacific timezone handling."""
 
