@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Events</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #2c2c2c;
+            background: #f0f8ff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border: 2px solid #87ceeb;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #87ceeb, #b0e0e6);
+            color: #2c2c2c;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.8;
+        }
+
+        .event-item {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: #fffacd;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            border-left: 4px solid #ff6b6b;
+        }
+
+        .event-name {
+            font-weight: bold;
+            color: #2c2c2c;
+            font-size: 1.1rem;
+        }
+
+        .location-name {
+            color: #666;
+            font-size: 0.95rem;
+            margin-top: 2px;
+        }
+
+        .time {
+            color: #888;
+            font-size: 0.9rem;
+            margin-top: 2px;
+        }
+
+        .description {
+            color: #555;
+            font-size: 0.9rem;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        .day-header {
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin: 25px 0 15px 0;
+            padding: 10px;
+            background: #e6f3ff;
+            border-radius: 5px;
+            text-align: center;
+            color: #2c2c2c;
+        }
+
+        .no-events {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            margin: 40px 0;
+            padding: 30px;
+            background: #f8f8f8;
+            border-radius: 8px;
+        }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 15px;
+        }
+
+        .footer a {
+            color: #4682b4;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        .age-tag {
+            display: inline-block;
+            background: #ff6b6b;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 id="site-title">👨‍👩‍👧‍👦 Family Events</h1>
+            <p id="site-description">Fun activities for kids and families</p>
+        </div>
+
+        <div id="events-container">
+            <div class="no-events">Loading events...</div>
+        </div>
+
+        <div class="footer">
+            <p>Last updated: <span id="last-updated">Loading...</span></p>
+            <p><a href="https://github.com/your-username/your-repo">View source on GitHub</a></p>
+        </div>
+    </div>
+
+    <script>
+        // Family events specific JavaScript
+        async function loadEvents() {
+            try {
+                const response = await fetch('data.json');
+                const data = await response.json();
+
+                displayEvents(data);
+                displayLastUpdated(data.updated);
+                updateSiteInfo(data);
+            } catch (error) {
+                console.error('Error loading events:', error);
+                document.getElementById('events-container').innerHTML =
+                    '<div class="no-events">Failed to load events 😔</div>';
+            }
+        }
+
+        function displayEvents(data) {
+            const container = document.getElementById('events-container');
+            const events = data.events || [];
+
+            if (events.length === 0) {
+                container.innerHTML = '<div class="no-events">No upcoming family events found 🤷‍♀️</div>';
+                return;
+            }
+
+            // Group events by date
+            const eventsByDate = {};
+            events.forEach(event => {
+                const eventDate = new Date(event.date);
+                const dateKey = eventDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+
+                if (!eventsByDate[dateKey]) {
+                    eventsByDate[dateKey] = [];
+                }
+                eventsByDate[dateKey].push(event);
+            });
+
+            // Generate HTML
+            let html = '';
+            Object.keys(eventsByDate).forEach(date => {
+                html += `<div class="day-header">📅 ${date}</div>`;
+
+                eventsByDate[date].forEach(event => {
+                    const timeStr = event.start_time ? ` - ${event.start_time}` : '';
+                    const ageTag = event.age_range ? `<span class="age-tag">${event.age_range}</span>` : '';
+
+                    html += `
+                        <div class="event-item">
+                            <div class="event-name">🎈 ${event.vendor}${ageTag}</div>
+                            <div class="location-name">📍 ${event.location}</div>
+                            ${timeStr ? `<div class="time">⏰ ${timeStr}</div>` : ''}
+                            ${event.description ? `<div class="description">${event.description}</div>` : ''}
+                        </div>
+                    `;
+                });
+            });
+
+            container.innerHTML = html;
+        }
+
+        function displayLastUpdated(timestamp) {
+            const date = new Date(timestamp);
+            document.getElementById('last-updated').textContent =
+                date.toLocaleString('en-US', {
+                    timeZone: 'America/Los_Angeles',
+                    timeZoneName: 'short'
+                });
+        }
+
+        function updateSiteInfo(data) {
+            // Update title and description if provided in data
+            if (data.site_title) {
+                document.getElementById('site-title').textContent = data.site_title;
+                document.title = data.site_title;
+            }
+            if (data.site_description) {
+                document.getElementById('site-description').textContent = data.site_description;
+            }
+        }
+
+        // Load events when page loads
+        document.addEventListener('DOMContentLoaded', loadEvents);
+    </script>
+</body>
+</html>

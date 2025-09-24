@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Around the Grounds is a robust Python CLI tool for tracking food truck schedules and locations across multiple breweries. The project features:
+Ground Events is a robust Python CLI tool for multi-site event aggregation, originally focused on tracking food truck schedules and locations across multiple breweries. The project features:
 - **Web interface** with mobile-responsive design and automatic deployment to Vercel
 - **Async web scraping** with concurrent processing of multiple brewery websites
 - **AI vision analysis** using Claude Vision API to extract vendor names from food truck logos/images
@@ -24,16 +24,16 @@ uv sync --dev  # Install all dependencies including dev tools
 
 ### Running the Application
 ```bash
-uv run around-the-grounds              # Run the CLI tool (~60s to scrape all sites)
-uv run around-the-grounds --verbose    # Run with verbose logging (~60s)
-uv run around-the-grounds --config /path/to/config.json  # Use custom config (~60s)
-uv run around-the-grounds --preview    # Generate local preview files (~60s)
-uv run around-the-grounds --deploy     # Run and deploy to web (~90s total)
+uv run ground-events              # Run the CLI tool (~60s to scrape all sites)
+uv run ground-events --verbose    # Run with verbose logging (~60s)
+uv run ground-events --config /path/to/config.json  # Use custom config (~60s)
+uv run ground-events --preview    # Generate local preview files (~60s)
+uv run ground-events --deploy     # Run and deploy to web (~90s total)
 
 # With AI vision analysis (optional)
 export ANTHROPIC_API_KEY="your-api-key"
-uv run around-the-grounds --verbose    # Run with vision analysis enabled (~60-90s)
-uv run around-the-grounds --deploy     # Run with vision analysis and deploy to web (~90-60s)
+uv run ground-events --verbose    # Run with vision analysis enabled (~60-90s)
+uv run ground-events --deploy     # Run with vision analysis and deploy to web (~90-60s)
 ```
 
 **⏱️ Execution Times:** CLI operations typically take 60-90 seconds to scrape all brewery websites concurrently. Add extra time for vision analysis and git operations when using `--deploy`.
@@ -44,7 +44,7 @@ Before deploying, generate and test web files locally:
 
 ```bash
 # Generate web files locally for testing (~60s to scrape all sites)
-uv run around-the-grounds --preview
+uv run ground-events --preview
 
 # Serve locally and view in browser
 cd public && python -m http.server 8000
@@ -127,14 +127,14 @@ This approach catches issues that raw API testing misses and ensures users see t
 
 ```bash
 # Deploy fresh data to website (full workflow)
-uv run around-the-grounds --deploy
+uv run ground-events --deploy
 
 # Deploy to custom repository
-uv run around-the-grounds --deploy --git-repo https://github.com/username/repo.git
+uv run ground-events --deploy --git-repo https://github.com/username/repo.git
 
 # Or use environment variable
 export GIT_REPOSITORY_URL="https://github.com/username/repo.git"
-uv run around-the-grounds --deploy
+uv run ground-events --deploy
 
 # This command will:
 # 1. Scrape all brewery websites for fresh data
@@ -146,7 +146,7 @@ uv run around-the-grounds --deploy
 # 7. Website updates live within minutes
 
 # For Temporal workflows
-uv run around-the-grounds --deploy --verbose  # Recommended for scheduled runs
+uv run ground-events --deploy --verbose  # Recommended for scheduled runs
 ```
 
 ### GitHub App Configuration
@@ -496,7 +496,7 @@ tests/                          # Comprehensive test suite
 - `freezegun` - Time mocking for date-sensitive tests
 - `pytest-cov` - Code coverage reporting
 
-The CLI is configured in `pyproject.toml` with entry point `around-the-grounds = "around_the_grounds.main:main"`.
+The CLI is configured in `pyproject.toml` with entry point `ground-events = "around_the_grounds.main:main"`.
 
 ## Adding New Breweries
 

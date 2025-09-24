@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Music Events</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            line-height: 1.4;
+            color: #2c2c2c;
+            background: #f8f9f8;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border: 1px solid #ddd;
+            padding: 20px;
+        }
+
+        .header {
+            background: none;
+            color: #2c2c2c;
+            padding: 0 0 20px 0;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0;
+            font-weight: normal;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .event-item {
+            margin-bottom: 12px;
+            padding: 8px 0;
+            border-bottom: 1px dotted #ddd;
+        }
+
+        .artist-name {
+            font-weight: bold;
+            color: #2c2c2c;
+        }
+
+        .venue-name {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .time {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .day-header {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin: 20px 0 10px 0;
+            padding: 8px 0;
+            border-bottom: 2px solid #333;
+        }
+
+        .no-events {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            margin: 40px 0;
+        }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 15px;
+        }
+
+        .footer a {
+            color: #666;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 id="site-title">Live Music Events</h1>
+            <p id="site-description">Upcoming concerts and live music</p>
+        </div>
+
+        <div id="events-container">
+            <div class="no-events">Loading events...</div>
+        </div>
+
+        <div class="footer">
+            <p>Last updated: <span id="last-updated">Loading...</span></p>
+            <p><a href="https://github.com/your-username/your-repo">View source on GitHub</a></p>
+        </div>
+    </div>
+
+    <script>
+        // Music events specific JavaScript
+        async function loadEvents() {
+            try {
+                const response = await fetch('data.json');
+                const data = await response.json();
+
+                displayEvents(data);
+                displayLastUpdated(data.updated);
+                updateSiteInfo(data);
+            } catch (error) {
+                console.error('Error loading events:', error);
+                document.getElementById('events-container').innerHTML =
+                    '<div class="no-events">Failed to load events</div>';
+            }
+        }
+
+        function displayEvents(data) {
+            const container = document.getElementById('events-container');
+            const events = data.events || [];
+
+            if (events.length === 0) {
+                container.innerHTML = '<div class="no-events">No upcoming events found</div>';
+                return;
+            }
+
+            // Group events by date
+            const eventsByDate = {};
+            events.forEach(event => {
+                const eventDate = new Date(event.date);
+                const dateKey = eventDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+
+                if (!eventsByDate[dateKey]) {
+                    eventsByDate[dateKey] = [];
+                }
+                eventsByDate[dateKey].push(event);
+            });
+
+            // Generate HTML
+            let html = '';
+            Object.keys(eventsByDate).forEach(date => {
+                html += `<div class="day-header">${date}</div>`;
+
+                eventsByDate[date].forEach(event => {
+                    const timeStr = event.start_time ? ` - ${event.start_time}` : '';
+
+                    html += `
+                        <div class="event-item">
+                            <div class="artist-name">🎵 ${event.vendor}</div>
+                            <div class="venue-name">@ ${event.location}</div>
+                            ${timeStr ? `<div class="time">${timeStr}</div>` : ''}
+                            ${event.description ? `<div class="description">${event.description}</div>` : ''}
+                        </div>
+                    `;
+                });
+            });
+
+            container.innerHTML = html;
+        }
+
+        function displayLastUpdated(timestamp) {
+            const date = new Date(timestamp);
+            document.getElementById('last-updated').textContent =
+                date.toLocaleString('en-US', {
+                    timeZone: 'America/Los_Angeles',
+                    timeZoneName: 'short'
+                });
+        }
+
+        function updateSiteInfo(data) {
+            // Update title and description if provided in data
+            if (data.site_title) {
+                document.getElementById('site-title').textContent = data.site_title;
+                document.title = data.site_title;
+            }
+            if (data.site_description) {
+                document.getElementById('site-description').textContent = data.site_description;
+            }
+        }
+
+        // Load events when page loads
+        document.addEventListener('DOMContentLoaded', loadEvents);
+    </script>
+</body>
+</html>

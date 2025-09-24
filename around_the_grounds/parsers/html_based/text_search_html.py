@@ -10,10 +10,10 @@ from ..utils.timezone_utils import (
     get_pacific_year,
     parse_date_with_pacific_context,
 )
-from .base import BaseParser
+from ..base import BaseParser
 
 
-class WheeliePopParser(BaseParser):
+class TextSearchHtmlParser(BaseParser):
     async def parse(self, session: aiohttp.ClientSession) -> List[FoodTruckEvent]:
         try:
             soup = await self.fetch_page(session, self.brewery.url)

@@ -1,0 +1,40 @@
+# Capitol Hill Kids Events Site Configuration
+# Example of family events aggregation from various sources
+
+site:
+  name: "Capitol Hill Kids Events"
+  template_type: "family_events"
+  website_title: "Family Events on Capitol Hill"
+  repository_url: "https://github.com/user/capitol-hill-kids"
+  description: "Kid-friendly events and activities on Capitol Hill"
+  event_category: "family"
+
+sources:
+  - key: "seattle-center"
+    name: "Seattle Center Events"
+    url: "https://www.seattlecenter.com/events"
+    parser_type: "html_selectors"
+    parser_config:
+      selectors:
+        event_entry: ".event-item"
+        date: ".event-date"
+        title: ".event-title"
+        category_filter: "family"
+
+  - key: "cal-anderson-park"
+    name: "Cal Anderson Park Events"
+    url: "https://www.seattle.gov/parks/find/parks/cal-anderson-park"
+    parser_type: "regex_text"
+    parser_config:
+      pattern: "Event:\\s*([^\\n]+)\\s*Date:\\s*([0-9/]+)"
+
+  - key: "seattle-public-library"
+    name: "Capitol Hill Library Events"
+    url: "https://www.spl.org/hours-and-locations/capitol-hill-branch"
+    parser_type: "html_selectors"
+    parser_config:
+      selectors:
+        event_entry: ".program-listing"
+        date: ".program-date"
+        title: ".program-title"
+        age_filter: "children"

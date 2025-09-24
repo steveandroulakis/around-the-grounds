@@ -10,10 +10,10 @@ except ImportError:
     from backports.zoneinfo import ZoneInfo  # type: ignore
 
 from ..models import FoodTruckEvent
-from .base import BaseParser
+from ..base import BaseParser
 
 
-class BaleBreakerParser(BaseParser):
+class SquarespaceCalendarParser(BaseParser):
     async def parse(self, session: aiohttp.ClientSession) -> List[FoodTruckEvent]:
         collection_id = None
 

@@ -1,0 +1,76 @@
+# Ballard Food Trucks Site Configuration
+# This represents the current brewery-focused food truck tracking site
+
+site:
+  name: "Food Trucks in Ballard"
+  template_type: "food_events"
+  website_title: "Food Trucks in Ballard"
+  repository_url: "https://github.com/steveandroulakis/ballard-food-trucks"
+  description: "Daily food truck schedules at Ballard breweries and venues"
+  event_category: "food"
+
+sources:
+  - key: "stoup-ballard"
+    name: "Stoup Brewing - Ballard"
+    url: "https://www.stoupbrewing.com/ballard/"
+    parser_type: "html_selectors"
+    parser_config:
+      selectors:
+        food_truck_entry: ".food-truck-day"
+        info_container: ".lunch-truck-info"
+        date: "h4"
+        time: ".hrs"
+        truck_name: ".truck"
+
+  - key: "yonder-balebreaker"
+    name: "Yonder Cider & Bale Breaker - Ballard"
+    url: "https://www.bbycballard.com/food-trucks-1-1"
+    parser_type: "squarespace_calendar"
+    parser_config:
+      note: "Uses Squarespace calendar API to fetch food truck events"
+      api_type: "squarespace_calendar"
+
+  - key: "obec-brewing"
+    name: "Obec Brewing"
+    url: "https://obecbrewing.com/"
+    parser_type: "regex_text"
+    parser_config:
+      note: "Simple text format: 'Food truck: <name> <time>'"
+      pattern: "Food truck:\\s*([^0-9]+)\\s*([0-9:]+\\s*-\\s*[0-9:]+)"
+
+  - key: "urban-family"
+    name: "Urban Family Brewing"
+    url: "https://app.hivey.io/urbanfamily/public-calendar"
+    parser_type: "hivey_api"
+    parser_config:
+      note: "Uses Hivey API endpoint for calendar data"
+      api_endpoint: "https://hivey-api-prod-pineapple.onrender.com/urbanfamily/public-calendar"
+      api_type: "hivey_calendar"
+
+  - key: "wheelie-pop"
+    name: "Wheelie Pop Brewing"
+    url: "https://www.wheeliepopbrewing.com/seattle-ballard/"
+    parser_type: "text_search_html"
+    parser_config:
+      note: "Simple text format with dates and food truck names"
+      selectors:
+        food_truck_text: "UPCOMING FOOD TRUCKS"
+
+  - key: "chucks-greenwood"
+    name: "Chuck's Hop Shop Greenwood"
+    url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS8BmXLSrsUVJ1x_x8FslWooOXRLeEJV-Jq5NzhfUCI9TtO-qXr0ey2BzY8KI-GflT7ekl5015XX3uj/pub?gid=1143085558&single=true&output=csv"
+    parser_type: "google_sheets_csv"
+    parser_config:
+      note: "Google Sheets CSV export with automatic monthly updates"
+      csv_direct: true
+      event_type_filter: "Food Truck"
+
+  - key: "salehs-corner"
+    name: "Saleh's Corner"
+    url: "https://www.seattlefoodtruck.com/api/events"
+    parser_type: "seattle_food_truck_api"
+    parser_config:
+      note: "Seattle Food Truck API with structured JSON responses"
+      api_type: "seattle_food_truck"
+      location_id: 164
+      date_format: "M-D-YY"

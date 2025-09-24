@@ -1,0 +1,42 @@
+# Seattle Concert Venues Site Configuration
+# Example of music events aggregation using various technology parsers
+
+site:
+  name: "Seattle Concert Venues"
+  template_type: "music_events"
+  website_title: "Live Music in Seattle"
+  repository_url: "https://github.com/user/seattle-concerts"
+  description: "Upcoming concerts at major Seattle venues"
+  event_category: "music"
+
+sources:
+  - key: "showbox-sodo"
+    name: "Showbox SoDo"
+    url: "https://www.showboxpresents.com/venues/showbox-sodo"
+    parser_type: "html_selectors"
+    parser_config:
+      selectors:
+        event_entry: ".event-item"
+        date: ".event-date"
+        artist: ".artist-name"
+        time: ".event-time"
+
+  - key: "neptune-theatre"
+    name: "Neptune Theatre"
+    url: "https://www.neptuneseattle.com/events"
+    parser_type: "html_selectors"
+    parser_config:
+      selectors:
+        event_entry: ".show-listing"
+        date: ".show-date"
+        artist: ".headliner"
+
+  - key: "paramount-theatre"
+    name: "Paramount Theatre"
+    url: "https://www.stgpresents.org/paramount"
+    parser_type: "html_selectors"
+    parser_config:
+      selectors:
+        event_entry: ".event-card"
+        date: ".event-date"
+        artist: ".event-title"

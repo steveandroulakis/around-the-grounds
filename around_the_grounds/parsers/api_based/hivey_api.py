@@ -9,13 +9,14 @@ from ..models import Brewery, FoodTruckEvent
 from ..utils.date_utils import DateUtils
 from ..utils.timezone_utils import PACIFIC_TZ
 from ..utils.vision_analyzer import VisionAnalyzer
-from .base import BaseParser
+from ..base import BaseParser
 
 
-class UrbanFamilyParser(BaseParser):
+class HiveyApiParser(BaseParser):
     """
-    Parser for Urban Family Brewing using their API endpoint.
+    Parser for Hivey calendar platform API endpoints.
     Uses direct JSON API access instead of HTML scraping.
+    Can be used by any site that uses Hivey for calendar management.
     """
 
     def __init__(self, brewery: Brewery) -> None:

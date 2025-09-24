@@ -18,11 +18,16 @@ from ..utils.timezone_utils import (
     get_pacific_year,
     parse_date_with_pacific_context,
 )
-from .base import BaseParser
+from ..base import BaseParser
 
 
-class ChucksGreenwoodParser(BaseParser):
-    """Parser for Chuck's Hop Shop Greenwood food truck schedule."""
+class GoogleSheetsCsvParser(BaseParser):
+    """
+    Parser for Google Sheets CSV exports.
+
+    Handles Google Sheets published as CSV with automatic monthly updates.
+    Can be used by any site that publishes event data via Google Sheets CSV export.
+    """
 
     # Month abbreviation to number mapping
     MONTH_MAP = {

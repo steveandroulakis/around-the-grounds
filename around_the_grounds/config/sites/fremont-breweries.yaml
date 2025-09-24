@@ -1,0 +1,36 @@
+# Fremont Brewery Events Site Configuration
+# Example of another food truck site using different technology parsers
+
+site:
+  name: "Fremont Brewery Events"
+  template_type: "food_events"
+  website_title: "Food Trucks in Fremont"
+  repository_url: "https://github.com/user/fremont-food-trucks"
+  description: "Food truck schedules at Fremont area breweries"
+  event_category: "food"
+
+sources:
+  - key: "fremont-brewing"
+    name: "Fremont Brewing Company"
+    url: "https://fremontbrewing.com/events"
+    parser_type: "html_selectors"
+    parser_config:
+      selectors:
+        event_entry: ".tribe-events-list-item"
+        date: ".tribe-event-date-start"
+        vendor: ".tribe-event-title"
+
+  - key: "gastropod-brewing"
+    name: "Gastropod Brewing"
+    url: "https://gastropodbrewing.com/food-trucks"
+    parser_type: "text_search_html"
+    parser_config:
+      selectors:
+        food_truck_text: "FOOD TRUCK SCHEDULE"
+
+  - key: "burke-gilman-brewing"
+    name: "Burke-Gilman Brewing"
+    url: "https://www.burkegilmanbrewing.com/events"
+    parser_type: "regex_text"
+    parser_config:
+      pattern: "([A-Z][a-z]+ \\d+):\\s*([^\\n]+)\\s*\\d+:\\d+"

@@ -6,16 +6,17 @@ import aiohttp
 
 from ..models import Brewery, FoodTruckEvent
 from ..utils.timezone_utils import now_in_pacific_naive, utc_to_pacific_naive
-from .base import BaseParser
+from ..base import BaseParser
 
 
-class SalehsCornerParser(BaseParser):
+class SeattleFoodTruckApiParser(BaseParser):
     """
-    Parser for Saleh's Corner using the Seattle Food Truck API.
+    Parser for the Seattle Food Truck API (seattlefoodtruck.com).
 
     This parser fetches food truck schedule data from seattlefoodtruck.com's
     RESTful JSON API, which provides comprehensive event information including
     booked trucks, waitlists, and precise timing details.
+    Can be used by any location that uses this API service.
     """
 
     BASE_URL = "https://www.seattlefoodtruck.com/api/events"

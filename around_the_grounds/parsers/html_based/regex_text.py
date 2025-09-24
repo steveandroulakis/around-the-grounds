@@ -6,10 +6,10 @@ import aiohttp
 
 from ..models import FoodTruckEvent
 from ..utils.timezone_utils import now_in_pacific_naive
-from .base import BaseParser
+from ..base import BaseParser
 
 
-class ObecBrewingParser(BaseParser):
+class RegexTextParser(BaseParser):
     async def parse(self, session: aiohttp.ClientSession) -> List[FoodTruckEvent]:
         try:
             soup = await self.fetch_page(session, self.brewery.url)

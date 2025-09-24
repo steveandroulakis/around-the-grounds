@@ -1,24 +1,30 @@
 from typing import Dict, Type
 
-from .bale_breaker import BaleBreakerParser
 from .base import BaseParser
-from .chucks_greenwood import ChucksGreenwoodParser
-from .obec_brewing import ObecBrewingParser
-from .salehs_corner import SalehsCornerParser
-from .stoup_ballard import StoupBallardParser
-from .urban_family import UrbanFamilyParser
-from .wheelie_pop import WheeliePopParser
+from .api_based import SquarespaceCalendarParser, HiveyApiParser, SeattleFoodTruckApiParser
+from .document_based import GoogleSheetsCsvParser
+from .html_based import HtmlSelectorsParser, RegexTextParser, TextSearchHtmlParser
 
 
 class ParserRegistry:
     _parsers: Dict[str, Type[BaseParser]] = {
-        "stoup-ballard": StoupBallardParser,
-        "yonder-balebreaker": BaleBreakerParser,
-        "obec-brewing": ObecBrewingParser,
-        "urban-family": UrbanFamilyParser,
-        "wheelie-pop": WheeliePopParser,
-        "chucks-greenwood": ChucksGreenwoodParser,
-        "salehs-corner": SalehsCornerParser,
+        # Technology-based parser keys
+        "squarespace_calendar": SquarespaceCalendarParser,
+        "hivey_api": HiveyApiParser,
+        "seattle_food_truck_api": SeattleFoodTruckApiParser,
+        "google_sheets_csv": GoogleSheetsCsvParser,
+        "html_selectors": HtmlSelectorsParser,
+        "regex_text": RegexTextParser,
+        "text_search_html": TextSearchHtmlParser,
+
+        # Legacy brewery-specific keys (for backwards compatibility)
+        "stoup-ballard": HtmlSelectorsParser,
+        "yonder-balebreaker": SquarespaceCalendarParser,
+        "obec-brewing": RegexTextParser,
+        "urban-family": HiveyApiParser,
+        "wheelie-pop": TextSearchHtmlParser,
+        "chucks-greenwood": GoogleSheetsCsvParser,
+        "salehs-corner": SeattleFoodTruckApiParser,
     }
 
     @classmethod
