@@ -12,35 +12,35 @@
         }
 
         body {
-            font-family: 'Courier New', monospace;
-            line-height: 1.4;
+            font-family: 'Inter', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.5;
             color: #2c2c2c;
             background: #f8f9f8;
             min-height: 100vh;
-            padding: 20px;
+            padding: 16px;
         }
 
         .container {
-            max-width: 800px;
+            max-width: 780px;
             margin: 0 auto;
             background: white;
-            border: 1px solid #ddd;
+            border: 1px solid #e5e7eb;
             padding: 20px;
         }
 
         .header {
             background: none;
-            color: #2c2c2c;
-            padding: 0 0 20px 0;
+            color: #1f2933;
+            padding: 0 0 16px 0;
             text-align: left;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #e5e7eb;
             margin-bottom: 20px;
         }
 
         .header h1 {
-            font-size: 1.8rem;
-            margin-bottom: 0;
-            font-weight: normal;
+            font-size: 2rem;
+            margin-bottom: 4px;
+            font-weight: 600;
         }
 
         .header p {
@@ -61,42 +61,43 @@
 
         .loading {
             text-align: left;
-            padding: 20px 0;
-            color: #666;
+            padding: 16px 0;
+            color: #4b5563;
             font-size: 1rem;
         }
 
         .day-section {
-            margin-bottom: 30px;
-            padding-bottom: 20px;
+            margin-bottom: 28px;
+            padding-bottom: 18px;
+            border-bottom: 1px solid #f1f5f9;
         }
 
         .day-section:last-child {
-            border-bottom: none;
             margin-bottom: 0;
+            border-bottom: none;
         }
 
         .day-header {
             font-size: 1.2rem;
-            font-weight: normal;
-            color: #2c2c2c;
-            margin-bottom: 15px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #ddd;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 14px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #e5e7eb;
         }
 
         .truck-item {
             background: none;
-            padding: 5px 0 5px 20px;
-            margin-bottom: 10px;
+            padding: 8px 0 8px 16px;
+            margin-bottom: 14px;
             border: none;
         }
 
 
         .truck-name {
-            font-size: 1rem;
-            font-weight: normal;
-            color: #2c2c2c;
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #0f172a;
             margin-bottom: 3px;
             cursor: pointer;
             text-decoration: underline;
@@ -104,48 +105,52 @@
         }
 
         .truck-name:hover {
-            color: #666;
+            color: #111827;
         }
 
         .truck-details {
-            color: #666;
+            color: #6b7280;
             font-size: 0.9rem;
             margin-left: 0;
+            line-height: 1.45;
         }
 
         .location {
             display: inline;
             margin-right: 15px;
+            color: #6b7280;
         }
 
         .time {
             display: inline;
-            font-weight: normal;
+            font-weight: 500;
+            color: #374151;
         }
 
         .vision-badge {
-            background: #eee;
-            color: #666;
+            background: #eef2ff;
+            color: #4338ca;
             padding: 2px 6px;
-            border: 1px solid #ccc;
-            font-size: 0.8rem;
-            font-weight: normal;
+            border: 1px solid #c7d2fe;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 4px;
         }
 
         .updated-time {
             text-align: left;
-            color: #666;
-            font-size: 0.9rem;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
+            color: #4b5563;
+            font-size: 0.95rem;
+            margin-top: 28px;
+            padding-top: 18px;
+            border-top: 1px solid #e5e7eb;
         }
 
         .error-note {
             text-align: left;
-            color: #9b2c2c;
-            font-size: 0.9rem;
-            margin-top: 10px;
+            color: #b91c1c;
+            font-size: 0.95rem;
+            margin-top: 12px;
         }
 
         .stats {
@@ -159,41 +164,48 @@
         }
 
         .stats-number {
-            font-size: 1rem;
-            font-weight: normal;
-            color: #2c2c2c;
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: #111827;
         }
 
         .stats-label {
-            color: #666;
-            font-size: 1rem;
+            color: #6b7280;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            margin-left: 6px;
+            text-transform: uppercase;
         }
         
         .ai-info {
-            color: #666;
+            color: #4b5563;
             font-size: 0.9rem;
             margin-top: 10px;
             font-style: italic;
         }
 
         .author-info {
-            color: #666;
-            font-size: 0.9rem;
+            color: #4b5563;
+            font-size: 0.95rem;
             margin-top: 20px;
             padding-top: 15px;
-            border-top: 1px solid #ddd;
+            border-top: 1px solid #e5e7eb;
             text-align: center;
         }
 
         .curator-info {
-            margin-top: 10px;
+            margin-top: 6px;
             padding-top: 0;
             border-top: none;
             text-align: left;
+            font-size: clamp(0.8rem, 2.8vw, 0.9rem);
+            color: #4b5563;
+            line-height: 1.4;
         }
 
         .author-info a {
-            color: #666;
+            color: #374151;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
@@ -201,7 +213,7 @@
         }
 
         .author-info a:hover {
-            color: #2c2c2c;
+            color: #111827;
         }
 
         .github-logo {
@@ -212,42 +224,46 @@
 
         @media (max-width: 768px) {
             body {
-                padding: 10px;
+                padding: 12px;
             }
 
             .header h1 {
-                font-size: 1.5rem;
+                font-size: 1.75rem;
             }
 
             .container {
-                padding: 15px;
+                padding: 16px;
             }
 
             .truck-item {
-                padding: 5px 0 5px 15px;
+                padding: 6px 0 6px 12px;
             }
         }
 
         .error {
             background: #fff5f5;
-            border: 1px solid #fed7d7;
-            color: #c53030;
-            padding: 20px;
+            border: 1px solid #fecaca;
+            color: #b91c1c;
+            padding: 18px;
             text-align: left;
             margin: 20px 0;
         }
     </style>
+    <script>
+      window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+    </script>
+    <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>Ballard Food Trucks</h1>
-            <div class="author-info curator-info">Curated by Ballard 🇺🇸 resident <a href="https://www.linkedin.com/in/steveandroulakis/">Steve Androulakis</a> 🇦🇺</div>
+            <div class="author-info curator-info">By Ballard&nbsp;🇺🇸 resident <a href="https://www.linkedin.com/in/steveandroulakis/" style="text-decoration: underline;">Steve Androulakis</a> 🇦🇺</div>
         </div>
 
             <div id="stats" class="stats" style="display: none;">
                 <span class="stats-number" id="totalEvents">0</span>
-                <span class="stats-label"> trucks total</span>
+                <span class="stats-label">trucks total</span>
             </div>
         
         <div class="content">
