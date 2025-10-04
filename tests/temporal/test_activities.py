@@ -242,6 +242,10 @@ class TestScrapeActivities:
             error = errors[0]
             assert error["brewery_name"] == "Test Brewery 1"
             assert error["message"] == "Connection timeout"
+            assert (
+                error["user_message"]
+                == "Failed to fetch information for brewery: Test Brewery 1"
+            )
 
 
 class TestDeploymentActivities:
@@ -277,28 +281,46 @@ class TestDeploymentActivities:
                 ],
                 "total_events": 2,
                 "updated": "2025-07-06T00:00:00",
+                "errors": [
+                    "Failed to fetch information for brewery: Test Brewery 1"
+                ],
             }
             mock_generate.return_value = mock_web_data
 
-            result = await activities.generate_web_data(mock_events)
+            payload = {
+                "events": mock_events,
+                "errors": [
+                    {
+                        "user_message": "Failed to fetch information for brewery: Test Brewery 1"
+                    }
+                ],
+            }
+
+            result = await activities.generate_web_data(payload)
 
             assert isinstance(result, dict)
             assert result == mock_web_data
 
-            # Verify the function was called with reconstructed events
+            # Verify the function was called with reconstructed events and errors
             mock_generate.assert_called_once()
-            call_args = mock_generate.call_args[0][0]  # First positional argument
-            assert len(call_args) == 2
+            call_args = mock_generate.call_args[0]
+            reconstructed_events = call_args[0]
+            error_messages = call_args[1]
+
+            assert len(reconstructed_events) == 2
+            assert error_messages == [
+                "Failed to fetch information for brewery: Test Brewery 1"
+            ]
 
             # Check first reconstructed event
-            event1 = call_args[0]
+            event1 = reconstructed_events[0]
             assert event1.brewery_key == "test-brewery-1"
             assert event1.brewery_name == "Test Brewery 1"
             assert event1.food_truck_name == "Test Truck 1"
             assert event1.ai_generated_name is False
 
             # Check second reconstructed event
-            event2 = call_args[1]
+            event2 = reconstructed_events[1]
             assert event2.brewery_key == "test-brewery-1"
             assert event2.brewery_name == "Test Brewery 1"
             assert event2.food_truck_name == "AI Truck"

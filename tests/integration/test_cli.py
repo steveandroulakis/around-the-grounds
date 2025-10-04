@@ -162,8 +162,9 @@ class TestCLI:
         assert "✅ 2 events found successfully" in output
         assert "❌ 2 breweries failed" in output
         assert "❌ Errors:" in output
-        assert "Failed Brewery: Connection timed out" in output
-        assert "Failed Brewery: Failed to parse HTML" in output
+        assert (
+            "Failed to fetch information for brewery: Failed Brewery" in output
+        )
 
     def test_format_events_output_only_errors(self) -> None:
         """Test formatting when only errors occur."""
@@ -174,7 +175,9 @@ class TestCLI:
 
         assert "❌ No events found - all breweries failed" in output
         assert "❌ Errors:" in output
-        assert "Failed Brewery: Network failed" in output
+        assert (
+            "Failed to fetch information for brewery: Failed Brewery" in output
+        )
 
     def test_format_events_output_instagram_fallback(self) -> None:
         """Test formatting Instagram fallback events."""

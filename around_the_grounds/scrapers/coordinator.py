@@ -28,6 +28,10 @@ class ScrapingError:
     def __str__(self) -> str:
         return f"{self.error_type}: {self.message}"
 
+    def to_user_message(self) -> str:
+        """Create a user-facing summary of the scraping failure."""
+        return f"Failed to fetch information for brewery: {self.brewery.name}"
+
 
 class ScraperCoordinator:
     def __init__(

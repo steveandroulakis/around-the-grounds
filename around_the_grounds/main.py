@@ -21,7 +21,7 @@ except ImportError:
 
 from .config.settings import get_git_repository_url
 from .models import Brewery, FoodTruckEvent
-from .scrapers import ScraperCoordinator
+from .scrapers.coordinator import ScraperCoordinator, ScrapingError
 from .utils.timezone_utils import format_time_with_timezone
 
 
@@ -52,7 +52,7 @@ def load_brewery_config(config_path: Optional[str] = None) -> List[Brewery]:
 
 
 def format_events_output(
-    events: List[FoodTruckEvent], errors: Optional[List] = None
+    events: List[FoodTruckEvent], errors: Optional[List[ScrapingError]] = None
 ) -> str:
     """Format events and errors for display."""
     output = []
@@ -102,6 +102,8 @@ def format_events_output(
 
     # Show errors
     if errors:
+        user_messages = [error.to_user_message() for error in errors]
+        user_messages = list(dict.fromkeys(user_messages))
         if events:
             output.append("")
             output.append("⚠️  Processing Summary:")
@@ -112,8 +114,8 @@ def format_events_output(
 
         output.append("")
         output.append("❌ Errors:")
-        for error in errors:
-            output.append(f"  • {error.brewery.name}: {error.message}")
+        for message in user_messages:
+            output.append(f"  • {message}")
 
     if not events and not errors:
         output.append("No food truck events found for the next 7 days.")
@@ -121,7 +123,9 @@ def format_events_output(
     return "\n".join(output)
 
 
-def generate_web_data(events: List[FoodTruckEvent]) -> dict:
+def generate_web_data(
+    events: List[FoodTruckEvent], error_messages: Optional[List[str]] = None
+) -> dict:
     """Generate web-friendly JSON data from events with Pacific timezone information."""
     web_events = []
 
@@ -164,17 +168,22 @@ def generate_web_data(events: List[FoodTruckEvent]) -> dict:
 
         web_events.append(web_event)
 
+    unique_error_messages = list(dict.fromkeys(error_messages or []))
+
     return {
         "events": web_events,
         "updated": datetime.now(timezone.utc).isoformat(),
         "total_events": len(web_events),
         "timezone": "PT",  # Global timezone indicator
         "timezone_note": "All event times are in Pacific Time (PT), which includes both PST and PDT depending on the date.",
+        "errors": unique_error_messages,
     }
 
 
 def deploy_to_web(
-    events: List[FoodTruckEvent], git_repo_url: Optional[str] = None
+    events: List[FoodTruckEvent],
+    errors: Optional[List[ScrapingError]] = None,
+    git_repo_url: Optional[str] = None,
 ) -> bool:
     """Generate web data and deploy to Vercel via git."""
     try:
@@ -182,7 +191,9 @@ def deploy_to_web(
         repository_url = get_git_repository_url(git_repo_url)
 
         # Generate web data
-        web_data = generate_web_data(events)
+        error_messages = [error.to_user_message() for error in errors or []]
+        error_messages = list(dict.fromkeys(error_messages))
+        web_data = generate_web_data(events, error_messages)
 
         print(f"✅ Generated web data: {len(events)} events")
         print(f"📍 Target repository: {repository_url}")
@@ -305,13 +316,17 @@ def _deploy_with_github_auth(web_data: dict, repository_url: str) -> bool:
         return False
 
 
-def preview_locally(events: List[FoodTruckEvent]) -> bool:
+def preview_locally(
+    events: List[FoodTruckEvent], errors: Optional[List[ScrapingError]] = None
+) -> bool:
     """Generate web files locally in public/ directory for preview."""
     import shutil
 
     try:
         # Generate web data
-        web_data = generate_web_data(events)
+        error_messages = [error.to_user_message() for error in errors or []]
+        error_messages = list(dict.fromkeys(error_messages))
+        web_data = generate_web_data(events, error_messages)
 
         # Set up paths
         public_template_dir = Path.cwd() / "public_template"
@@ -409,11 +424,11 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         # Deploy to web if requested
         if args.deploy and events:
-            deploy_to_web(events, args.git_repo)
+            deploy_to_web(events, errors, args.git_repo)
 
         # Generate local preview if requested
         if args.preview and events:
-            preview_locally(events)
+            preview_locally(events, errors)
 
         # Return appropriate exit code
         if errors and not events:

@@ -198,5 +198,6 @@
     }
   ],
   "updated": "2025-07-06T20:55:57.499687+00:00",
-  "total_events": 24
+  "total_events": 24,
+  "errors": []
 }

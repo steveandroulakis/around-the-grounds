@@ -141,6 +141,13 @@
             border-top: 1px solid #ddd;
         }
 
+        .error-note {
+            text-align: left;
+            color: #9b2c2c;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
         .stats {
             background: none;
             padding: 0;
@@ -176,6 +183,13 @@
             padding-top: 15px;
             border-top: 1px solid #ddd;
             text-align: center;
+        }
+
+        .curator-info {
+            margin-top: 10px;
+            padding-top: 0;
+            border-top: none;
+            text-align: left;
         }
 
         .author-info a {
@@ -227,7 +241,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Ballard Food Trucks 🚚🍕</h1>
+            <h1>Ballard Food Trucks</h1>
+            <div class="author-info curator-info">Curated by Ballard 🇺🇸 resident <a href="https://www.linkedin.com/in/steveandroulakis/">Steve Androulakis</a> 🇦🇺</div>
         </div>
 
             <div id="stats" class="stats" style="display: none;">
@@ -247,6 +262,7 @@ Unable to load food truck data. Please try again later.
             <div id="schedule" style="display: none;"></div>
             
             <div id="updated" class="updated-time" style="display: none;"></div>
+            <div id="errors-note" class="error-note" style="display: none;"></div>
             
             <div id="ai-info" class="ai-info" style="display: none;">
                 'AI Extracted' means the truck name was generated from analyzing an image.
@@ -376,6 +392,19 @@ Unable to load food truck data. Please try again later.
                     minute: '2-digit'
                 })}`;
                 updatedEl.style.display = 'block';
+            }
+
+            const errorsNoteEl = document.getElementById('errors-note');
+            if (errorsNoteEl) {
+                const errors = Array.isArray(data.errors) ? data.errors : [];
+                if (errors.length > 0) {
+                    errorsNoteEl.innerHTML = errors
+                        .map(message => `⚠️ ${message}`)
+                        .join('<br>');
+                    errorsNoteEl.style.display = 'block';
+                } else {
+                    errorsNoteEl.style.display = 'none';
+                }
             }
             
             // Show stats at bottom

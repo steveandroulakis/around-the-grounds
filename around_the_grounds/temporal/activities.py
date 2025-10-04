@@ -86,7 +86,11 @@ class ScrapeActivities:
         ]
 
         serialized_errors = [
-            {"brewery_name": error.brewery.name, "message": error.message}
+            {
+                "brewery_name": error.brewery.name,
+                "message": error.message,
+                "user_message": error.to_user_message(),
+            }
             for error in errors
         ]
 
@@ -97,8 +101,11 @@ class DeploymentActivities:
     """Activities for web deployment and git operations."""
 
     @activity.defn
-    async def generate_web_data(self, events: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Generate web-friendly JSON data from events."""
+    async def generate_web_data(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate web-friendly JSON data from events and errors."""
+        events = payload.get("events", [])
+        errors = payload.get("errors")
+
         # Reconstruct events and use existing generate_web_data function
         reconstructed_events = []
         for event_data in events:
@@ -122,7 +129,22 @@ class DeploymentActivities:
             )
             reconstructed_events.append(event)
 
-        return generate_web_data(reconstructed_events)
+        error_messages: List[str] = []
+        if errors:
+            for error in errors:
+                if isinstance(error, dict):
+                    if "user_message" in error and error["user_message"]:
+                        error_messages.append(str(error["user_message"]))
+                    elif "brewery_name" in error and error["brewery_name"]:
+                        error_messages.append(
+                            f"Failed to fetch information for brewery: {error['brewery_name']}"
+                        )
+                elif isinstance(error, str) and error:
+                    error_messages.append(error)
+
+        error_messages = list(dict.fromkeys(error_messages))
+
+        return generate_web_data(reconstructed_events, error_messages)
 
     @activity.defn
     async def deploy_to_git(self, params: Dict[str, Any]) -> bool:

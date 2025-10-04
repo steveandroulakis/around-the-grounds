@@ -47,7 +47,7 @@ class FoodTruckWorkflow:
             if params.deploy and events:
                 web_data = await workflow.execute_activity(
                     deploy_activities.generate_web_data,
-                    events,
+                    {"events": events, "errors": errors},
                     schedule_to_close_timeout=timedelta(seconds=30),
                 )
 

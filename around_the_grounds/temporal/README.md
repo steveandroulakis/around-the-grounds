@@ -267,7 +267,7 @@ Activities that wrap existing scraping functionality:
 
 Activities for web deployment:
 
-- `generate_web_data(events)`: Generate web-friendly JSON from events
+- `generate_web_data(events, error_messages=None)`: Generate web-friendly JSON from events and include any user-facing errors
 - `deploy_to_git(web_data)`: Deploy data to git repository
 
 ### Activity Timeouts
@@ -546,7 +546,7 @@ Main workflow that orchestrates the complete pipeline.
 
 ### DeploymentActivities
 
-- `generate_web_data(events: List[Dict]) -> Dict`: Generate web JSON
+- `generate_web_data(payload: Dict[str, Any]) -> Dict`: Generate web JSON from events and errors
 - `deploy_to_git(web_data: Dict) -> bool`: Deploy to git repository
 
 For more details, see the comprehensive implementation plan in `TEMPORAL-PLAN.md`.
