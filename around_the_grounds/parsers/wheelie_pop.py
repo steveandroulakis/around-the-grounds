@@ -1,143 +1,224 @@
 import re
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Set, Tuple
 
 import aiohttp
+from bs4 import BeautifulSoup
+from bs4.element import Tag
 
 from ..models import FoodTruckEvent
 from ..utils.timezone_utils import (
-    get_pacific_month,
-    get_pacific_year,
+    now_in_pacific,
     parse_date_with_pacific_context,
+    utc_to_pacific_naive,
 )
 from .base import BaseParser
 
 
 class WheeliePopParser(BaseParser):
+    """Parser for Wheelie Pop Brewing's My Calendar feed."""
+
+    CALENDAR_ID = "mc-948a6a8e8cd15db324902317a630b853"
+    BASE_URL = "https://wheeliepopbrewing.com/ballard-brewery-district-draft/"
+
     async def parse(self, session: aiohttp.ClientSession) -> List[FoodTruckEvent]:
-        try:
-            soup = await self.fetch_page(session, self.brewery.url)
-            events = []
+        events: List[FoodTruckEvent] = []
+        seen_event_keys: Set[str] = set()
 
-            if not soup:
-                raise ValueError("Failed to fetch page content")
-
-            # Look for the "UPCOMING FOOD TRUCKS" section in the HTML
-            upcoming_element = soup.find(
-                string=lambda text: bool(text and "UPCOMING FOOD TRUCKS" in text)
-            )
-            if not upcoming_element:
-                self.logger.warning("Could not find 'UPCOMING FOOD TRUCKS' section")
-                return []
-
-            # Find the parent element containing the schedule
-            parent = upcoming_element.parent
-            while parent and parent.name not in ["section", "div", "body"]:
-                parent = parent.parent
-
-            if not parent:
-                self.logger.warning(
-                    "Could not find parent container for food truck schedule"
+        current = now_in_pacific()
+        for year, month in self._months_to_fetch(current):
+            try:
+                html = await self._fetch_calendar_month(session, year, month)
+            except ValueError as exc:
+                self.logger.error(
+                    f"Wheelie Pop calendar request failed for {year}-{month:02d}: {exc}"
                 )
-                return []
+                continue
 
-            # Look for all <p> elements that contain food truck schedule entries
-            schedule_paragraphs = parent.find_all("p")
+            if not html:
+                continue
 
-            for p in schedule_paragraphs:
-                # Get the text content from the paragraph
-                text = p.get_text().strip()
-                if not text:
-                    continue
+            month_events = self._parse_calendar_html(html, seen_event_keys)
+            events.extend(month_events)
 
-                # Skip the header itself
-                if "UPCOMING FOOD TRUCKS" in text:
-                    continue
+        valid_events = self.filter_valid_events(events)
+        self.logger.info(
+            f"Parsed {len(valid_events)} valid events from {len(events)} total"
+        )
+        return valid_events
 
-                # Try to parse food truck entries
-                event = self._parse_food_truck_line(text)
-                if event:
-                    events.append(event)
+    def _months_to_fetch(self, current: datetime) -> List[Tuple[int, int]]:
+        year = current.year
+        month = current.month
 
-            # Filter and validate events
-            valid_events = self.filter_valid_events(events)
-            self.logger.info(
-                f"Parsed {len(valid_events)} valid events from {len(events)} total"
-            )
-            return valid_events
+        next_year, next_month = self._add_month(year, month)
+        return [(year, month), (next_year, next_month)]
 
-        except Exception as e:
-            self.logger.error(f"Error parsing Wheelie Pop: {str(e)}")
-            raise ValueError(f"Failed to parse Wheelie Pop website: {str(e)}")
+    @staticmethod
+    def _add_month(year: int, month: int) -> Tuple[int, int]:
+        if month == 12:
+            return year + 1, 1
+        return year, month + 1
 
-    def _parse_food_truck_line(self, line: str) -> Optional[FoodTruckEvent]:
-        """
-        Parse a line like "Thursday, 7/3: Tisket Tasket"
-        """
+    async def _fetch_calendar_month(
+        self, session: aiohttp.ClientSession, year: int, month: int
+    ) -> Optional[str]:
+        params = {
+            "yr": str(year),
+            "month": f"{month:02d}",
+            "dy": "",
+            "cid": self.CALENDAR_ID,
+            "time": "month",
+            "format": "list",
+        }
+
+        headers = {
+            "X-Requested-With": "XMLHttpRequest",
+            "Accept": "text/html, */*; q=0.01",
+            "User-Agent": (
+                "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36"
+            ),
+            "sec-ch-ua": '"Chromium";v="140", "Not=A?Brand";v="24", "Google Chrome";v="140"',
+            "sec-ch-ua-mobile": "?1",
+            "sec-ch-ua-platform": '"Android"',
+            "Referer": (
+                f"{self.BASE_URL}?yr={year}&month={month:02d}&dy=&cid={self.CALENDAR_ID}"
+                "&time=month&format=list"
+            ),
+        }
+
+        self.logger.debug(
+            f"Requesting Wheelie Pop calendar for {year}-{month:02d} with params {params}"
+        )
+
         try:
-            # Pattern to match: Day, M/D: Food Truck Name (flexible with whitespace)
-            pattern = r"(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s*,\s*(\d{1,2}/\d{1,2})\s*:\s*(.+)"
-            match = re.match(pattern, line.strip())
+            async with session.get(
+                self.BASE_URL, params=params, headers=headers
+            ) as response:
+                if response.status != 200:
+                    raise ValueError(f"HTTP {response.status}")
 
-            if not match:
-                self.logger.debug(f"Line doesn't match pattern: {line}")
-                return None
+                text = await response.text()
+                if not text or not text.strip():
+                    raise ValueError("Empty response body")
 
-            day_name, date_str, truck_name = match.groups()
+                return text
 
-            # Parse the date (M/D format)
-            date = self._parse_date(date_str.strip())
+        except aiohttp.ClientError as exc:
+            raise ValueError(f"Network error: {exc}")
+
+    def _parse_calendar_html(
+        self, html: str, seen_event_keys: Set[str]
+    ) -> List[FoodTruckEvent]:
+        soup = BeautifulSoup(html, "html.parser")
+
+        container = soup.find("div", id=self.CALENDAR_ID)
+        if not container:
+            self.logger.warning("Wheelie Pop calendar container not found in HTML")
+            return []
+
+        list_container = container.find("ul", class_="mc-list")
+        if not list_container:
+            self.logger.debug("Wheelie Pop calendar list view missing")
+            return []
+
+        events: List[FoodTruckEvent] = []
+        for day_node in list_container.find_all("li"):
+            if "mc-events" not in day_node.get("class", []):
+                continue
+            date = self._parse_date_from_day(day_node)
             if not date:
-                self.logger.debug(f"Could not parse date: {date_str}")
-                return None
+                continue
 
-            # Clean up the truck name
-            truck_name = truck_name.strip()
-            if not truck_name:
-                self.logger.debug(f"Empty truck name in line: {line}")
-                return None
+            for article in day_node.find_all("article"):
+                event = self._parse_food_truck_article(article, date)
+                if not event:
+                    continue
 
-            # Create the event (no time information available)
-            return FoodTruckEvent(
-                brewery_key=self.brewery.key,
-                brewery_name=self.brewery.name,
-                food_truck_name=truck_name,
-                date=date,
-                start_time=None,  # No time info available
-                end_time=None,  # No time info available
-                ai_generated_name=False,
-            )
+                event_key = self._event_key(event)
+                if event_key in seen_event_keys:
+                    continue
 
-        except Exception as e:
-            self.logger.debug(f"Error parsing line '{line}': {str(e)}")
+                seen_event_keys.add(event_key)
+                events.append(event)
+
+        return events
+
+    def _parse_food_truck_article(
+        self, article: Tag, date: datetime
+    ) -> Optional[FoodTruckEvent]:
+        classes = article.get("class", [])
+        if "mc_food-truck" not in classes:
             return None
 
-    def _parse_date(self, date_str: str) -> Optional[datetime]:
-        """
-        Parse date string in M/D format (e.g., "7/3")
-        """
+        title_elem = article.find("h3", class_="event-title")
+        raw_title = title_elem.get_text(strip=True) if title_elem else ""
+        food_truck_name = self._extract_food_truck_name(raw_title)
+        if not food_truck_name:
+            self.logger.debug("Skipping article with no food truck name")
+            return None
+
+        start_time = self._parse_time(article, ".event-time time")
+        end_time = self._parse_time(article, ".end-time time")
+
+        return FoodTruckEvent(
+            brewery_key=self.brewery.key,
+            brewery_name=self.brewery.name,
+            food_truck_name=food_truck_name,
+            date=date,
+            start_time=start_time,
+            end_time=end_time,
+            ai_generated_name=False,
+        )
+
+    def _parse_time(self, article: Tag, selector: str) -> Optional[datetime]:
+        time_node = article.select_one(selector)
+        if not time_node:
+            return None
+
+        datetime_attr = time_node.get("datetime") or time_node.get("content")
+        if not datetime_attr:
+            return None
+
         try:
-            # Split the date string
-            parts = date_str.split("/")
-            if len(parts) != 2:
-                return None
-
-            month, day = map(int, parts)
-
-            # Validate month and day
-            if not (1 <= month <= 12) or not (1 <= day <= 31):
-                return None
-
-            # Determine the year using Pacific timezone - assume current year, but if month has passed, use next year
-            current_year = get_pacific_year()
-            current_month = get_pacific_month()
-
-            # If the month is before current month, assume next year
-            if month < current_month:
-                current_year += 1
-
-            return parse_date_with_pacific_context(current_year, month, day)
-
-        except (ValueError, TypeError) as e:
-            self.logger.debug(f"Error parsing date '{date_str}': {str(e)}")
+            parsed = datetime.fromisoformat(datetime_attr)
+        except ValueError:
+            self.logger.debug(f"Could not parse datetime value: {datetime_attr}")
             return None
+
+        return utc_to_pacific_naive(parsed)
+
+    def _parse_date_from_day(self, day_node: Tag) -> Optional[datetime]:
+        day_id = day_node.get("id", "")
+        match = re.search(r"list-(\d{4})-(\d{2})-(\d{2})", day_id)
+        if not match:
+            return None
+
+        year, month, day = map(int, match.groups())
+        return parse_date_with_pacific_context(year, month, day)
+
+    def _extract_food_truck_name(self, raw_title: str) -> Optional[str]:
+        if not raw_title:
+            return None
+
+        if "Food Truck:" in raw_title:
+            name = raw_title.split("Food Truck:", 1)[1].strip()
+            if name:
+                return name
+
+        # Fallback: take text after the final colon, if present
+        if ":" in raw_title:
+            name = raw_title.split(":")[-1].strip()
+            if name:
+                return name
+
+        return raw_title.strip() or None
+
+    def _event_key(self, event: FoodTruckEvent) -> str:
+        start_key = (
+            event.start_time.strftime("%Y-%m-%d %H:%M")
+            if event.start_time is not None
+            else ""
+        )
+        return f"{event.date.strftime('%Y-%m-%d')}|{start_key}|{event.food_truck_name.lower()}"
