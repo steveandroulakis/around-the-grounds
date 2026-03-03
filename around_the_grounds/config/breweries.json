@@ -35,9 +35,11 @@
     {
       "key": "urban-family",
       "name": "Urban Family Brewing",
-      "url": "https://app.hivey.io/urbanfamily/public-calendar",
+      "url": "https://urbanfamilybrewing.com/home/calendar/",
       "parser_config": {
-        "note": "Uses Hivey API endpoint for calendar data",
+        "note": "Primary source: WordPress Sugar Calendar HTML + AJAX; fallback to legacy Hivey API",
+        "calendar_url": "https://urbanfamilybrewing.com/home/calendar/",
+        "calendar_ajax_endpoint": "https://urbanfamilybrewing.com/wp-admin/admin-ajax.php",
         "api_endpoint": "https://hivey-api-prod-pineapple.onrender.com/urbanfamily/public-calendar",
         "api_type": "hivey_calendar"
       }

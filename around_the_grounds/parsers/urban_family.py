@@ -1,9 +1,11 @@
 import asyncio
 import json
+import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp
+from bs4 import BeautifulSoup
 
 from ..models import Brewery, FoodTruckEvent
 from ..utils.date_utils import DateUtils
@@ -14,8 +16,13 @@ from .base import BaseParser
 
 class UrbanFamilyParser(BaseParser):
     """
-    Parser for Urban Family Brewing using their API endpoint.
-    Uses direct JSON API access instead of HTML scraping.
+    Parser for Urban Family Brewing.
+
+    Primary source:
+    - WordPress Sugar Calendar at urbanfamilybrewing.com
+
+    Fallback source:
+    - Legacy Hivey API endpoint
     """
 
     def __init__(self, brewery: Brewery) -> None:
@@ -33,21 +40,340 @@ class UrbanFamilyParser(BaseParser):
         return self._vision_analyzer
 
     async def parse(self, session: aiohttp.ClientSession) -> List[FoodTruckEvent]:
-        try:
-            # Use the API endpoint instead of the public calendar page
-            api_url = "https://hivey-api-prod-pineapple.onrender.com/urbanfamily/public-calendar"
+        html_url = self._get_calendar_html_url()
 
-            # Required headers to authenticate with the API
+        if html_url:
+            try:
+                soup, html_content = await self._fetch_calendar_page(session, html_url)
+                html_events = self._parse_sugar_calendar_events(soup)
+
+                # Fetch next month as well so month-end runs still have a full 7-day window.
+                next_month_events = await self._fetch_next_month_events(
+                    session=session,
+                    html_url=html_url,
+                    soup=soup,
+                    html_content=html_content,
+                )
+
+                combined_events = self._dedupe_events(html_events + next_month_events)
+                valid_events = self.filter_valid_events(combined_events)
+
+                if valid_events:
+                    self.logger.info(
+                        f"Parsed {len(valid_events)} valid events from Sugar Calendar"
+                    )
+                    return valid_events
+
+                self.logger.warning(
+                    "Urban Family HTML calendar returned zero valid events, "
+                    "falling back to legacy API"
+                )
+            except Exception as e:
+                self.logger.warning(
+                    f"Failed parsing Urban Family HTML calendar ({html_url}): {str(e)}. "
+                    "Falling back to legacy API."
+                )
+
+        return await self._parse_hivey_api(session)
+
+    def _get_calendar_html_url(self) -> Optional[str]:
+        """Return HTML calendar URL when the brewery source is WordPress-based."""
+        configured_url = self.brewery.parser_config.get("calendar_url")
+        if isinstance(configured_url, str) and configured_url.strip():
+            return configured_url.strip()
+
+        if "urbanfamilybrewing.com" in self.brewery.url:
+            return self.brewery.url
+
+        return None
+
+    def _calendar_headers(self, referer: str) -> Dict[str, str]:
+        """
+        Browser-like headers required by Urban Family's WordPress host.
+        Without these, requests frequently return HTTP 403.
+        """
+        return {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "accept-language": "en-US,en;q=0.9",
+            "referer": referer,
+            "user-agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/138.0.0.0 Safari/537.36"
+            ),
+        }
+
+    async def _fetch_calendar_page(
+        self, session: aiohttp.ClientSession, url: str
+    ) -> Tuple[BeautifulSoup, str]:
+        """Fetch Urban Family calendar HTML with required headers."""
+        try:
+            headers = self._calendar_headers("https://urbanfamilybrewing.com/")
+            self.logger.debug(f"Fetching Urban Family calendar HTML from: {url}")
+
+            async with session.get(url, headers=headers) as response:
+                if response.status == 404:
+                    raise ValueError(f"Calendar page not found (404): {url}")
+                elif response.status == 403:
+                    raise ValueError(f"Calendar access forbidden (403): {url}")
+                elif response.status == 500:
+                    raise ValueError(f"Calendar server error (500): {url}")
+                elif response.status != 200:
+                    raise ValueError(f"HTTP {response.status}: {url}")
+
+                html_content = await response.text()
+                if not html_content.strip():
+                    raise ValueError(f"Empty calendar page response: {url}")
+
+                soup = BeautifulSoup(html_content, "html.parser")
+                return soup, html_content
+        except aiohttp.ClientError as e:
+            raise ValueError(f"Network error fetching Urban Family calendar: {str(e)}")
+
+    def _parse_sugar_calendar_events(self, soup: BeautifulSoup) -> List[FoodTruckEvent]:
+        """Parse food truck events from Sugar Calendar event cells."""
+        events: List[FoodTruckEvent] = []
+        event_cells = soup.select("div.sugar-calendar-block__event-cell")
+
+        for event_cell in event_cells:
+            event = self._parse_sugar_event_cell(event_cell)
+            if event:
+                events.append(event)
+
+        return events
+
+    def _parse_sugar_event_cell(self, event_cell: Any) -> Optional[FoodTruckEvent]:
+        """Parse a single Sugar Calendar event cell into FoodTruckEvent."""
+        if not self._is_food_truck_calendar_event(event_cell):
+            return None
+
+        title_el = event_cell.select_one(".sugar-calendar-block__event-cell__title")
+        if not title_el:
+            return None
+
+        food_truck_name = title_el.get_text(" ", strip=True)
+        if not food_truck_name:
+            return None
+
+        time_elements = event_cell.find_all("time")
+        start_time = None
+        end_time = None
+
+        if len(time_elements) > 0:
+            start_time = self._parse_iso_datetime(time_elements[0].get("datetime", ""))
+        if len(time_elements) > 1:
+            end_time = self._parse_iso_datetime(time_elements[1].get("datetime", ""))
+
+        if start_time is None:
+            daydate_raw = event_cell.get("data-daydate", "")
+            if daydate_raw:
+                try:
+                    daydate_data = json.loads(daydate_raw)
+                    start_dt = (
+                        daydate_data.get("start_date", {}).get("datetime")
+                        if isinstance(daydate_data, dict)
+                        else None
+                    )
+                    if isinstance(start_dt, str):
+                        start_time = self._parse_iso_datetime(start_dt)
+                except (json.JSONDecodeError, TypeError):
+                    self.logger.debug("Failed to parse event data-daydate JSON")
+
+        if start_time is None:
+            return None
+
+        date = start_time.replace(hour=0, minute=0, second=0, microsecond=0)
+        event_url = event_cell.get("data-eventurl")
+
+        return FoodTruckEvent(
+            brewery_key=self.brewery.key,
+            brewery_name=self.brewery.name,
+            food_truck_name=food_truck_name,
+            date=date,
+            start_time=start_time,
+            end_time=end_time,
+            description=event_url if isinstance(event_url, str) else None,
+            ai_generated_name=False,
+        )
+
+    def _is_food_truck_calendar_event(self, event_cell: Any) -> bool:
+        """
+        Keep only events from the Food Truck Calendar stream.
+        Urban Family mixes food trucks and non-food events on the same page.
+        """
+        calendars_info = event_cell.get("data-calendarsinfo")
+        if not calendars_info:
+            return True
+
+        try:
+            parsed = json.loads(calendars_info)
+        except (json.JSONDecodeError, TypeError):
+            return True
+
+        calendars = parsed.get("calendars") if isinstance(parsed, dict) else None
+        if not isinstance(calendars, list) or not calendars:
+            return True
+
+        calendar_names = [
+            str(calendar.get("name", "")).lower()
+            for calendar in calendars
+            if isinstance(calendar, dict)
+        ]
+        return any("food truck" in name for name in calendar_names)
+
+    def _parse_iso_datetime(self, value: str) -> Optional[datetime]:
+        """Parse ISO datetime string into timezone-naive Pacific datetime."""
+        if not value:
+            return None
+
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            if parsed.tzinfo is not None:
+                return parsed.astimezone(PACIFIC_TZ).replace(tzinfo=None)
+            return parsed
+        except ValueError:
+            return None
+
+    def _extract_sugar_calendar_nonce(self, html_content: str) -> Optional[str]:
+        """Extract Sugar Calendar nonce from page script payload."""
+        nonce_match = re.search(r'"nonce":"([a-f0-9]+)"', html_content)
+        if nonce_match:
+            return nonce_match.group(1)
+        return None
+
+    async def _fetch_next_month_events(
+        self,
+        session: aiohttp.ClientSession,
+        html_url: str,
+        soup: BeautifulSoup,
+        html_content: str,
+    ) -> List[FoodTruckEvent]:
+        """Use Sugar Calendar AJAX endpoint to fetch next month events."""
+        block = soup.select_one("#sc-code-1")
+        if block is None:
+            return []
+
+        nonce = self._extract_sugar_calendar_nonce(html_content)
+        calendar_id_input = soup.select_one('input[name="sc_calendar_id"]')
+        month_input = soup.select_one('input[name="sc_month"]')
+        year_input = soup.select_one('input[name="sc_year"]')
+        day_input = soup.select_one('input[name="sc_day"]')
+        display_input = soup.select_one('input[name="sc_display"]')
+        attributes = block.get("data-attributes")
+        accent_color = block.get("data-accentcolor", "")
+
+        if (
+            nonce is None
+            or calendar_id_input is None
+            or month_input is None
+            or year_input is None
+            or day_input is None
+            or display_input is None
+            or not isinstance(attributes, str)
+        ):
+            return []
+
+        calendar_id = calendar_id_input.get("value", "").strip()
+        month = month_input.get("value", "").strip()
+        year = year_input.get("value", "").strip()
+        day = day_input.get("value", "").strip()
+        display = display_input.get("value", "month").strip()
+
+        if not calendar_id or not month or not year or not day:
+            return []
+
+        ajax_url = str(
+            self.brewery.parser_config.get(
+                "calendar_ajax_endpoint",
+                "https://urbanfamilybrewing.com/wp-admin/admin-ajax.php",
+            )
+        )
+        payload = {
+            "action": "sugar_calendar_block_update",
+            "nonce": nonce,
+            "calendar_block[id]": calendar_id,
+            "calendar_block[attributes]": attributes,
+            "calendar_block[day]": day,
+            "calendar_block[month]": month,
+            "calendar_block[year]": year,
+            "calendar_block[search]": "",
+            "calendar_block[accentColor]": accent_color,
+            "calendar_block[display]": display,
+            "calendar_block[visitor_tz_convert]": "0",
+            "calendar_block[visitor_tz]": "America/Los_Angeles",
+            "calendar_block[updateDisplay]": "false",
+            "calendar_block[action]": "next_month",
+        }
+
+        try:
+            headers = self._calendar_headers(html_url)
+            headers["origin"] = "https://urbanfamilybrewing.com"
+
+            async with session.post(ajax_url, data=payload, headers=headers) as response:
+                if response.status != 200:
+                    self.logger.warning(
+                        f"Sugar Calendar AJAX returned HTTP {response.status}"
+                    )
+                    return []
+
+                response_data = await response.json()
+                if not response_data.get("success"):
+                    return []
+
+                data = response_data.get("data", {})
+                body_html = data.get("body") if isinstance(data, dict) else None
+                if not isinstance(body_html, str) or not body_html.strip():
+                    return []
+
+                month_soup = BeautifulSoup(body_html, "html.parser")
+                return self._parse_sugar_calendar_events(month_soup)
+        except Exception as e:
+            self.logger.warning(
+                f"Failed fetching Urban Family next-month events via AJAX: {str(e)}"
+            )
+            return []
+
+    def _dedupe_events(self, events: List[FoodTruckEvent]) -> List[FoodTruckEvent]:
+        """Deduplicate events by key fields while preserving order."""
+        seen = set()
+        deduped: List[FoodTruckEvent] = []
+        for event in events:
+            key = (
+                event.food_truck_name,
+                event.start_time,
+                event.end_time,
+                event.description,
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(event)
+        return deduped
+
+    async def _parse_hivey_api(
+        self, session: aiohttp.ClientSession
+    ) -> List[FoodTruckEvent]:
+        """Legacy Hivey API parser kept as fallback."""
+        try:
+            api_url = str(
+                self.brewery.parser_config.get(
+                    "api_endpoint",
+                    "https://hivey-api-prod-pineapple.onrender.com/urbanfamily/public-calendar",
+                )
+            )
             headers = {
                 "accept": "application/json, text/plain, */*",
                 "accept-language": "en,en-US;q=0.9,fr;q=0.8,vi;q=0.7,th;q=0.6",
                 "origin": "https://app.hivey.io",
                 "referer": "https://app.hivey.io/",
-                "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+                "user-agent": (
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/138.0.0.0 Safari/537.36"
+                ),
             }
 
-            self.logger.debug(f"Fetching API data from: {api_url}")
-
+            self.logger.debug(f"Fetching legacy Hivey API data from: {api_url}")
             async with session.get(api_url, headers=headers) as response:
                 if response.status == 404:
                     raise ValueError(f"API endpoint not found (404): {api_url}")
@@ -58,7 +384,6 @@ class UrbanFamilyParser(BaseParser):
                 elif response.status != 200:
                     raise ValueError(f"HTTP {response.status}: {api_url}")
 
-                # Parse JSON response
                 try:
                     data = await response.json()
                 except json.JSONDecodeError as e:
@@ -69,25 +394,21 @@ class UrbanFamilyParser(BaseParser):
                     return []
 
                 self.logger.debug(
-                    f"Received JSON data with {len(data) if isinstance(data, list) else 'unknown'} items"
+                    "Received JSON data with "
+                    f"{len(data) if isinstance(data, list) else 'unknown'} items"
                 )
-
-                # Parse events from JSON data
                 events = self._parse_json_data(data)
-
-                # Filter and validate events
                 valid_events = self.filter_valid_events(events)
                 self.logger.info(
                     f"Parsed {len(valid_events)} valid events from {len(events)} total"
                 )
                 return valid_events
-
         except aiohttp.ClientError as e:
             raise ValueError(f"Network error fetching Urban Family API: {str(e)}")
         except Exception as e:
-            self.logger.error(f"Error parsing Urban Family: {str(e)}")
+            self.logger.error(f"Error parsing Urban Family via legacy API: {str(e)}")
             if isinstance(e, ValueError):
-                raise  # Re-raise our custom ValueError messages
+                raise
             raise ValueError(f"Failed to parse Urban Family API: {str(e)}")
 
     def _parse_json_data(self, data: Any) -> List[FoodTruckEvent]:

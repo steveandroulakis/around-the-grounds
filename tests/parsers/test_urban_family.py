@@ -34,6 +34,94 @@ class TestUrbanFamilyParser:
         return UrbanFamilyParser(brewery)
 
     @pytest.fixture
+    def wordpress_brewery(self) -> Brewery:
+        """Create a test brewery using WordPress Sugar Calendar source."""
+        return Brewery(
+            key="urban-family",
+            name="Urban Family Brewing",
+            url="https://urbanfamilybrewing.com/home/calendar/",
+            parser_config={
+                "calendar_url": "https://urbanfamilybrewing.com/home/calendar/",
+                "calendar_ajax_endpoint": "https://urbanfamilybrewing.com/wp-admin/admin-ajax.php",
+                "api_endpoint": "https://hivey-api-prod-pineapple.onrender.com/urbanfamily/public-calendar",
+            },
+        )
+
+    @pytest.fixture
+    def wordpress_parser(self, wordpress_brewery: Brewery) -> UrbanFamilyParser:
+        """Create a parser instance configured for WordPress source."""
+        return UrbanFamilyParser(wordpress_brewery)
+
+    @pytest.fixture
+    def sugar_calendar_html(self) -> str:
+        """Minimal Sugar Calendar month-view HTML fixture."""
+        return """
+        <html>
+            <body>
+                <div id="sc-code-1"
+                     class="sugar-calendar-block sugar-calendar-block__month-view"
+                     data-attributes='{"display":"month"}'
+                     data-accentcolor="#5685BD"
+                     data-ogday="3"
+                     data-ogmonth="3"
+                     data-ogyear="2026">
+                    <form class="sugar-calendar-block-settings">
+                        <input type="hidden" name="sc_calendar_id" value="sc-code-1" />
+                        <input type="hidden" name="sc_month" value="3" />
+                        <input type="hidden" name="sc_year" value="2026" />
+                        <input type="hidden" name="sc_day" value="3" />
+                        <input type="hidden" name="sc_display" value="month" />
+                    </form>
+
+                    <div data-eventurl="https://urbanfamilybrewing.com/events/9th-and-hennepin/"
+                         data-calendarsinfo='{"calendars":[{"name":"Food Truck Calendar","color":"#57d466"},{"name":"Urban Family Brewing Ballard","color":"#5685BD"}],"primary_event_color":"#57d466"}'
+                         class="sugar-calendar-block__event-cell">
+                        <div class="sugar-calendar-block__event-cell__time">
+                            <time datetime="2026-03-01T08:00:00">8:00 am</time> -
+                            <time datetime="2026-03-01T12:00:00">12:00 pm</time>
+                        </div>
+                        <div class="sugar-calendar-block__event-cell__title">9th and Hennepin</div>
+                    </div>
+
+                    <div data-eventurl="https://urbanfamilybrewing.com/events/trivia-night/"
+                         data-calendarsinfo='{"calendars":[{"name":"Urban Family Brewing Ballard","color":"#5685BD"}],"primary_event_color":"#5685BD"}'
+                         class="sugar-calendar-block__event-cell">
+                        <div class="sugar-calendar-block__event-cell__time">
+                            <time datetime="2026-03-01T19:30:00">7:30 pm</time> -
+                            <time datetime="2026-03-01T21:30:00">9:30 pm</time>
+                        </div>
+                        <div class="sugar-calendar-block__event-cell__title">First Tuesday Trivia</div>
+                    </div>
+                </div>
+
+                <script>
+                    var sugar_calendar_obj = {"ajax_url":"https://urbanfamilybrewing.com/wp-admin/admin-ajax.php","nonce":"908125549b"};
+                </script>
+            </body>
+        </html>
+        """
+
+    @pytest.fixture
+    def sugar_calendar_next_month_payload(self) -> Dict[str, Any]:
+        """AJAX payload containing next-month Sugar Calendar HTML body."""
+        return {
+            "success": True,
+            "data": {
+                "body": """
+                    <div data-eventurl="https://urbanfamilybrewing.com/events/kaosamai/"
+                         data-calendarsinfo='{"calendars":[{"name":"Food Truck Calendar","color":"#57d466"}],"primary_event_color":"#57d466"}'
+                         class="sugar-calendar-block__event-cell">
+                        <div class="sugar-calendar-block__event-cell__time">
+                            <time datetime="2026-04-01T13:00:00">1:00 pm</time> -
+                            <time datetime="2026-04-01T19:00:00">7:00 pm</time>
+                        </div>
+                        <div class="sugar-calendar-block__event-cell__title">Kaosamai</div>
+                    </div>
+                """
+            },
+        }
+
+    @pytest.fixture
     def sample_api_response(self) -> List[Dict[str, Any]]:
         """Sample API response with food truck events."""
         return [
@@ -504,3 +592,55 @@ class TestUrbanFamilyParser:
         # Number data should be handled gracefully (returns empty list)
         events = parser._parse_json_data(123)
         assert events == []
+
+    @pytest.mark.asyncio
+    async def test_parse_wordpress_sugar_calendar(
+        self,
+        wordpress_parser: UrbanFamilyParser,
+        sugar_calendar_html: str,
+        sugar_calendar_next_month_payload: Dict[str, Any],
+    ) -> None:
+        """Test parsing current and next month from WordPress Sugar Calendar."""
+        calendar_url = "https://urbanfamilybrewing.com/home/calendar/"
+        ajax_url = "https://urbanfamilybrewing.com/wp-admin/admin-ajax.php"
+
+        with aioresponses() as m:
+            m.get(calendar_url, status=200, body=sugar_calendar_html)
+            m.post(ajax_url, status=200, payload=sugar_calendar_next_month_payload)
+
+            async with aiohttp.ClientSession() as session:
+                events = await wordpress_parser.parse(session)
+
+        # Should include only food-truck calendar events
+        assert len(events) == 2
+        event_names = sorted(event.food_truck_name for event in events)
+        assert event_names == ["9th and Hennepin", "Kaosamai"]
+
+    @pytest.mark.asyncio
+    async def test_wordpress_403_falls_back_to_legacy_api(
+        self, wordpress_parser: UrbanFamilyParser
+    ) -> None:
+        """Test legacy API fallback when WordPress calendar blocks scraper access."""
+        calendar_url = "https://urbanfamilybrewing.com/home/calendar/"
+        api_url = (
+            "https://hivey-api-prod-pineapple.onrender.com/urbanfamily/public-calendar"
+        )
+        fallback_payload = [
+            {
+                "eventDates": [
+                    {"date": "July 06, 2025", "endTime": "19:00", "startTime": "13:00"}
+                ],
+                "eventTitle": "FOOD TRUCK - Kaosamia Thai",
+                "eventStatus": "upcoming",
+            }
+        ]
+
+        with aioresponses() as m:
+            m.get(calendar_url, status=403)
+            m.get(api_url, status=200, payload=fallback_payload)
+
+            async with aiohttp.ClientSession() as session:
+                events = await wordpress_parser.parse(session)
+
+        assert len(events) == 1
+        assert events[0].food_truck_name == "Kaosamia Thai"
