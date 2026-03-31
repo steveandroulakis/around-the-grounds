@@ -2,6 +2,7 @@ from typing import Dict, Type
 
 from .bale_breaker import BaleBreakerParser
 from .base import BaseParser
+from .channel_marker import ChannelMarkerParser
 from .chucks_greenwood import ChucksGreenwoodParser
 from .lucky_envelope import LuckyEnvelopeParser
 from .obec_brewing import ObecBrewingParser
@@ -18,6 +19,7 @@ class ParserRegistry:
         "obec-brewing": ObecBrewingParser,
         "urban-family": UrbanFamilyParser,
         "wheelie-pop": WheeliePopParser,
+        "channel-marker": ChannelMarkerParser,
         "chucks-greenwood": ChucksGreenwoodParser,
         "salehs-corner": SalehsCornerParser,
         "lucky-envelope": LuckyEnvelopeParser,

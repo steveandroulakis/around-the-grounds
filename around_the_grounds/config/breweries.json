@@ -56,6 +56,15 @@
       }
     },
     {
+      "key": "channel-marker",
+      "name": "Channel Marker Cider",
+      "url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRaaJmiJ4YrKmvwiFdsHYij1kLUVP6394gMrTPpgHwu1zTtM5aoIy9JfLyeK4WrLLDDiHcFRAtbZci_/pub?output=csv",
+      "parser_config": {
+        "note": "Google Sheets CSV export with food truck schedule",
+        "csv_direct": true
+      }
+    },
+    {
       "key": "chucks-greenwood",
       "name": "Chuck's Hop Shop Greenwood",
       "url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS8BmXLSrsUVJ1x_x8FslWooOXRLeEJV-Jq5NzhfUCI9TtO-qXr0ey2BzY8KI-GflT7ekl5015XX3uj/pub?gid=1143085558&single=true&output=csv",
