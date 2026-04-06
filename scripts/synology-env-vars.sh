@@ -2,10 +2,10 @@
 # Secure environment variables for Synology Docker deployment
 # This file should be copied to: /volume1/docker/secrets/env-vars.sh
 # Set permissions: chmod 600 /volume1/docker/secrets/env-vars.sh
-
-# Temporal Cloud Configuration
-export TEMPORAL_ADDRESS="steveandroulakis-test-1.sdvdw.tmprl.cloud:7233"
-export TEMPORAL_NAMESPACE="steveandroulakis-test-1.sdvdw"
+#
+# Note: Temporal connection is handled by Docker networking (temporal-net).
+# The worker connects to temporal-server:7233 automatically.
+# No Temporal credentials are needed for self-hosted setup.
 
 # Claude Vision API
 export ANTHROPIC_API_KEY="YOUR_ANTHROPIC_API_KEY_HERE"

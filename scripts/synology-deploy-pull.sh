@@ -5,7 +5,7 @@ set -e
 CONTAINER_NAME="around-the-grounds-worker"
 IMAGE_NAME="steveandroulakis/around-the-grounds-worker"
 SECRETS_FILE="/volume1/docker/secrets/env-vars.sh"
-CERTS_PATH="/volume1/docker/certs"
+NETWORK_NAME="temporal-net"
 
 # Colors for output
 RED='\033[0;31m'
@@ -43,13 +43,20 @@ check_prerequisites() {
         exit 1
     fi
     
-    # Check certificates directory
-    if [[ ! -d "$CERTS_PATH" ]]; then
-        print_error "Certificates directory not found: $CERTS_PATH"
-        print_error "Please ensure certificates are in place"
+    # Check temporal-net network exists
+    if ! docker network inspect "$NETWORK_NAME" &> /dev/null; then
+        print_error "Docker network '$NETWORK_NAME' not found"
+        print_error "Run synology-temporal-server.sh first to set up the Temporal server"
         exit 1
     fi
-    
+
+    # Check Temporal server is running
+    if ! docker ps -q -f name=temporal-server | grep -q .; then
+        print_error "Temporal server container is not running"
+        print_error "Run synology-temporal-server.sh first to set up the Temporal server"
+        exit 1
+    fi
+
     # Source environment variables
     if source "$SECRETS_FILE"; then
         print_status "Environment variables loaded successfully"
@@ -59,7 +66,7 @@ check_prerequisites() {
     fi
     
     # Check required environment variables
-    local required_vars=("TEMPORAL_ADDRESS" "TEMPORAL_NAMESPACE" "ANTHROPIC_API_KEY" "GITHUB_APP_PRIVATE_KEY_B64")
+    local required_vars=("ANTHROPIC_API_KEY" "GITHUB_APP_PRIVATE_KEY_B64")
     for var in "${required_vars[@]}"; do
         if [[ -z "${!var}" ]]; then
             print_error "Required environment variable $var is not set"
@@ -116,16 +123,14 @@ start_container() {
     
     print_status "Starting new container: $CONTAINER_NAME"
     
-    # Start container with all environment variables
+    # Start container on temporal-net network (connects to temporal-server via Docker DNS)
     if docker run -d \
         --name "$CONTAINER_NAME" \
-        -e TEMPORAL_ADDRESS="$TEMPORAL_ADDRESS" \
-        -e TEMPORAL_NAMESPACE="$TEMPORAL_NAMESPACE" \
-        -e TEMPORAL_TLS_CERT="/app/certs/steveandroulakis-test-1.sdvdw.crt" \
-        -e TEMPORAL_TLS_KEY="/app/certs/steveandroulakis-test-1.sdvdw-pkcs8.key" \
+        --network "$NETWORK_NAME" \
+        -e TEMPORAL_ADDRESS="temporal-server:7233" \
+        -e TEMPORAL_NAMESPACE="default" \
         -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
         -e GITHUB_APP_PRIVATE_KEY_B64="$GITHUB_APP_PRIVATE_KEY_B64" \
-        -v "$CERTS_PATH":/app/certs \
         --restart unless-stopped \
         "$full_image"; then
         print_status "Container started successfully"
@@ -277,7 +282,9 @@ case "${1:-}" in
         echo ""
         echo "Files required:"
         echo "  $SECRETS_FILE     # Environment variables"
-        echo "  $CERTS_PATH/                 # TLS certificates"
+        echo ""
+        echo "Prerequisites:"
+        echo "  Run synology-temporal-server.sh first to set up the Temporal server"
         exit 0
         ;;
     --version|-v)
