@@ -29,3 +29,19 @@ uv run python -m around_the_grounds.temporal.schedule_manager update --schedule-
 # Delete a schedule
 uv run python -m around_the_grounds.temporal.schedule_manager delete --schedule-id daily-scrape
 ```
+
+#### Creating Schedules with the Temporal CLI (Self-Hosted)
+
+For self-hosted Temporal servers, you can create schedules directly using the Temporal CLI:
+
+```bash
+temporal schedule create \
+    --schedule-id hourly-scrape \
+    --interval '60m/10m' \
+    --type FoodTruckWorkflow \
+    --task-queue food-truck-task-queue \
+    --namespace default \
+    --address 192.168.0.20:7233 \
+    --tls=false \
+    --input '{"config_path": null, "deploy": true}'
+```
