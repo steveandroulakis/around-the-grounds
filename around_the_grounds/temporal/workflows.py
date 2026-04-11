@@ -80,7 +80,13 @@ class FoodTruckWorkflow:
                 web_data = await workflow.execute_activity(
                     deploy_activities.generate_web_data,
                     {"events": events, "errors": errors},
-                    schedule_to_close_timeout=timedelta(seconds=30),
+                    # generate_web_data includes haiku generation, which calls
+                    # the Anthropic API and can be slow on self-hosted network
+                    # paths. Cap any single attempt at 90s so a hung call can't
+                    # eat the whole budget; give the activity up to 3 minutes
+                    # total across retries to accommodate transient SDK issues.
+                    start_to_close_timeout=timedelta(seconds=90),
+                    schedule_to_close_timeout=timedelta(seconds=180),
                 )
 
                 deployed = await workflow.execute_activity(

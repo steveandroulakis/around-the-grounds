@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import List, Optional, Union
 
 import anthropic
+import httpx
 
 from ..models import Event
 
@@ -89,9 +90,18 @@ class HaikuGenerator:
         prompt_template: Optional[str] = None,
     ):
         """Initialize haiku generator with Anthropic API client."""
+        # The anthropic SDK defaults to httpx.Timeout(600.0, connect=5.0). On
+        # self-hosted network paths with slow DNS resolution (e.g. a NAS where
+        # getaddrinfo AF_UNSPEC runs IPv4 + IPv6 sequentially and each takes
+        # ~5s), the 5s connect ceiling fires during DNS before TCP even starts,
+        # causing every request to fail with APIConnectionError. Bump connect
+        # to 30s (plenty of headroom for slow DNS + TCP + TLS) and total to
+        # 60s (covers the full roundtrip + generation, typically 5–10s).
         self.client = anthropic.AsyncAnthropic(
-            api_key=api_key
-        )  # Uses ANTHROPIC_API_KEY env var if None
+            api_key=api_key,  # Uses ANTHROPIC_API_KEY env var if None
+            timeout=httpx.Timeout(60.0, connect=30.0),
+            max_retries=2,
+        )
         self.logger = logging.getLogger(__name__)
         self.prompt_template = (
             prompt_template
