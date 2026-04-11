@@ -4,6 +4,8 @@ This guide is for maintainers pulling the **multi-site merge** into an existing 
 
 **Short version:** Both maintainers can pull and keep going. No forced migration work, no new required env variables, no new secrets, no target-repo changes. The sections below cover edge cases and recommended follow-ups.
 
+> **⚠️ Status note (post-`feature/unify-temporal-deploy`):** The follow-up #1/#2 work (unify Temporal with the CLI deploy path; retire `config/breweries.json`) is now **DONE**. As a result, several statements in the body of this guide that describe the legacy Temporal-via-`breweries.json` path are now historically accurate but no longer reflect current `main`. Look for **`UPDATE:`** notes inline. See ["After Phase 7 — suggested follow-up work"](#after-phase-7--suggested-follow-up-work-not-blockers) for the new state.
+
 ---
 
 ## TL;DR by maintainer
@@ -26,6 +28,8 @@ This guide is for maintainers pulling the **multi-site merge** into an existing 
 ### What actually changes
 
 1. **Your Temporal worker path is unchanged.** The `FoodTruckWorkflow` → `load_brewery_config(None)` activity still reads `config/breweries.json`, and `breweries.json` now mirrors your pre-merge `main` version byte-for-byte: 9 venues, Urban Family pointing at the WordPress Sugar Calendar primary source. The `deploy_to_git` activity still clones your target repo, scoped-adds to `public/`, and normal-pushes. Same behavior, same result, same target. **No Temporal changes required.**
+
+   > **UPDATE (post-unification):** The Temporal worker now reads `config/sites/ballard-food-trucks.json` via a new `load_site` activity (workflow resolves missing `site_key` to `"ballard-food-trucks"` for back-compat with the persisted schedule). `deploy_to_git` is now a thin shim that calls `main.py:_deploy_with_github_auth` with `deploy_subdir="public"` from the site config. Commits now show `Around the Grounds Bot <bot@around-the-grounds.app>` instead of your personal identity. `config/breweries.json` is deleted.
 
 2. **A new CLI surface is available but not required.** You can now run `uv run around-the-grounds --site ballard-food-trucks --preview` or `--deploy` and it goes through the new site-aware path (reads `config/sites/ballard-food-trucks.json`, respects `deploy_subdir: "public"`). You can also run `uv run around-the-grounds --deploy` with no flag and it defaults to `ballard-food-trucks`. Both routes produce the same end result as your legacy Temporal path because the configs match.
 
@@ -62,27 +66,39 @@ These are low-effort hygiene steps that catch common post-merge surprises:
   - `target_repo: "https://github.com/steveandroulakis/ballard-food-trucks.git"`
   - `deploy_subdir: "public"`
   - 9 venues, with `urban-family` pointing at `https://urbanfamilybrewing.com/home/calendar/`
-- [ ] **Do not delete `config/breweries.json`.** The legacy Temporal activities import it via `load_brewery_config`. Removing it would break your scheduled worker. Keeping it in sync with `config/sites/ballard-food-trucks.json` is a manual responsibility until the follow-up work (below) is done.
+- [ ] ~~**Do not delete `config/breweries.json`.**~~ **Obsolete (post-unification):** `breweries.json` and the legacy activities have been deleted in `feature/unify-temporal-deploy`. The Temporal worker now reads `config/sites/ballard-food-trucks.json` directly via the `load_site` activity. There is no longer a dual-config sync responsibility.
 
 ### Things you should NOT do
 
-- **Do not** delete `config/breweries.json`. As above — the Temporal path depends on it.
-- **Do not** change `deploy_subdir` on `config/sites/ballard-food-trucks.json` to `""`. That would switch Ballard to root-mode deploy (fresh init + force-push) which would wipe your target repo's history and break Vercel's subdir expectations.
+- ~~**Do not** delete `config/breweries.json`.~~ **Obsolete (post-unification):** breweries.json is deleted; the Temporal worker no longer depends on it.
+- **Do not** change `deploy_subdir` on `config/sites/ballard-food-trucks.json` to `""`. That would switch Ballard to root-mode deploy (fresh init + force-push) which would wipe your target repo's history and break Vercel's subdir expectations. Post-unification: `deploy_subdir` is now honored by both the CLI and the Temporal worker, so a wrong value here will affect *all* runs.
 - **Do not** remove `around_the_grounds/utils/weather.py`. Even though it's only actively used by Ballard's haiku generation, it's imported by the haiku module unconditionally.
 
 ### After Phase 7 — suggested follow-up work (not blockers)
 
 These are things worth doing in a separate PR after the main merge lands. They're all optional.
 
-1. **Unify the Temporal deploy path with the CLI deploy path.** Right now `around_the_grounds/temporal/activities.py:deploy_to_git` is a parallel implementation of the deploy logic that hardcodes `repo_dir / "public"` and a specific git author email. It works for Ballard's use case but it duplicates `main.py:_deploy_with_github_auth` and is `deploy_subdir`-unaware. A cleaner design would have the Temporal activity just call `_deploy_with_github_auth(web_data, repository_url, template_dir_name, deploy_subdir)` directly, with `deploy_subdir` carried through from a site config loaded in the activity. This is a medium-sized refactor — should be its own branch.
+> **Status update:** Follow-ups #1 and #2 are now **DONE** (see "Done in `feature/unify-temporal-deploy`" below). Items #3, #4, #5 remain latent; new items F-A and F-B were surfaced by the unification work and are tracked here.
 
-2. **Migrate the Temporal worker off `breweries.json`.** Once #1 is done, the workflow can carry a `site_key` in `WorkflowParams`, load the site config directly via `load_site_config(site_key)` in the activity, and the legacy `breweries.json` file can be deleted. Until then, the latent risk is that adding a venue to `config/sites/ballard-food-trucks.json` without mirroring it into `breweries.json` will silently drop that venue from Temporal-triggered runs (since the Temporal path and the CLI path read different configs). In the interim, consider adding a pytest that asserts the two configs have matching venue key sets — a small safety net that costs nothing and catches the whole class of mistakes.
+#### Done in `feature/unify-temporal-deploy`
 
-3. **Fix the pre-existing `extraction_method: 'vision'` template contract on the other per-site templates.** For `food-trucks/`, `generate_web_data` in `main.py` now shims the JSON output from `"ai-vision"` to `"vision"` so the template's `=== 'vision'` check works. If the music or kids templates ever add AI-vision extraction in the future, they'll need the same check (or the shim should become template-aware). Not urgent because those sites don't use vision today.
+1. ✅ **Unify the Temporal deploy path with the CLI deploy path.** `around_the_grounds/temporal/activities.py:deploy_to_git` is now a thin shim that delegates to `main.py:_deploy_with_github_auth(web_data, site.target_repo, site.template, site.deploy_subdir)`. The hardcoded `repo_dir / "public"` and personal git author config are gone; commits now carry `Around the Grounds Bot <bot@around-the-grounds.app>` (matching the CLI / jredding's sites). `deploy_subdir` is honored end-to-end.
 
-4. **Make the haiku prompt per-site.** Right now there's one `config/haiku_prompt.txt` and it's Ballard-specific (references "Seattle's Ballard neighborhood" and uses weather from Ballard lat/lon by default). If a non-Ballard site ever opts into haikus via `generate_description: true`, it'll need a per-site prompt override. A cleaner design would be a `haiku_prompt_file` field in `SiteConfig`, or convention-based `config/sites/<key>/haiku_prompt.txt`. Not urgent; nobody needs it right now.
+2. ✅ **Migrate the Temporal worker off `breweries.json`.** A new `load_site` activity returns a serializable `SiteConfig` dict; the workflow carries `site_key: Optional[str]` in `WorkflowParams` (default `None` resolves to `"ballard-food-trucks"` inside the workflow so the persisted Temporal schedule keeps firing without modification). `config/breweries.json` and the `load_brewery_config` / `scrape_food_trucks` legacy wrappers are deleted. The latent dual-config drift risk is gone — adding a venue to `config/sites/ballard-food-trucks.json` is now the only place to change venues for both Temporal and CLI runs.
 
-5. **Re-run the Phase 5 parity verification after a production Temporal worker cycle.** Phase 5 compared local `--preview` output against the live production `data.json`. A stronger test is to let the Temporal worker run a full cycle against `breweries.json`, push to the target repo, then diff the resulting live `data.json` against a local `--site ballard-food-trucks --preview` run. Any drift between those two is a sign that the legacy path and the CLI path have diverged — a useful canary for follow-up #2 above.
+#### Still latent (deferred to follow-up PRs)
+
+3. **Fix the pre-existing `extraction_method: 'vision'` template contract on the other per-site templates.** For `food-trucks/`, `generate_web_data` in `main.py` shims the JSON output from `"ai-vision"` to `"vision"` so the template's `=== 'vision'` check works. The Temporal path now inherits this shim for free (since it routes through `main.py:generate_web_data`). If the music or kids templates ever add AI-vision extraction in the future, they'll need the same check (or the shim should become template-aware). Not urgent because those sites don't use vision today.
+
+4. **Make the haiku prompt per-site.** Right now there's one `config/haiku_prompt.txt` and it's Ballard-specific (references "Seattle's Ballard neighborhood"). If a non-Ballard site ever opts into haikus via `generate_description: true`, it'll need a per-site prompt override. A cleaner design would be a `haiku_prompt_file` field in `SiteConfig`, or convention-based `config/sites/<key>/haiku_prompt.txt`. Not urgent; nobody needs it right now.
+
+5. **Re-run the Phase 5 parity verification after a production Temporal worker cycle.** Partially satisfied by Phase E gates 4-5 of `feature/unify-temporal-deploy`, which ran the new Temporal path against a test task queue and a real deploy to `steveandroulakis/ballard-food-trucks`, byte-comparing the resulting live `data.json` against a local `--preview`. Worth re-running periodically to catch any future drift.
+
+#### New follow-ups surfaced by `feature/unify-temporal-deploy`
+
+F-A. **Per-site weather location.** `WEATHER_LOCATION_LAT` / `WEATHER_LOCATION_LON` are global env vars defaulting to Ballard. Site-level concerns are now nicely encapsulated in `SiteConfig` for everything *except* weather coordinates. When a non-Ballard site opts into haikus, these should become per-site fields on `SiteConfig` (e.g. `weather_lat: Optional[float]`, `weather_lon: Optional[float]`). Until then they remain env-var globals.
+
+F-B. **`scrape_single_venue` does not pass timezone.** The CLI's `scrape_site` calls `coordinator.scrape_all(site.venues, timezone=site.timezone)`, but the Temporal workflow's per-venue `scrape_single_venue` activity calls `coordinator.scrape_one(venue)` with no timezone argument. This is a pre-existing gap not introduced by the unification work, but it means timezone-aware time parsing at scrape time only flows through the CLI path, not Temporal. Worth fixing in a follow-up that either threads `site.timezone` through `scrape_single_venue` (preferred — keeps the parallel-batch pattern) or collapses scraping back into a single `scrape_all` activity.
 
 ---
 
@@ -109,6 +125,8 @@ These are things worth doing in a separate PR after the main merge lands. They'r
 
 2. **`config/breweries.json` is now Steve's 9-venue version.** This file is only read by the legacy Temporal activities. If jredding runs Temporal locally for development with `config_path=None`, the default will be the Ballard 9-venue list. This matters only for local Temporal dev — his production Cloud Run path invokes the CLI directly and is unaffected.
 
+   > **UPDATE (post-unification):** `breweries.json` and the legacy activities are deleted. The Temporal `FoodTruckWorkflow` now resolves `site_key=None` to `"ballard-food-trucks"` internally and reads `config/sites/ballard-food-trucks.json`. If jredding wants to run Temporal locally against a Brooklyn site, he can pass `WorkflowParams(site_key="park-slope-music", ...)` instead.
+
 3. **The haiku generator is now weather-grounded with a Ballard-specific prompt.** His three sites have `generate_description: false`, so haikus never run for them. But if he ever wants to enable haikus for a Brooklyn site:
    - Set `generate_description: true` in the site config
    - Override `config/haiku_prompt.txt` via `HAIKU_PROMPT_FILE` env var to a Brooklyn-appropriate prompt (the built-in prompt explicitly references "Seattle's Ballard neighborhood")
@@ -124,7 +142,7 @@ These are things worth doing in a separate PR after the main merge lands. They'r
 
 ### Things jredding should NOT do
 
-- **Do not** delete `config/breweries.json`. The legacy Temporal activities import it; removing it would break `from around_the_grounds.main import load_brewery_config`.
+- ~~**Do not** delete `config/breweries.json`.~~ **Obsolete (post-unification):** breweries.json is deleted and `from around_the_grounds.main import load_brewery_config` no longer exists. There is nothing to preserve.
 - **Do not** delete `around_the_grounds/utils/weather.py`, `around_the_grounds/parsers/channel_marker.py`, or `around_the_grounds/parsers/lucky_envelope.py`. They're imported by `registry.py` and tests.
 - **Do not** change `deploy_subdir` on the three existing Brooklyn site configs. They expect root-mode (default `""`) behavior.
 - **Do not** expect `config/sites/ballard-food-trucks.json` to push to his own target repo — it now points at Steve's. Use `--git-repo` override if needed.
