@@ -31,9 +31,9 @@ class ParserRegistry:
         "obec-brewing": ObecBrewingParser,
         "urban-family": UrbanFamilyParser,
         "wheelie-pop": WheeliePopParser,
+        "channel-marker": ChannelMarkerParser,
         "chucks-greenwood": ChucksGreenwoodParser,
         "salehs-corner": SalehsCornerParser,
-        "channel-marker": ChannelMarkerParser,
         "lucky-envelope": LuckyEnvelopeParser,
     }
 

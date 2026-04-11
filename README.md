@@ -242,6 +242,10 @@ Site configs live in `around_the_grounds/config/sites/`. Each site has its own v
 # Optional: AI features (vision analysis + haiku generation)
 ANTHROPIC_API_KEY=your-anthropic-api-key  # Enables vendor name extraction from images and daily haiku generation
 
+# Optional: Weather location for haiku generation (defaults to Ballard, Seattle)
+WEATHER_LOCATION_LAT=47.6762   # Latitude for weather forecasts
+WEATHER_LOCATION_LON=-122.3851 # Longitude for weather forecasts
+
 # Required for web deployment
 GITHUB_APP_ID=123456
 GITHUB_CLIENT_ID=your-github-client-id
