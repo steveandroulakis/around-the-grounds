@@ -9,7 +9,10 @@ The system deploys a complete static website to separate target repositories, wh
 ### Two-Repository Architecture
 
 - **Source repo** (this one): Contains scraping code, parsers, site configs, per-site templates
-- **Target repos** (e.g., `jredding/atg-ballard-food-trucks`): Receive complete websites, served via GitHub Pages
+- **Target repos** (one per site): Receive complete websites
+  - `steveandroulakis/ballard-food-trucks` — Vercel watches the `public/` subdirectory
+  - `jredding/atg-park-slope-music` — GitHub Pages serves repo root
+  - `jredding/atg-childrens-events` — GitHub Pages serves repo root
 
 ## Quick Start
 
@@ -84,22 +87,30 @@ uv run around-the-grounds --site park-slope-music --deploy
 
 # This command will:
 # 1. Scrape all venue websites for the selected site
-# 2. Copy site-specific templates from public_templates/<template>/ to temp directory
-# 3. Generate web-friendly JSON data (data.json) in temp directory
-# 4. Authenticate using GitHub App JWT credentials
-# 5. git init + force push complete website to target repository's main branch
-# 6. GitHub Pages serves the site from repo root
+# 2. Authenticate using GitHub App JWT credentials
+# 3. Prepare a working directory:
+#    - If the site sets deploy_subdir="": `git init` a fresh repo
+#    - If the site sets deploy_subdir="<name>": `git clone` the target repo
+# 4. Copy the site-specific template from public_templates/<template>/ into
+#    repo root (root mode) or repo/<deploy_subdir>/ (subdir mode)
+# 5. Generate web-friendly JSON data (data.json) next to the template
+# 6. Stage with `git add .` (root) or `git add <subdir>/` (subdir); skip empty commits
+# 7. Commit with a per-site title
+# 8. Push — `git push --force origin HEAD:main` (root) or normal push (subdir)
+# 9. The target host (GitHub Pages or Vercel) picks up the change and redeploys
 ```
 
 ### Deployment Configuration
 
-Each site has a `target_repo` configured in its JSON config file under `config/sites/`:
+Each site has a `target_repo` and (optionally) a `deploy_subdir` configured in its JSON config file under `config/sites/`:
 
-| Site | Target Repo |
-|------|-------------|
-| `ballard-food-trucks` | `jredding/atg-ballard-food-trucks` |
-| `park-slope-music` | `jredding/atg-park-slope-music` |
-| `childrens-events` | `jredding/atg-childrens-events` |
+| Site | Target Repo | `deploy_subdir` | Strategy |
+|------|-------------|-----------------|----------|
+| `ballard-food-trucks` | `steveandroulakis/ballard-food-trucks` | `"public"` | Clone + scoped add to `public/`, normal push (Vercel reads `public/`) |
+| `park-slope-music` | `jredding/atg-park-slope-music` | `""` (default) | Fresh `git init` + force-push to repo root (GitHub Pages) |
+| `childrens-events` | `jredding/atg-childrens-events` | `""` (default) | Fresh `git init` + force-push to repo root (GitHub Pages) |
+
+When `deploy_subdir` is non-empty, `_deploy_with_github_auth` switches to the clone strategy so that any files outside the subdirectory (e.g. `vercel.json`, `README.md`) are preserved on each deploy.
 
 **Override via CLI**:
 ```bash
@@ -113,14 +124,17 @@ uv run around-the-grounds --deploy --git-repo https://github.com/username/custom
 
 ## Scheduled Updates
 
-### Cloud Run Jobs (Current Production)
+### Cloud Run Jobs (jredding's production path)
 
-Three Google Cloud Run Jobs run daily via Cloud Scheduler:
-- `atg-ballard-food-trucks` — 8:00 AM PT
+Google Cloud Run Jobs run daily via Cloud Scheduler for jredding's Brooklyn sites:
 - `atg-park-slope-music` — 8:15 AM ET
 - `atg-childrens-events` — 8:30 AM ET
 
 Each job scrapes its site and deploys to the corresponding GitHub Pages repo.
+
+### Self-hosted Temporal Worker (Ballard production path)
+
+The Ballard food trucks site is deployed by a Temporal worker running in a Docker container on a self-hosted machine. The worker connects to a Temporal server (Temporal Cloud or self-hosted) and picks up scheduled workflow executions. See [SCHEDULES.md](./SCHEDULES.md) for schedule management. The worker invokes the same Python entry points as the Cloud Run path — only the orchestrator differs.
 
 ### Temporal Workflows (Alternative)
 

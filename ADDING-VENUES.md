@@ -1,8 +1,35 @@
 # ADDING NEW SITES AND VENUES
 
+## Generic vs Venue-Specific: Which Path?
+
+Start with a generic parser. Fall back to a venue-specific parser only when one of these is true:
+
+- **The source isn't HTTP + JSON/HTML/WordPress.** Google Sheets CSV, Squarespace embedded JSON blobs in HTML attributes, iCal feeds — none of these fit the generic parsers.
+- **The site needs a custom fallback pipeline.** Urban Family has a WordPress Sugar Calendar as its primary source and the legacy Hivey API as a fallback, plus AI vision extraction for logos without a text title — too many branches for a config-driven parser.
+- **The vendor name isn't present in the scraped data.** You need to extract it from a logo image via `VisionAnalyzer`, which means custom logic in `_extract_food_truck_name`.
+- **The date/time format needs context-aware parsing.** Stoup's "Sat 07.05" requires year inference from the current Pacific date; the generic HTML parser's `date_format: auto` won't handle that cleanly.
+
+If none of those apply, use a generic parser and set `source_type` accordingly.
+
+**Real examples in this repo:**
+
+| Venue-specific parser | Why |
+|---|---|
+| `stoup_ballard.py` | Context-aware Pacific year inference, multi-format fallback |
+| `urban_family.py` | WordPress Sugar Calendar primary + Hivey API fallback + vision analysis |
+| `bale_breaker.py` | Squarespace calendar API with quirks |
+| `obec_brewing.py` | Custom regex for "Food truck: \<name\> \<time\>" prose |
+| `wheelie_pop.py` | Simple text search with custom day-of-week handling |
+| `chucks_greenwood.py` | Google Sheets CSV export |
+| `salehs_corner.py` | Seattle Food Truck API |
+| `channel_marker.py` | Google Sheets CSV export, M/D/YY date format |
+| `lucky_envelope.py` | Squarespace `data-current-context` embedded JSON |
+
+Most *new* sites will use the generic parsers. For Ballard, all 9 venues happen to need custom logic — hence the 9 venue-specific parser files.
+
 ## Adding a New Venue to an Existing Site
 
-If the venue's platform is already supported (WordPress, HTML with CSS selectors, or AJAX/JSON API), just add a venue entry to the site's JSON config — **no parser code needed**.
+If the venue's platform is already supported (WordPress, HTML with CSS selectors, AJAX/JSON API, or JSON-LD), just add a venue entry to the site's JSON config — **no parser code needed**.
 
 ### 1. Choose the Right `source_type`
 
@@ -105,6 +132,7 @@ Create a new JSON file in `around_the_grounds/config/sites/<site-key>.json`:
   "template": "music",
   "timezone": "America/New_York",
   "target_repo": "https://github.com/username/atg-my-new-site.git",
+  "deploy_subdir": "",
   "generate_description": false,
   "venues": [
     {
@@ -118,6 +146,13 @@ Create a new JSON file in `around_the_grounds/config/sites/<site-key>.json`:
 }
 ```
 
+### Deploy strategy (`deploy_subdir`)
+
+- **`""` (or omit the field) — root mode.** The system will `git init` a fresh local repo, write your template to the repo root, and **force-push** to the target's `main`. Use this when the target repo is dedicated to the generated output and served by GitHub Pages from the repo root. This is what `park-slope-music` and `childrens-events` use.
+- **`"public"` (or any non-empty value) — subdir mode.** The system will `git clone` the target repo, write your template into that subdirectory, scoped-stage only that subdirectory, and **normal-push**. Use this when the target repo has files at the root that must be preserved — for example, a Vercel project that reads its build output from `public/` while keeping `vercel.json` and `README.md` at the root. This is what `ballard-food-trucks` uses.
+
+**Pick based on what your target host expects**, not by preference. Root mode is simpler but destructive (history is rewritten every deploy); subdir mode is safer but requires the target repo to exist and be clonable.
+
 ### 2. Choose or Create a Template
 
 Available templates in `public_templates/`:
@@ -130,8 +165,10 @@ To create a new template, add a directory under `public_templates/` with at leas
 ### 3. Set Up Target Repository
 
 1. Create the GitHub repo (e.g., `atg-my-new-site`)
-2. Enable GitHub Pages (Settings > Pages > Deploy from main branch root)
-3. Install your GitHub App on the repo
+2. Configure your target host:
+   - **Root mode + GitHub Pages**: Settings → Pages → Deploy from `main` branch root
+   - **Subdir mode + Vercel**: Create a Vercel project watching the repo, set the "Output Directory" to match your `deploy_subdir` value (e.g. `public`)
+3. Install your GitHub App on the repo (it needs Contents: Read & Write)
 
 ### 4. Test and Deploy
 

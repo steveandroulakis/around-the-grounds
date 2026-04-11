@@ -1,17 +1,19 @@
 # Around the Grounds 🍺🚚
 
-A multi-site event aggregator platform built in Python. Each site is defined by a JSON config file — no new parser code needed unless the site uses an unsupported platform. Currently tracks food truck schedules, indie music shows, and children's events across Brooklyn and Seattle.
+A multi-site event aggregator platform built in Python. Each site is defined by a JSON config file — no new parser code needed unless the site uses an unsupported platform. Currently tracks food truck schedules in Ballard (Seattle), indie music shows in Park Slope (Brooklyn), and children's events across Brooklyn. Jointly maintained by [@steveandroulakis](https://github.com/steveandroulakis) (Ballard) and [@jredding](https://github.com/jredding) (Brooklyn sites).
+
+> 📦 **Pulling the multi-site merge into an existing checkout?** See [MIGRATION.md](./MIGRATION.md) for per-maintainer migration notes, recommended post-pull hygiene, and suggested follow-up work.
 
 ## Features
 
-- 🔄 **Multi-Site Support**: Independent site configs for different event domains (food trucks, music, kids events)
-- 🔌 **Generic Parsers**: Config-driven parsers for WordPress, HTML (CSS selectors), and AJAX/JSON APIs
+- 🔄 **Multi-Site Support**: Independent site configs for different event domains (food trucks, music, kids events), each with its own target repository and deploy strategy
+- 🔌 **Generic Parsers**: Config-driven parsers for WordPress, HTML (CSS selectors), AJAX/JSON APIs, and JSON-LD
 - 🖼️ **AI Vision Analysis**: Extracts vendor names from food truck images using Claude Vision API
-- 🎋 **AI Haiku Generation**: Creates contextual, seasonal haikus about daily food truck scenes
-- 🌐 **Auto-Deployment**: Git-based deployment to GitHub Pages via GitHub App authentication
-- ☁️ **Cloud Run Jobs**: Google Cloud Run with Cloud Scheduler for daily automated updates
-- ⏰ **Temporal Workflows**: Reliable scheduling with cloud or local execution
-- 🧪 **Comprehensive Testing**: 344 tests covering unit, integration, and error scenarios
+- 🎋 **AI Haiku Generation**: Creates weather-grounded haikus for Ballard using Claude Sonnet 4.6 + Open-Meteo
+- 🌐 **Two Deploy Strategies**: Fresh-init + force-push for repo-root targets (GitHub Pages) or clone + scoped-add for subdirectory targets (Vercel `public/`)
+- ☁️ **Cloud Run Jobs**: Google Cloud Run with Cloud Scheduler for daily automated updates (Brooklyn sites)
+- ⏰ **Temporal Workflows**: Reliable scheduling with cloud or local execution (used by Ballard via a self-hosted Temporal worker)
+- 🧪 **Comprehensive Testing**: 499 tests covering unit, integration, weather, multi-site deploy, and error scenarios
 
 ## How It Works
 
@@ -19,20 +21,23 @@ This repository contains the **scraping and scheduling engine**. When run with `
 
 1. **Scrapes** venue websites for event data
 2. **Generates AI content**: Creates daily haikus and extracts vendor names from images (when `ANTHROPIC_API_KEY` is set)
-3. **Copies** site-specific templates from `public_templates/<template>/` to target repository root
-4. **Generates** static site data (`data.json`) in target repository root
-5. **Force pushes** to target repo, which is served by GitHub Pages
+3. **Copies** site-specific templates from `public_templates/<template>/` into the target repository (at root or into a `deploy_subdir`, per site config)
+4. **Generates** static site data (`data.json`) next to those templates
+5. **Pushes** to target repo — force-push if deploying to root, or a scoped normal push if deploying into a subdirectory of an existing repo
 
 **Two-Repository Architecture:**
 - **Source repo** (this one): Contains scraping code, parsers, site configs, per-site templates
-- **Target repos** (e.g., `jredding/atg-ballard-food-trucks`): Receive complete websites, served via GitHub Pages
+- **Target repos** (one per site): Receive the generated website and serve it via GitHub Pages or Vercel
+  - `steveandroulakis/ballard-food-trucks` — Vercel watches the `public/` subdirectory
+  - `jredding/atg-park-slope-music` — GitHub Pages from repo root
+  - `jredding/atg-childrens-events` — GitHub Pages from repo root
 
 ## Quick Start
 
 ### Installation
 ```bash
-git clone https://github.com/jredding/around-the-grounds-brooklyn
-cd around-the-grounds-brooklyn
+git clone https://github.com/steveandroulakis/around-the-grounds
+cd around-the-grounds
 uv sync
 ```
 
@@ -80,9 +85,10 @@ at Obec's wood door 🍺
 To deploy a live website, you need a **target repository** and **GitHub App** for authentication.
 
 ### Prerequisites
-- Target GitHub repository (e.g., `jredding/atg-ballard-food-trucks`)
-- GitHub App with repository access installed on target repos
-- GitHub Pages enabled on target repos (deploy from main branch root)
+- Target GitHub repository (one per site — e.g., `steveandroulakis/ballard-food-trucks`, `jredding/atg-park-slope-music`)
+- GitHub App with Contents: Read & Write access, installed on every target repo
+- For repo-root targets: GitHub Pages enabled on the target repo's `main` branch root
+- For subdirectory targets (Ballard): a hosting provider (Vercel, Netlify) watching the target repo's configured subdirectory
 
 ### GitHub App Setup
 
@@ -187,7 +193,7 @@ uv run python -m around_the_grounds.temporal.schedule_manager trigger --schedule
 uv run python -m around_the_grounds.temporal.schedule_manager delete --schedule-id daily-scrape
 ```
 
-Workers can run on any system (local, cloud, Synology NAS) and will receive scheduled workflow executions from Temporal.
+Workers can run on any system that can reach your Temporal server and will receive scheduled workflow executions from Temporal.
 
 ### Production Deployment via CI/CD
 
@@ -219,13 +225,17 @@ The containerized worker provides reliable, continuous execution of scheduled fo
 
 ### Configured Sites
 
-Site configs live in `around_the_grounds/config/sites/`. Each site has its own venues, template, timezone, and target deployment repo.
+Site configs live in `around_the_grounds/config/sites/`. Each site has its own venues, template, timezone, target repo, and deploy strategy (see the `deploy_subdir` field).
 
-| Site Key | Name | Venues | Template | Target Repo |
-|---|---|---|---|---|
-| `ballard-food-trucks` | Ballard Food Trucks | Stoup, Bale Breaker, Obec, Urban Family, Wheelie Pop, Chuck's, Saleh's | `food-trucks` | `atg-ballard-food-trucks` |
-| `park-slope-music` | Park Slope Indie Music Events | Union Hall, Littlefield | `music` | `atg-park-slope-music` |
-| `childrens-events` | Brooklyn Children's Events | MacaroniKid, Little Kid Big City | `kids` | `atg-childrens-events` |
+| Site Key | Name | Venues | Template | Target Repo | Deploy |
+|---|---|---|---|---|---|
+| `ballard-food-trucks` | Food Trucks in Ballard | Stoup, Yonder/Bale Breaker, Obec, Urban Family, Wheelie Pop, Chuck's, Saleh's, Channel Marker, Lucky Envelope (9) | `food-trucks` | `steveandroulakis/ballard-food-trucks` | Clone + `public/` subdir → Vercel |
+| `park-slope-music` | Park Slope Music | Union Hall, Littlefield, Barbès, Industry City (4) | `music` | `jredding/atg-park-slope-music` | Fresh init + force-push to root → GitHub Pages |
+| `childrens-events` | Brooklyn Children's Events | MacaroniKid, Little Kid Big City (2) | `kids` | `jredding/atg-childrens-events` | Fresh init + force-push to root → GitHub Pages |
+
+**Deploy strategy** is selected automatically from the `deploy_subdir` field in the site config:
+- `deploy_subdir: ""` (default) → fresh `git init` + force-push, writes to repo root. Rewrites history.
+- `deploy_subdir: "public"` (or any non-empty value) → `git clone` + scoped `git add <subdir>/` + normal push. Preserves history and files outside the subdirectory.
 
 ### Environment Variables
 ```bash
@@ -284,9 +294,9 @@ uv run python -m pytest
 uv run around-the-grounds --deploy
 ```
 
-### Testing  
+### Testing
 ```bash
-uv run python -m pytest                # Run all 344 tests
+uv run python -m pytest                # Run all 499 tests
 uv run python -m pytest -v             # Verbose output
 uv run python -m pytest tests/parsers/ # Parser-specific tests
 ```
@@ -314,15 +324,16 @@ See [CLAUDE.md](CLAUDE.md) for detailed development documentation.
 ## Architecture
 
 - **CLI Tool**: `around_the_grounds/main.py` - Multi-site entry point with `--site` flag
-- **Site Configs**: JSON files in `config/sites/` define venues, templates, timezones, target repos
-- **Generic Parsers**: `parsers/generic/` — WordPress, HTML selector, AJAX (config-driven)
-- **Venue-Specific Parsers**: `parsers/` — 7 Ballard food truck parsers (hand-written)
+- **Site Configs**: JSON files in `config/sites/` define venues, templates, timezones, target repos, and deploy strategy (`deploy_subdir`)
+- **Generic Parsers**: `parsers/generic/` — WordPress, HTML selector, AJAX, JSON-LD (config-driven)
+- **Venue-Specific Parsers**: `parsers/` — 9 Ballard food truck parsers (hand-written)
 - **Registry**: Two-tier lookup — venue key (specific) then source_type (generic)
 - **Scrapers**: Async coordinator with error handling and retries
-- **AI Utils**: Vision analyzer for vendor identification, haiku generator for daily scenes
+- **AI Utils**: Vision analyzer for vendor identification, weather-grounded haiku generator (Open-Meteo + Claude Sonnet 4.6)
 - **Temporal**: Workflow orchestration for reliable scheduling
-- **Web Templates**: Per-site templates in `public_templates/<template>/` (deployed to GitHub Pages)
-- **Tests**: 344 tests covering unit, integration, generic parsers, and error scenarios
+- **Web Templates**: Per-site templates in `public_templates/<template>/`, deployed to either the target repo root or a configured subdirectory
+- **Spec-driven tooling**: `.kittify/` and `kitty-specs/` are jredding's dev-time workflow; they have **no runtime impact** and can be ignored if you don't use the spec-kit process
+- **Tests**: 499 tests covering unit, integration, generic parsers, weather, haiku, multi-site deploy config, and error scenarios
 
 ## Requirements
 

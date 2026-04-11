@@ -4,19 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Around the Grounds is a multi-site event aggregator platform. Each site is defined by a JSON config file in `config/sites/` — no new parser code is needed unless the site uses an unsupported platform. The project features:
-- **Multi-site support** with independent site configs for different event domains (food trucks, music, kids events)
+Around the Grounds is a multi-site event aggregator platform. Each site is defined by a JSON config file in `config/sites/` — no new parser code is needed unless the site uses an unsupported platform. This repo is jointly maintained: it produces the original ballardfoodtrucks.com (Vercel-backed, deploys to the `public/` subdir of a dedicated target repo) as well as jredding's Brooklyn music and children's-events sites (GitHub Pages–backed, deploy to the target repo root). Both setups coexist via per-site config.
+
+> **If you're merging the multi-site merge into an existing checkout**, read [MIGRATION.md](./MIGRATION.md) first. It covers per-maintainer migration notes, recommended post-pull hygiene, and suggested follow-up work (unifying the Temporal deploy path, retiring the legacy `breweries.json`, per-site haiku prompts, etc.).
+
+Key features:
+- **Multi-site support** with independent site configs for different event domains (food trucks, music, kids events), independent target repositories, and configurable per-site deploy strategies
 - **Generic parser system** with platform-based parsers (WordPress, HTML selector, AJAX/JSON API) plus venue-specific parsers
-- **Web interface** with per-site templates and automatic deployment to GitHub Pages
+- **Web interface** with per-site templates and automatic deployment to the configured target host (GitHub Pages or Vercel-via-GitHub)
 - **Async web scraping** with concurrent processing of multiple venue websites
 - **AI vision analysis** using Claude Vision API to extract vendor names from food truck logos/images
-- **AI haiku generation** using Claude Sonnet to create contextual, poetic descriptions of daily food truck scenes
-- **Auto-deployment** with git integration for seamless web updates to GitHub Pages
-- **Cloud Run Jobs** with Cloud Scheduler for daily automated site updates
+- **AI haiku generation** using Claude Sonnet 4.6 with real-time weather grounding (Ballard-specific; other sites opt out via `generate_description: false`)
+- **Auto-deployment** with two git strategies selected by `deploy_subdir`: fresh `git init` + force-push (repo root, used by jredding's sites) or clone + scoped add (subdirectory, used by Ballard's Vercel setup)
+- **Cloud Run Jobs** with Cloud Scheduler for daily automated site updates (jredding's production setup)
+- **Self-hosted Temporal worker** alternative scheduling path (Ballard production setup)
 - **Comprehensive error handling** with retry logic, isolation, and graceful degradation
 - **Temporal workflow integration** with cloud deployment support (local, Temporal Cloud, custom servers)
-- **Extensive test suite** with 344 tests covering unit, integration, vision analysis, haiku generation, and error scenarios
+- **Extensive test suite** with 499 tests covering unit, integration, vision analysis, haiku generation, weather, and error scenarios
 - **Modern Python tooling** with uv for dependency management and packaging
+- **Spec-driven development tooling** via `.kittify/` and `kitty-specs/` (jredding's workflow) — these affect how features are designed and tracked, not runtime behavior
 
 ## Development Commands
 
@@ -134,7 +140,7 @@ See [SCHEDULES.md](./SCHEDULES.md)
 
 ### Testing
 ```bash
-# Full test suite (344 tests)
+# Full test suite (499 tests)
 uv run python -m pytest                    # Run all tests
 uv run python -m pytest tests/unit/        # Unit tests only
 uv run python -m pytest tests/parsers/     # Parser-specific tests
@@ -170,28 +176,35 @@ The project follows a modular architecture with clear separation of concerns:
 around_the_grounds/
 ├── config/
 │   ├── sites/                     # Per-site JSON configurations
-│   │   ├── ballard-food-trucks.json   # Ballard food trucks (7 venues)
-│   │   ├── park-slope-music.json      # Park Slope music venues (2 venues)
-│   │   └── childrens-events.json      # Brooklyn children's events (2 venues)
+│   │   ├── ballard-food-trucks.json   # Ballard food trucks (9 venues, deploy_subdir="public")
+│   │   ├── park-slope-music.json      # Park Slope music venues (2 venues, deploy to repo root)
+│   │   └── childrens-events.json      # Brooklyn children's events (2 venues, deploy to repo root)
 │   ├── loader.py                  # Site config loader (load_site_config, load_all_sites)
-│   ├── breweries.json             # Legacy venue list (used by Temporal activities)
-│   ├── haiku_prompt.txt           # Haiku generation prompt template
+│   ├── breweries.json             # Legacy venue list (kept for backward-compat wrappers only)
+│   ├── haiku_prompt.txt           # Weather-grounded haiku prompt template (Ballard-specific)
 │   └── settings.py                # Vision analysis and other settings
 ├── models/
-│   ├── __init__.py                # Exports Venue, Event + backward-compat aliases
-│   ├── brewery.py                 # Venue data model (renamed from Brewery)
-│   ├── schedule.py                # Event data model (renamed from FoodTruckEvent)
-│   └── site.py                    # SiteConfig data model
+│   ├── __init__.py                # Exports Venue, Event, SiteConfig
+│   ├── brewery.py                 # Venue data model (renamed from Brewery; file name retained)
+│   ├── schedule.py                # Event data model (renamed from FoodTruckEvent; file name retained)
+│   └── site.py                    # SiteConfig data model (includes deploy_subdir field)
 ├── parsers/
 │   ├── __init__.py                # Parser module exports
 │   ├── base.py                    # Abstract base parser with error handling
 │   ├── generic/                   # Platform-based generic parsers
 │   │   ├── wordpress.py           # WordPressParser (REST API)
 │   │   ├── html_selector.py       # HtmlSelectorParser (CSS selectors)
-│   │   └── ajax.py                # AjaxParser (JSON API endpoints)
+│   │   ├── ajax.py                # AjaxParser (JSON API endpoints)
+│   │   └── json_ld.py             # JsonLdParser (schema.org JSON-LD)
 │   ├── stoup_ballard.py           # Stoup Brewing parser (venue-specific)
 │   ├── bale_breaker.py            # Bale Breaker parser (venue-specific)
-│   ├── urban_family.py            # Urban Family parser with vision analysis
+│   ├── obec_brewing.py            # Obec Brewing parser (venue-specific)
+│   ├── urban_family.py            # Urban Family parser — WordPress Sugar Calendar primary + Hivey fallback + vision
+│   ├── wheelie_pop.py             # Wheelie Pop Brewing parser (venue-specific)
+│   ├── chucks_greenwood.py        # Chuck's Hop Shop Greenwood parser (Google Sheets CSV)
+│   ├── salehs_corner.py           # Saleh's Corner parser (Seattle Food Truck API)
+│   ├── channel_marker.py          # Channel Marker Cider parser (Google Sheets CSV)
+│   ├── lucky_envelope.py          # Lucky Envelope Brewing parser (Squarespace embedded JSON)
 │   └── registry.py                # Two-tier registry (venue-specific + generic)
 ├── scrapers/
 │   └── coordinator.py             # Async scraping coordinator with error isolation
@@ -209,56 +222,82 @@ around_the_grounds/
 │   ├── date_utils.py              # Date/time utilities with validation
 │   ├── github_auth.py             # GitHub App JWT authentication
 │   ├── vision_analyzer.py         # AI vision analysis for vendor identification
-│   └── haiku_generator.py         # AI haiku generation for food truck scenes
-└── main.py                        # CLI entry point with multi-site and deployment support
+│   ├── haiku_generator.py         # AI haiku generation (weather-grounded, claude-sonnet-4-6)
+│   └── weather.py                 # Open-Meteo weather fetch (free, no API key)
+└── main.py                        # CLI entry point with multi-site, deploy, preview
 
 public_templates/                  # Per-site web interface templates
-├── food-trucks/                   # Ballard food trucks template
+├── food-trucks/                   # Ballard food trucks template (with brewery-click search)
 │   └── index.html
 ├── music/                         # Park Slope music template
 │   └── index.html
 └── kids/                          # Brooklyn children's events template
     └── index.html
 
-public_template/                   # Legacy template directory (food-trucks)
+public/                            # Generated files (git-ignored)
+├── data.json                      # Generated web data
+└── index.html                     # Copied from the active template
 
-public/                            # Generated files (git ignored)
-└── data.json                      # Generated web data (not committed to source repo)
-
-tests/                             # Comprehensive test suite (344 tests)
+tests/                             # Comprehensive test suite (499 tests)
 ├── conftest.py                    # Shared test fixtures
 ├── fixtures/
+│   ├── csv/                       # CSV samples (channel_marker)
 │   ├── html/                      # Real HTML samples from venue websites
+│   ├── json/                      # JSON API response fixtures
 │   └── config/                    # Test configurations
 ├── unit/                          # Unit tests for individual components
 ├── parsers/                       # Parser-specific tests (including generic parsers)
 ├── integration/                   # End-to-end integration tests
 ├── temporal/                      # Temporal workflow tests
 └── test_error_handling.py         # Comprehensive error scenario tests
+
+.kittify/                          # Spec-driven development workflow tooling (jredding's)
+kitty-specs/                       # Executed specifications (dev-time only, no runtime impact)
 ```
 
 ### Key Components
 
 - **Models**: Data classes for venues and events with validation
-  - `Venue`: Represents a data source (was `Brewery`), includes `source_type` for parser selection
-  - `Event`: Represents a single event (was `FoodTruckEvent`), includes `extraction_method`
-  - `SiteConfig`: Represents a deployable site with venues, template, timezone, target repo
+  - `Venue`: Represents a data source (renamed from `Brewery`), includes `source_type` for parser selection
+  - `Event`: Represents a single event (renamed from `FoodTruckEvent`), includes `extraction_method`
+  - `SiteConfig`: Represents a deployable site with venues, template, timezone, target repo, and `deploy_subdir` (see Deployment Strategies below)
 - **Parsers**: Two-tier parser system — venue-specific parsers take precedence, then generic platform parsers
   - `BaseParser`: Abstract base with HTTP error handling, validation, and logging
   - **Generic parsers** (config-driven, no code needed for new sites):
     - `WordPressParser`: Fetches events from WordPress REST API (`source_type: "wordpress"`)
     - `HtmlSelectorParser`: Extracts events via CSS selectors (`source_type: "html"`)
     - `AjaxParser`: Fetches from JSON API endpoints (`source_type: "ajax"`)
-  - **Venue-specific parsers** (7 for Ballard food trucks): StoupBallard, BaleBreaker, UrbanFamily, etc.
+    - `JsonLdParser`: Extracts events from schema.org JSON-LD blocks (`source_type: "json-ld"`)
+  - **Venue-specific parsers** (9 for Ballard food trucks): StoupBallard, BaleBreaker, Obec, UrbanFamily, WheeliePop, ChucksGreenwood, SalehsCorner, ChannelMarker, LuckyEnvelope
 - **Registry**: Two-tier lookup — by `venue.key` (specific) then by `venue.source_type` (generic)
 - **Scrapers**: Async coordinator with concurrent processing, retry logic, and error isolation
 - **Temporal**: Workflow orchestration for reliable execution and scheduling
 - **Config**: Per-site JSON configs in `config/sites/`, loaded by `config/loader.py`
-- **Utils**: Date/time utilities, AI vision analysis, AI haiku generation, GitHub App auth
-- **Web Interface**: Per-site templates in `public_templates/<template>/` deployed to GitHub Pages
-- **Web Deployment**: Git-based deployment (git init + force push) to per-site GitHub repos
-- **Cloud Run**: Google Cloud Run Jobs with Cloud Scheduler for daily automated updates
-- **Tests**: 344 tests covering all scenarios including generic parsers, error handling, vision analysis, and haiku generation
+- **Utils**: Date/time utilities, AI vision analysis, weather-grounded haiku generation, Open-Meteo weather fetch, GitHub App auth
+- **Web Interface**: Per-site templates in `public_templates/<template>/` deployed to the site's configured host (GitHub Pages or Vercel-via-GitHub)
+- **Web Deployment**: Two git strategies selected by `SiteConfig.deploy_subdir` — see Deployment Strategies below
+- **Scheduling**: Google Cloud Run Jobs with Cloud Scheduler (jredding's sites) OR a self-hosted Temporal worker (Ballard site). Both paths invoke the same CLI
+- **Tests**: 499 tests covering all scenarios including generic parsers, error handling, vision analysis, haiku generation, weather fetching, and multi-site deploy configuration
+
+## Deployment Strategies
+
+`SiteConfig.deploy_subdir` (in `config/sites/<key>.json`) selects one of two strategies in `main.py:_deploy_with_github_auth`:
+
+| `deploy_subdir` | Strategy | Git operations | When to use |
+|---|---|---|---|
+| `""` (default, omitted) | **Root mode** | `git init` fresh → copy template to repo root → `git add .` → **force-push** `HEAD:main` | Target repo is dedicated to this site and served from root by GitHub Pages. Used by `park-slope-music`, `childrens-events`. Rewrites history on every deploy. |
+| `"public"` (or any non-empty string) | **Subdir mode** | `git clone` target → copy template into `repo/<subdir>/` → `git add <subdir>/` → no-op short-circuit → normal `push` `HEAD:main` | Target repo has files at root that must be preserved (e.g. a Vercel project whose build output is scoped to `public/`). Used by `ballard-food-trucks`. Preserves history. |
+
+**Ballard-specific:** `config/sites/ballard-food-trucks.json` has `deploy_subdir: "public"` and `target_repo: "https://github.com/steveandroulakis/ballard-food-trucks.git"`. A Vercel project watches that repo's `public/` folder and redeploys on every push. The merge must preserve this behavior — changing `deploy_subdir` to `""` would destroy the target repo's structure on first deploy.
+
+## Spec-Driven Tooling (`.kittify/` + `kitty-specs/`)
+
+These directories are jredding's spec-driven development workflow — they drive how features are designed, specified, and tracked at development time, not at runtime.
+
+- **`.kittify/`**: Mission templates, command templates, constitution, and task scripts for feature planning/implementation workflows. Includes generators for docs, research, and software-dev missions.
+- **`kitty-specs/`**: The actual numbered specs (001, 004, 005, 006, 008, 009, 010) that produced the multi-site refactor. Each spec has a `spec.md`, `plan.md`, `tasks.md`, and tracked work-package files.
+
+**Runtime impact: none.** No file in these directories is imported by `around_the_grounds/` code, loaded by tests, or referenced by any CLI, workflow, or parser. They are safe to ignore if you don't use the spec-kit workflow; they are not safe to delete if you (or jredding) actively use spec-kit, because future features may reference them. Treat them as jredding's engineering-process artifacts.
 
 ### Core Dependencies
 
@@ -286,7 +325,11 @@ See [ADDING-VENUES.md](./ADDING-VENUES.md) for how to add new sites and venues u
 
 ## Haiku Generator
 
-The system includes AI-powered haiku generation that creates contextual, poetic descriptions of daily food truck scenes. Haikus reflect the current season, feature specific food trucks and breweries, and follow traditional 5-7-5 syllable structure.
+The system includes AI-powered haiku generation (`claude-sonnet-4-6` at `temperature=0.85`) that creates contextual, poetic descriptions of daily food truck scenes. Haikus are **grounded in real-time weather data** fetched from Open-Meteo (free, no API key). The prompt incorporates time-of-day awareness, weather-driven sensory imagery, and beer/brewery references while explicitly avoiding invented sensory details.
+
+Weather location defaults to Ballard, Seattle but is overridable via `WEATHER_LOCATION_LAT` / `WEATHER_LOCATION_LON` environment variables. Weather data is **required** — if the fetch fails, no haiku is generated (the system falls back gracefully).
+
+Haiku generation is **per-site opt-in** via `generate_description: true/false` in the site config. Currently only `ballard-food-trucks` opts in; `park-slope-music` and `childrens-events` set it to `false`. The prompt template is also Ballard-specific (mentions Pacific Northwest, breweries) — when adding haiku to other sites, plan to override `haiku_prompt.txt` via `HAIKU_PROMPT_FILE` env var or customize per-site.
 
 See [HAIKU-GENERATOR.md](./HAIKU-GENERATOR.md) for detailed documentation on configuration, usage, and implementation.
 
@@ -315,7 +358,7 @@ See [ERROR-HANDLING.md](./ERROR-HANDLING.md) for the complete error handling str
 
 ## Testing Strategy
 
-The project includes a comprehensive test suite with 344 tests covering unit, integration, generic parsers, vision analysis, haiku generation, and error scenarios.
+The project includes a comprehensive test suite with 499 tests covering unit, integration, generic parsers, vision analysis, haiku generation, weather fetching, and error scenarios.
 
 See [TESTING.md](./TESTING.md) for the complete testing strategy and guide.
 

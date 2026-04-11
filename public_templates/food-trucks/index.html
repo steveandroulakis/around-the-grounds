@@ -124,6 +124,16 @@
             color: #6b7280;
         }
 
+        .location-link {
+            color: #6b7280;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .location-link:hover {
+            color: #9ca3af;
+        }
+
         .time {
             display: inline;
             font-weight: 500;
@@ -308,7 +318,7 @@ Unable to load food truck data. Please try again later.
             </div>
 
             <div class="author-info">
-                By <a href="https://www.linkedin.com/in/steveandroulakis/">Steve Androulakis</a>
+                By <a href="https://www.linkedin.com/in/steveandroulakis/">Steve Androulakis</a> &amp; Jacob Redding
                 •
                 <a href="https://github.com/steveandroulakis/around-the-grounds">
                     <svg class="github-logo" viewBox="0 0 24 24" fill="currentColor">
@@ -407,7 +417,8 @@ Unable to load food truck data. Please try again later.
                     html += `</a>`;
                     html += `<div class="truck-details">`;
                     if (location) {
-                        html += `<div class="location">${location}</div>`;
+                        const escapedLocation = location.replace(/'/g, "\\'");
+                        html += `<div class="location"><a href="#" class="location-link" onclick="searchBrewery('${escapedLocation}'); return false;">${location}</a></div>`;
                     }
                     if (timeString) {
                         html += `<div class="time">${timeString}</div>`;
@@ -475,6 +486,11 @@ Unable to load food truck data. Please try again later.
             // The API now provides times with " PT" timezone indicators
             // Use them directly, or fall back to raw times if available
             return `${startTime} - ${endTime}`;
+        }
+
+        function searchBrewery(breweryName) {
+            const searchQuery = encodeURIComponent(`${breweryName} brewery seattle`);
+            window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
         }
 
         function searchTruck(truckName) {

@@ -1,8 +1,11 @@
 """Unit tests for data models."""
 
+import json
 from datetime import datetime
+from pathlib import Path
 
-from around_the_grounds.models import Venue, Event
+from around_the_grounds.config.loader import load_site_from_path
+from around_the_grounds.models import Event, SiteConfig, Venue
 
 
 class TestVenue:
@@ -120,3 +123,67 @@ class TestEvent:
         str_repr = str(event)
         assert "Test Show" in str_repr
         assert "Test Venue" in str_repr
+
+
+class TestSiteConfig:
+    """Test the SiteConfig model and loader."""
+
+    def test_site_config_defaults(self) -> None:
+        """deploy_subdir defaults to empty (root-deploy) for backward compat."""
+        site = SiteConfig(
+            key="test",
+            name="Test Site",
+            template="food-trucks",
+            timezone="America/Los_Angeles",
+            venues=[],
+        )
+        assert site.deploy_subdir == ""
+        assert site.target_repo == ""
+        assert site.generate_description is True
+
+    def test_site_config_deploy_subdir(self) -> None:
+        """deploy_subdir can be set explicitly for Vercel-style subfolder deploys."""
+        site = SiteConfig(
+            key="test",
+            name="Test Site",
+            template="food-trucks",
+            timezone="America/Los_Angeles",
+            venues=[],
+            deploy_subdir="public",
+        )
+        assert site.deploy_subdir == "public"
+
+    def test_loader_reads_deploy_subdir(self, tmp_path: Path) -> None:
+        """Loader pulls deploy_subdir out of JSON when present."""
+        config_path = tmp_path / "site.json"
+        config_path.write_text(
+            json.dumps(
+                {
+                    "key": "loader-test",
+                    "name": "Loader Test",
+                    "template": "food-trucks",
+                    "timezone": "America/Los_Angeles",
+                    "deploy_subdir": "public",
+                    "venues": [],
+                }
+            )
+        )
+        site = load_site_from_path(config_path)
+        assert site.deploy_subdir == "public"
+
+    def test_loader_deploy_subdir_defaults_empty(self, tmp_path: Path) -> None:
+        """Loader omits deploy_subdir when not in JSON — defaults to empty."""
+        config_path = tmp_path / "site.json"
+        config_path.write_text(
+            json.dumps(
+                {
+                    "key": "loader-test",
+                    "name": "Loader Test",
+                    "template": "food-trucks",
+                    "timezone": "America/Los_Angeles",
+                    "venues": [],
+                }
+            )
+        )
+        site = load_site_from_path(config_path)
+        assert site.deploy_subdir == ""

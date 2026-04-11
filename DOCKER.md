@@ -58,7 +58,7 @@ Build the multi-architecture image:
 # For single architecture (current platform)
 docker build -t around-the-grounds-worker .
 
-# For multi-architecture (Mac + x86 Synology)
+# For multi-architecture (e.g. Mac + x86 target host)
 docker buildx create --use
 docker buildx build --platform linux/amd64,linux/arm64 -t around-the-grounds-worker .
 ```
@@ -138,11 +138,11 @@ docker buildx build --platform linux/amd64,linux/arm64 \
   --push .
 ```
 
-## Step 7: Deploy to Synology
+## Step 7: Deploy to Your Target Host
 
-On your Synology NAS:
+On your target host (any machine that can run Docker and reach your Temporal server):
 
-1. Install Docker from Package Center
+1. Install Docker
 2. Pull your image: `docker pull your-dockerhub-username/around-the-grounds-worker:latest`
 3. Create a container with the same environment variables as above
 4. Start the container
@@ -204,7 +204,7 @@ After successful testing, you can:
 
 1. Push to Docker Hub for easy deployment
 2. Set up automated builds with GitHub Actions
-3. Deploy to your Synology NAS
+3. Deploy to your target host
 4. Configure monitoring and alerting
 5. Set up log aggregation
 

@@ -180,16 +180,20 @@ Around the Grounds is a **multi-site event aggregator platform** that scrapes ve
 └──────────────────────────────┼───────────────────────────────────────┘
                                │
                                ▼
-            ┌──────────────────────────────────┐
-            │       GitHub Pages (Static)       │
-            │                                   │
-            │  atg-ballard-food-trucks.git      │
-            │  atg-park-slope-music.git         │
-            │  atg-childrens-events.git         │
-            │                                   │
-            │  Each repo = template + data.json │
-            │  Force-pushed on every deploy      │
-            └──────────────────────────────────┘
+            ┌──────────────────────────────────────────────────────────┐
+            │                   Target Repositories                     │
+            │                                                           │
+            │  steveandroulakis/ballard-food-trucks                     │
+            │    → Vercel watches /public/ subdir, redeploys            │
+            │    → Strategy: clone + scoped add to public/              │
+            │                                                           │
+            │  jredding/atg-park-slope-music                            │
+            │  jredding/atg-childrens-events                            │
+            │    → GitHub Pages serves repo root                        │
+            │    → Strategy: fresh git init + force-push                │
+            │                                                           │
+            │  Per-site strategy chosen by SiteConfig.deploy_subdir     │
+            └──────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -204,11 +208,13 @@ SiteConfig
 ├── timezone: str               ("America/New_York")
 ├── target_repo: str            ("https://github.com/.../atg-park-slope-music.git")
 ├── generate_description: bool  (false)
+├── deploy_subdir: str          (""  → root deploy / force-push
+│                                "public" → subdir deploy / clone+scoped add)
 └── venues: List[Venue]
        ├── key: str             ("union-hall")
        ├── name: str            ("Union Hall")
        ├── url: str             ("https://...")
-       ├── source_type: str     ("html" | "ajax" | "wordpress")
+       ├── source_type: str     ("html" | "ajax" | "wordpress" | "json-ld")
        └── parser_config: Dict  (CSS selectors, API paths, field maps)
 
 Event
@@ -219,7 +225,7 @@ Event
 ├── start_time: Optional[datetime]
 ├── end_time: Optional[datetime]
 ├── description: Optional[str]
-└── extraction_method: str      ("html" | "api" | "ai-vision")
+└── extraction_method: str      ("html" | "api" | "csv" | "ai-vision" | "json-ld")
 ```
 
 ---
@@ -313,11 +319,11 @@ Adding a **new parser platform** requires:
 
 ## Current Sites
 
-| Site Key              | Template     | Timezone            | Venues | Parser Types Used            |
-|-----------------------|-------------|---------------------|--------|------------------------------|
-| ballard-food-trucks   | food-trucks | America/Los_Angeles | 7      | 7 venue-specific             |
-| park-slope-music      | music       | America/New_York    | 2      | html, ajax                   |
-| childrens-events      | kids        | America/New_York    | 2      | ajax, wordpress              |
+| Site Key              | Template     | Timezone            | Venues | Parser Types Used     | Deploy strategy                       | Target repo                                     |
+|-----------------------|--------------|---------------------|--------|-----------------------|---------------------------------------|-------------------------------------------------|
+| ballard-food-trucks   | food-trucks  | America/Los_Angeles | 9      | 9 venue-specific      | Clone + scoped add to `public/`       | `steveandroulakis/ballard-food-trucks`          |
+| park-slope-music      | music        | America/New_York    | 4      | html, ajax, json-ld   | Fresh init + force-push to root       | `jredding/atg-park-slope-music`                 |
+| childrens-events      | kids         | America/New_York    | 2      | ajax, wordpress       | Fresh init + force-push to root       | `jredding/atg-childrens-events`                 |
 
 ---
 
@@ -332,8 +338,9 @@ Adding a **new parser platform** requires:
 | Config-driven parsing      | config/sites/*.json           | New sites without code changes                    |
 | Graceful AI degradation    | vision_analyzer, haiku_gen    | AI features optional; system works without them   |
 | Template-per-site          | public_templates/             | Independent UI per domain                         |
-| Force-push deploy          | main.py deploy_to_web()       | Clean-slate static hosting per site               |
+| Per-site deploy strategy   | main.py _deploy_with_github_auth | Force-push root (GH Pages) OR clone+scoped subdir (Vercel), selected by `SiteConfig.deploy_subdir` |
 | Site-level timezone        | SiteConfig.timezone           | Correct filtering/display across regions          |
+| Weather-grounded AI        | utils/haiku_generator.py + weather.py | Haiku prompts use real-time weather; required when `generate_description: true` |
 
 ---
 

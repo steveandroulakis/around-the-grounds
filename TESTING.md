@@ -5,7 +5,7 @@ This guide covers comprehensive testing strategies for the Around the Grounds pr
 ## Testing Commands
 
 ```bash
-# Full test suite (344 tests)
+# Full test suite (499 tests)
 uv run python -m pytest                    # Run all tests
 uv run python -m pytest tests/unit/        # Unit tests only
 uv run python -m pytest tests/parsers/     # Parser-specific tests
@@ -92,7 +92,7 @@ This approach catches issues that raw API testing misses and ensures users see t
 
 ## Testing Strategy
 
-The project includes a comprehensive test suite with 344 tests:
+The project includes a comprehensive test suite with 499 tests:
 
 ### Test Organization
 

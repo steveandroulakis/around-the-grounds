@@ -39,18 +39,22 @@ ANTHROPIC_API_KEY=your-anthropic-api-key
 
 #### 4. Target Repository Setup
 
-The system pushes a complete static website to **separate target repositories** which are served by GitHub Pages:
+The system pushes a complete static website to **separate target repositories**. Each target repo is served by either GitHub Pages (jredding's sites) or Vercel (Ballard's site), depending on the site's `deploy_subdir` configuration.
 
 **Two-Repository Architecture**:
 - **Source repo** (this one): Contains scraping code, parsers, site configs, per-site templates
 - **Target repos**: Each site has its own target repo configured in `config/sites/<key>.json`
 
 **Configured Target Repos**:
-| Site | Target Repo |
-|------|-------------|
-| `ballard-food-trucks` | `jredding/atg-ballard-food-trucks` |
-| `park-slope-music` | `jredding/atg-park-slope-music` |
-| `childrens-events` | `jredding/atg-childrens-events` |
+| Site | Target Repo | `deploy_subdir` | Hosting |
+|------|-------------|-----------------|---------|
+| `ballard-food-trucks` | `steveandroulakis/ballard-food-trucks` | `"public"` | Vercel (watches `public/`) |
+| `park-slope-music` | `jredding/atg-park-slope-music` | `""` (root) | GitHub Pages (main branch root) |
+| `childrens-events` | `jredding/atg-childrens-events` | `""` (root) | GitHub Pages (main branch root) |
+
+**`deploy_subdir` selects the git strategy** (see `main.py:_deploy_with_github_auth`):
+- **Empty** → `git init` a fresh local repo, copy template to repo root, `git add .`, and **force-push** `HEAD:main`. Rewrites history on every deploy. Safe for target repos that are dedicated bot-output sinks.
+- **Non-empty** (e.g. `"public"`) → `git clone` the target, write into that subdirectory, scoped `git add <subdir>/`, short-circuit if no diff, and **normal push**. Preserves history and any files that live outside the subdirectory. Required when the target repo also holds config files a host reads (e.g. `vercel.json`).
 
 **Deploy a specific site**:
 ```bash
@@ -76,11 +80,16 @@ uv run around-the-grounds --deploy --git-repo https://github.com/username/custom
 
 When you run `--deploy`, the system:
 1. **Scrapes** all venue websites for the selected site
-2. **Copies** site-specific templates from `public_templates/<template>/` to a temp directory
-3. **Generates** web-friendly JSON data (`data.json`) in the temp directory
-4. **Authenticates** using GitHub App JWT credentials
-5. **git init** + **force pushes** complete website to target repository's main branch
-6. **GitHub Pages** serves the site automatically from the repo root
+2. **Authenticates** using GitHub App JWT credentials (builds an authenticated HTTPS URL)
+3. **Prepares** a working directory in one of two ways, based on the site's `deploy_subdir`:
+   - **Root mode** (`deploy_subdir: ""`): `git init` a fresh local repo
+   - **Subdir mode** (`deploy_subdir: "public"` etc.): `git clone` the target repo into a temp dir
+4. **Copies** the site-specific template from `public_templates/<template>/` into either the repo root (root mode) or `repo/<deploy_subdir>/` (subdir mode)
+5. **Generates** web-friendly JSON data (`data.json`) alongside the template
+6. **Stages** either `.` (root mode) or `<subdir>/` (subdir mode), short-circuiting empty diffs in subdir mode
+7. **Commits** with a per-site title
+8. **Pushes** — `git push --force origin HEAD:main` in root mode, or a normal `git push origin HEAD:main` in subdir mode
+9. **The target host** (GitHub Pages or Vercel) picks up the push and redeploys the live site
 
 ### Temporal Workflow Execution
 

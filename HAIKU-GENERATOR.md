@@ -1,25 +1,35 @@
 # Haiku Generator
 
-The system includes AI-powered haiku generation to create contextual, poetic descriptions of daily event scenes. Currently used for the Ballard food trucks site.
+The system includes AI-powered haiku generation to create contextual, poetic descriptions of daily event scenes. Currently used only for the Ballard food trucks site (other sites set `generate_description: false` in their site config).
 
 ## Overview
 
-The haiku generator uses Claude Sonnet 4.5 to create haikus that:
-- Reflect the current season based on today's date
+The haiku generator uses **Claude Sonnet 4.6** (`claude-sonnet-4-6`) at `temperature=0.85` to create haikus that:
+- Are **grounded in real-time weather data** from Open-Meteo (free, no API key)
+- Incorporate time-of-day awareness (afternoon/evening/next-day forecasts)
 - Feature a specific event and venue combination
-- Capture the atmosphere of the local food truck culture
+- Capture the atmosphere of Ballard's local brewery + food truck culture
 - Follow traditional 5-7-5 syllable structure
-- Include seasonal emojis for visual appeal
+- Include inline emojis for visual appeal
+- Explicitly avoid inventing sensory details not supported by the weather data
+
+Weather is **required** — if the Open-Meteo fetch fails or returns no data, the haiku generator returns `None` and the system continues without a haiku (graceful degradation).
 
 ## How It Works
 
 ### Generation Process
 
-1. **Date Context**: System provides the current date to Claude for seasonal awareness
-2. **Random Selection**: One event is randomly selected from today's events
-3. **AI Generation**: Claude creates a contextual haiku featuring the selected event and venue
-4. **Validation**: System ensures haiku has exactly 3 text lines with inline emojis
-5. **Retry Logic**: If generation fails, system retries with exponential backoff (max 2 retries)
+1. **Weather Fetch**: `utils/weather.py` calls Open-Meteo for the configured lat/lon (default Ballard, Seattle) and picks an appropriate forecast window based on current Pacific time:
+   - Before 6pm PT → afternoon forecast for today
+   - 6–9pm PT → evening forecast for today
+   - 9pm–midnight PT → afternoon forecast for tomorrow
+   - After midnight → afternoon forecast for today (new calendar day)
+2. **Date + Time-of-Day Context**: System passes the current date and derived time-of-day label to the prompt
+3. **Random Event Selection**: One event is randomly selected from today's events
+4. **Prompt Rendering**: Template in `config/haiku_prompt.txt` is rendered with `{date}`, `{time_of_day}`, `{weather}`, `{truck_name}`, `{venue_name}`, `{events_summary}` placeholders
+5. **AI Generation**: Claude creates a contextual haiku featuring the selected event, venue, and weather-driven imagery
+6. **Validation**: System ensures haiku has exactly 3 text lines with inline emojis
+7. **Retry Logic**: If generation fails, system retries with exponential backoff (max 2 retries); weather failures are **not** retried and return `None` immediately
 
 ### Example Haikus
 
@@ -52,8 +62,15 @@ at Urban Family 🍺
 # Required for haiku generation
 export ANTHROPIC_API_KEY="your-api-key"
 
-# Optional: If not set, uses the same key as vision analysis
+# Optional: override the prompt template file
+export HAIKU_PROMPT_FILE="/path/to/custom_prompt.txt"
+
+# Optional: override the weather fetch location (default: Ballard, Seattle)
+export WEATHER_LOCATION_LAT="47.6689"
+export WEATHER_LOCATION_LON="-122.3841"
 ```
+
+Open-Meteo does not require an API key — the weather fetch works out of the box.
 
 ### Enabling/Disabling
 
@@ -78,11 +95,13 @@ The template uses Python `{format}` placeholders. The following fields are avail
 | Placeholder | Description |
 |-------------|-------------|
 | `{date}` | Human-friendly date string (`March 15, 2025 (Saturday)`) |
+| `{time_of_day}` | One of `Afternoon`, `Evening`, `Night` (derived from Pacific time) |
+| `{weather}` | Formatted weather summary (e.g. `53°F, overcast, light breeze, 66% humidity`) |
 | `{truck_name}` | Event title selected for featured focus |
 | `{venue_name}` | Venue hosting the featured event |
 | `{events_summary}` | Bullet list with the single randomly highlighted event/venue |
 
-If the custom template is missing a placeholder, the generator falls back to the built-in default to avoid runtime failures. Keep the emoji formatting rules or adjust them to match your brand voice.
+If the custom template is missing a placeholder, the generator falls back to the built-in default to avoid runtime failures. Keep the emoji formatting rules or adjust them to match your brand voice. If your custom template omits `{weather}` or `{time_of_day}`, the weather fetch still runs — the placeholders just aren't interpolated into your prompt.
 
 ## Usage
 
@@ -147,27 +166,33 @@ Located in `around_the_grounds/utils/haiku_generator.py`
 - `_clean_haiku(haiku)`: Validation and formatting of generated haikus
 
 **Features**:
-- Async API integration using `anthropic.Anthropic`
-- Retry logic with exponential backoff (2^attempt seconds)
+- Async API integration using `anthropic.AsyncAnthropic` (non-blocking in the async pipeline)
+- Retry logic with exponential backoff (2^attempt seconds) on `APITimeoutError`
 - Comprehensive error handling for API failures
+- Weather fetched via `utils/weather.py` (Open-Meteo, cached time-of-day logic)
 - Validation ensures 3-line structure with text content
 - Automatic emoji formatting (inline with text)
+- Early-return with `None` when weather fetch fails (graceful degradation — no haiku, but scraping and deploy continue normally)
 
 ### Prompt Engineering
 
 The haiku prompt includes:
-- Current date and day of week for seasonal context
+- Current date and day of week
+- Time of day (Afternoon/Evening/Night)
+- Current weather summary from Open-Meteo
 - Selected event title and venue name
 - Specific formatting requirements (5-7-5 syllables, inline emojis)
-- Guidance on Pacific Northwest atmosphere and food culture
-- Examples of well-formatted haikus
+- Explicit guidance to avoid inventing sensory details not supported by the weather (no "damp" unless raining, no "misty" unless foggy, etc.)
+- Guidance on Pacific Northwest atmosphere and food culture (Ballard-specific)
+- Multiple examples of well-formatted haikus for different weather/time conditions
 
 ### Model Configuration
 
 ```python
-message = self.client.messages.create(
-    model="claude-sonnet-4-20250514",  # Claude Sonnet 4.5
+message = await self.client.messages.create(
+    model="claude-sonnet-4-6",          # Claude Sonnet 4.6
     max_tokens=150,                     # Sufficient for haiku + formatting
+    temperature=0.85,                   # Higher creativity for poetry
     messages=[{"role": "user", "content": prompt}]
 )
 ```

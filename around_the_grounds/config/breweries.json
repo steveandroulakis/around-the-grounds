@@ -35,9 +35,11 @@
     {
       "key": "urban-family",
       "name": "Urban Family Brewing",
-      "url": "https://app.hivey.io/urbanfamily/public-calendar",
+      "url": "https://urbanfamilybrewing.com/home/calendar/",
       "parser_config": {
-        "note": "Uses Hivey API endpoint for calendar data",
+        "note": "Primary source: WordPress Sugar Calendar HTML + AJAX; fallback to legacy Hivey API",
+        "calendar_url": "https://urbanfamilybrewing.com/home/calendar/",
+        "calendar_ajax_endpoint": "https://urbanfamilybrewing.com/wp-admin/admin-ajax.php",
         "api_endpoint": "https://hivey-api-prod-pineapple.onrender.com/urbanfamily/public-calendar",
         "api_type": "hivey_calendar"
       }
@@ -54,6 +56,15 @@
       }
     },
     {
+      "key": "channel-marker",
+      "name": "Channel Marker Cider",
+      "url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRaaJmiJ4YrKmvwiFdsHYij1kLUVP6394gMrTPpgHwu1zTtM5aoIy9JfLyeK4WrLLDDiHcFRAtbZci_/pub?output=csv",
+      "parser_config": {
+        "note": "Google Sheets CSV export with food truck schedule",
+        "csv_direct": true
+      }
+    },
+    {
       "key": "chucks-greenwood",
       "name": "Chuck's Hop Shop Greenwood",
       "url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS8BmXLSrsUVJ1x_x8FslWooOXRLeEJV-Jq5NzhfUCI9TtO-qXr0ey2BzY8KI-GflT7ekl5015XX3uj/pub?gid=1143085558&single=true&output=csv",
@@ -61,6 +72,14 @@
         "note": "Google Sheets CSV export with automatic monthly updates",
         "csv_direct": true,
         "event_type_filter": "Food Truck"
+      }
+    },
+    {
+      "key": "lucky-envelope",
+      "name": "Lucky Envelope Brewing",
+      "url": "https://www.luckyenvelopebrewing.com/",
+      "parser_config": {
+        "note": "Squarespace page with embedded JSON in data-current-context carousel attribute"
       }
     },
     {

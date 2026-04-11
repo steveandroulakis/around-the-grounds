@@ -37,13 +37,19 @@ def haiku_generator() -> HaikuGenerator:
     return HaikuGenerator(api_key="test-key")
 
 
+MOCK_WEATHER = ("53°F, overcast, light breeze, 66% humidity", "Afternoon")
+WEATHER_PATCH = "around_the_grounds.utils.weather.fetch_weather"
+ANTHROPIC_PATCH = "around_the_grounds.utils.haiku_generator.anthropic.AsyncAnthropic"
+
+
 class TestHaikuGenerator:
     """Test haiku generation functionality."""
 
     @pytest.mark.asyncio
-    @patch("around_the_grounds.utils.haiku_generator.anthropic.AsyncAnthropic")
+    @patch(WEATHER_PATCH, new_callable=AsyncMock, return_value=MOCK_WEATHER)
+    @patch(ANTHROPIC_PATCH)
     async def test_generate_haiku_success(
-        self, mock_anthropic_client: Mock, haiku_generator: HaikuGenerator, sample_events: list
+        self, mock_anthropic_client: Mock, mock_fetch_weather: AsyncMock, haiku_generator: HaikuGenerator, sample_events: list
     ) -> None:
         """Test successful haiku generation."""
         # Mock the API response
@@ -64,9 +70,10 @@ class TestHaikuGenerator:
         assert haiku is not None
         assert "Georgia's" in haiku or "autumn" in haiku.lower()
         assert "\n" in haiku  # Should have multiple lines
+        mock_fetch_weather.assert_awaited()
 
     @pytest.mark.asyncio
-    @patch("around_the_grounds.utils.haiku_generator.anthropic.AsyncAnthropic")
+    @patch(ANTHROPIC_PATCH)
     async def test_generate_haiku_no_events(
         self, mock_anthropic_client: Mock, haiku_generator: HaikuGenerator
     ) -> None:
@@ -77,9 +84,10 @@ class TestHaikuGenerator:
         assert haiku is None
 
     @pytest.mark.asyncio
-    @patch("around_the_grounds.utils.haiku_generator.anthropic.AsyncAnthropic")
+    @patch(WEATHER_PATCH, new_callable=AsyncMock, return_value=MOCK_WEATHER)
+    @patch(ANTHROPIC_PATCH)
     async def test_generate_haiku_api_timeout(
-        self, mock_anthropic_client: Mock, haiku_generator: HaikuGenerator, sample_events: list
+        self, mock_anthropic_client: Mock, mock_fetch_weather: AsyncMock, haiku_generator: HaikuGenerator, sample_events: list
     ) -> None:
         """Test haiku generation with API timeout."""
         import anthropic
@@ -101,9 +109,10 @@ class TestHaikuGenerator:
         assert haiku is None
 
     @pytest.mark.asyncio
-    @patch("around_the_grounds.utils.haiku_generator.anthropic.AsyncAnthropic")
+    @patch(WEATHER_PATCH, new_callable=AsyncMock, return_value=MOCK_WEATHER)
+    @patch(ANTHROPIC_PATCH)
     async def test_generate_haiku_api_error(
-        self, mock_anthropic_client: Mock, haiku_generator: HaikuGenerator, sample_events: list
+        self, mock_anthropic_client: Mock, mock_fetch_weather: AsyncMock, haiku_generator: HaikuGenerator, sample_events: list
     ) -> None:
         """Test haiku generation with API error."""
         # Mock API error (generic exception)
@@ -120,9 +129,10 @@ class TestHaikuGenerator:
         assert haiku is None
 
     @pytest.mark.asyncio
-    @patch("around_the_grounds.utils.haiku_generator.anthropic.AsyncAnthropic")
+    @patch(WEATHER_PATCH, new_callable=AsyncMock, return_value=MOCK_WEATHER)
+    @patch(ANTHROPIC_PATCH)
     async def test_generate_haiku_with_retry(
-        self, mock_anthropic_client: Mock, haiku_generator: HaikuGenerator, sample_events: list
+        self, mock_anthropic_client: Mock, mock_fetch_weather: AsyncMock, haiku_generator: HaikuGenerator, sample_events: list
     ) -> None:
         """Test haiku generation with retry on generic error."""
         # Mock error on first attempt, success on second
@@ -163,12 +173,13 @@ class TestHaikuGenerator:
         assert cleaned == "Line 1\nLine 2\nLine 3"
 
     @pytest.mark.asyncio
-    @patch("around_the_grounds.utils.haiku_generator.anthropic.AsyncAnthropic")
+    @patch(WEATHER_PATCH, new_callable=AsyncMock, return_value=MOCK_WEATHER)
+    @patch(ANTHROPIC_PATCH)
     @patch("around_the_grounds.utils.haiku_generator.random.choice")
-    async def test_generate_haiku_includes_truck_and_brewery(
-        self, mock_random_choice: Mock, mock_anthropic_client: Mock, haiku_generator: HaikuGenerator, sample_events: list
+    async def test_generate_haiku_includes_truck_and_venue(
+        self, mock_random_choice: Mock, mock_anthropic_client: Mock, mock_fetch_weather: AsyncMock, haiku_generator: HaikuGenerator, sample_events: list
     ) -> None:
-        """Test that haiku generation prompt includes truck names and breweries."""
+        """Test that haiku generation prompt includes truck names and venues."""
         # Mock random.choice to always select first event for deterministic testing
         mock_random_choice.return_value = sample_events[0]
 
@@ -187,7 +198,7 @@ class TestHaikuGenerator:
         today = datetime(2025, 10, 13)
         await haiku_generator.generate_haiku(today, sample_events)
 
-        # Verify the prompt included the selected truck and brewery
+        # Verify the prompt included the selected truck and venue
         call_args = mock_create.call_args
         prompt = call_args.kwargs["messages"][0]["content"]
 
@@ -195,3 +206,114 @@ class TestHaikuGenerator:
         assert "Georgia's Greek" in prompt
         assert "Stoup Brewing" in prompt
         assert "October 13, 2025" in prompt
+
+    @pytest.mark.asyncio
+    @patch(WEATHER_PATCH, new_callable=AsyncMock, return_value=None)
+    async def test_generate_haiku_returns_none_when_weather_fails(
+        self, mock_fetch_weather: AsyncMock, haiku_generator: HaikuGenerator, sample_events: list
+    ) -> None:
+        """Test that haiku generation returns None when weather fetch fails."""
+        today = datetime(2025, 10, 13)
+        haiku = await haiku_generator.generate_haiku(today, sample_events)
+
+        assert haiku is None
+        mock_fetch_weather.assert_awaited()
+
+    @pytest.mark.asyncio
+    @patch(WEATHER_PATCH, new_callable=AsyncMock, return_value=MOCK_WEATHER)
+    @patch(ANTHROPIC_PATCH)
+    @patch("around_the_grounds.utils.haiku_generator.random.choice")
+    async def test_prompt_includes_weather_and_time_of_day(
+        self, mock_random_choice: Mock, mock_anthropic_client: Mock, mock_fetch_weather: AsyncMock, haiku_generator: HaikuGenerator, sample_events: list
+    ) -> None:
+        """Test that the prompt includes weather and time_of_day from fetch_weather."""
+        mock_random_choice.return_value = sample_events[0]
+
+        mock_message = Mock()
+        mock_content = Mock()
+        mock_content.text = "Test line one\nTest line two\nTest line three"
+        mock_message.content = [mock_content]
+
+        mock_client_instance = mock_anthropic_client.return_value
+        mock_create = AsyncMock(return_value=mock_message)
+        mock_client_instance.messages.create = mock_create
+        haiku_generator.client = mock_client_instance
+
+        today = datetime(2025, 10, 13)
+        await haiku_generator.generate_haiku(today, sample_events)
+
+        call_args = mock_create.call_args
+        prompt = call_args.kwargs["messages"][0]["content"]
+
+        # Verify weather and time_of_day are in the prompt
+        assert "53°F, overcast, light breeze, 66% humidity" in prompt
+        assert "Afternoon" in prompt
+
+    @pytest.mark.asyncio
+    @patch(WEATHER_PATCH, new_callable=AsyncMock, return_value=("70°F, clear sky, calm winds, 40% humidity", "Evening"))
+    @patch(ANTHROPIC_PATCH)
+    @patch("around_the_grounds.utils.haiku_generator.random.choice")
+    async def test_prompt_includes_evening_weather(
+        self, mock_random_choice: Mock, mock_anthropic_client: Mock, mock_fetch_weather: AsyncMock, haiku_generator: HaikuGenerator, sample_events: list
+    ) -> None:
+        """Test that evening weather context is passed correctly."""
+        mock_random_choice.return_value = sample_events[0]
+
+        mock_message = Mock()
+        mock_content = Mock()
+        mock_content.text = "Evening line one\nEvening line two\nEvening line three"
+        mock_message.content = [mock_content]
+
+        mock_client_instance = mock_anthropic_client.return_value
+        mock_create = AsyncMock(return_value=mock_message)
+        mock_client_instance.messages.create = mock_create
+        haiku_generator.client = mock_client_instance
+
+        today = datetime(2025, 10, 13)
+        await haiku_generator.generate_haiku(today, sample_events)
+
+        call_args = mock_create.call_args
+        prompt = call_args.kwargs["messages"][0]["content"]
+
+        assert "70°F, clear sky, calm winds, 40% humidity" in prompt
+        assert "Evening" in prompt
+
+    def test_build_prompt_with_weather(self, haiku_generator: HaikuGenerator, sample_events: list) -> None:
+        """Test _build_prompt includes weather and time_of_day placeholders."""
+        prompt = haiku_generator._build_prompt(
+            date_str="October 13, 2025 (Monday)",
+            truck_name="Georgia's Greek",
+            venue_name="Stoup Brewing",
+            events=sample_events[:1],
+            weather="53°F, overcast, light breeze, 66% humidity",
+            time_of_day="Afternoon",
+        )
+
+        assert "53°F, overcast, light breeze, 66% humidity" in prompt
+        assert "Afternoon" in prompt
+        assert "Georgia's Greek" in prompt
+        assert "Stoup Brewing" in prompt
+
+    @pytest.mark.asyncio
+    @patch(WEATHER_PATCH, new_callable=AsyncMock, return_value=MOCK_WEATHER)
+    @patch(ANTHROPIC_PATCH)
+    async def test_uses_claude_sonnet_model(
+        self, mock_anthropic_client: Mock, mock_fetch_weather: AsyncMock, haiku_generator: HaikuGenerator, sample_events: list
+    ) -> None:
+        """Test that the generator uses claude-sonnet-4-6 model."""
+        mock_message = Mock()
+        mock_content = Mock()
+        mock_content.text = "Line one here\nLine two here\nLine three here"
+        mock_message.content = [mock_content]
+
+        mock_client_instance = mock_anthropic_client.return_value
+        mock_create = AsyncMock(return_value=mock_message)
+        mock_client_instance.messages.create = mock_create
+        haiku_generator.client = mock_client_instance
+
+        today = datetime(2025, 10, 13)
+        await haiku_generator.generate_haiku(today, sample_events)
+
+        call_args = mock_create.call_args
+        assert call_args.kwargs["model"] == "claude-sonnet-4-6"
+        assert call_args.kwargs["temperature"] == 0.85

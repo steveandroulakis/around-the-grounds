@@ -229,7 +229,15 @@ async def generate_web_data(
                 else None
             ),
             "description": event.description,
-            "extraction_method": event.extraction_method,
+            # Emit "vision" (not "ai-vision") in the public JSON so downstream
+            # templates that key off extraction_method === "vision" keep working.
+            # This matches the contract established by the pre-merge Ballard
+            # site; venue-specific parsers still use "ai-vision" internally.
+            "extraction_method": (
+                "vision"
+                if event.extraction_method == "ai-vision"
+                else event.extraction_method
+            ),
             # Legacy keys for backward compat with existing templates
             "vendor": (
                 f"{event.title} 🖼️🤖"
@@ -301,7 +309,11 @@ async def deploy_to_web(
         else:
             template_dir_name = "food-trucks"
 
-        return _deploy_with_github_auth(web_data, repository_url, template_dir_name)
+        deploy_subdir = site.deploy_subdir if site else ""
+
+        return _deploy_with_github_auth(
+            web_data, repository_url, template_dir_name, deploy_subdir
+        )
 
     except subprocess.CalledProcessError as e:
         print(f"❌ Deployment failed: {e}")
@@ -312,9 +324,22 @@ async def deploy_to_web(
 
 
 def _deploy_with_github_auth(
-    web_data: dict, repository_url: str, template_dir_name: str = "food-trucks"
+    web_data: dict,
+    repository_url: str,
+    template_dir_name: str = "food-trucks",
+    deploy_subdir: str = "",
 ) -> bool:
-    """Deploy web data to git repository using GitHub App authentication."""
+    """Deploy web data to git repository using GitHub App authentication.
+
+    Two strategies, selected by ``deploy_subdir``:
+
+    - Empty (default): fresh ``git init`` + force-push to repo root. Used by
+      GitHub Pages–served targets that own the whole repo.
+    - Non-empty: clone the repo, write files into that subdirectory, scoped
+      ``git add <subdir>/``, and a normal (non-force) push. Used when the
+      target repo has other files at root that must be preserved (e.g. a
+      Vercel project consuming ``public/``).
+    """
     import shutil
     import tempfile
 
@@ -323,12 +348,46 @@ def _deploy_with_github_auth(
     try:
         print("🔐 Using GitHub App authentication for deployment...")
 
+        # Resolve template directory — try multi-template path first, fall back to legacy.
+        public_templates_dir = Path.cwd() / "public_templates" / template_dir_name
+        if not public_templates_dir.exists():
+            public_templates_dir = Path.cwd() / "public_template"
+
+        # Mint GitHub App access token once and build the authenticated URL upfront
+        # so it can be used for both clone (subdir mode) and push (both modes).
+        auth = GitHubAppAuth(repository_url)
+        access_token = auth.get_access_token()
+        authenticated_url = (
+            f"https://x-access-token:{access_token}@github.com/"
+            f"{auth.repo_owner}/{auth.repo_name}.git"
+        )
+
         with tempfile.TemporaryDirectory() as temp_dir:
             repo_dir = Path(temp_dir) / "repo"
-            repo_dir.mkdir()
 
-            # Initialise a fresh local repo — avoids clone failures on empty/new target repos
-            subprocess.run(["git", "init"], cwd=repo_dir, check=True, capture_output=True)
+            if deploy_subdir:
+                # Subdir mode: clone the existing repo so files outside the
+                # subdir (e.g. vercel.json, README.md) survive the update.
+                print(f"📥 Cloning {repository_url}...")
+                subprocess.run(
+                    ["git", "clone", authenticated_url, str(repo_dir)],
+                    check=True,
+                    capture_output=True,
+                )
+            else:
+                # Root mode: fresh init. Avoids clone failures on empty/new
+                # target repos; history gets rewritten by the force-push below.
+                repo_dir.mkdir()
+                subprocess.run(
+                    ["git", "init"], cwd=repo_dir, check=True, capture_output=True
+                )
+                subprocess.run(
+                    ["git", "remote", "add", "origin", authenticated_url],
+                    cwd=repo_dir,
+                    check=True,
+                    capture_output=True,
+                )
+
             subprocess.run(
                 ["git", "config", "user.email", "bot@around-the-grounds.app"],
                 cwd=repo_dir, check=True, capture_output=True,
@@ -338,13 +397,8 @@ def _deploy_with_github_auth(
                 cwd=repo_dir, check=True, capture_output=True,
             )
 
-            # Copy template files — try new multi-template path first, fall back to legacy
-            public_templates_dir = Path.cwd() / "public_templates" / template_dir_name
-            if not public_templates_dir.exists():
-                public_templates_dir = Path.cwd() / "public_template"
-
-            # Deploy to repo root so GitHub Pages serves files directly
-            target_public_dir = repo_dir
+            target_public_dir = repo_dir / deploy_subdir if deploy_subdir else repo_dir
+            target_public_dir.mkdir(parents=True, exist_ok=True)
 
             print(f"📋 Copying template files from {public_templates_dir}...")
             shutil.copytree(public_templates_dir, target_public_dir, dirs_exist_ok=True)
@@ -355,9 +409,26 @@ def _deploy_with_github_auth(
 
             print(f"📝 Updated data.json with {web_data.get('total_events', 0)} events")
 
-            subprocess.run(
-                ["git", "add", "."], cwd=repo_dir, check=True, capture_output=True
-            )
+            if deploy_subdir:
+                # Scoped add: only touch the subdir we own.
+                subprocess.run(
+                    ["git", "add", f"{deploy_subdir}/"],
+                    cwd=repo_dir, check=True, capture_output=True,
+                )
+                # In subdir mode (clone), short-circuit no-op updates so the
+                # bot doesn't create empty commits when events haven't changed.
+                diff_check = subprocess.run(
+                    ["git", "diff", "--staged", "--quiet"],
+                    cwd=repo_dir, capture_output=True,
+                )
+                if diff_check.returncode == 0:
+                    print("ℹ️  No changes to deploy")
+                    return True
+            else:
+                subprocess.run(
+                    ["git", "add", "."],
+                    cwd=repo_dir, check=True, capture_output=True,
+                )
 
             site_name = web_data.get("site_name", "Events")
             commit_msg = f"📅 Update {site_name} - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
@@ -366,20 +437,13 @@ def _deploy_with_github_auth(
                 cwd=repo_dir, check=True, capture_output=True,
             )
 
-            auth = GitHubAppAuth(repository_url)
-            access_token = auth.get_access_token()
-
-            authenticated_url = f"https://x-access-token:{access_token}@github.com/{auth.repo_owner}/{auth.repo_name}.git"
-            subprocess.run(
-                ["git", "remote", "add", "origin", authenticated_url],
-                cwd=repo_dir, check=True, capture_output=True,
-            )
-
             print(f"🚀 Pushing to {repository_url}...")
-            subprocess.run(
-                ["git", "push", "--force", "origin", "HEAD:main"],
-                cwd=repo_dir, check=True, capture_output=True,
+            push_cmd = (
+                ["git", "push", "origin", "HEAD:main"]
+                if deploy_subdir
+                else ["git", "push", "--force", "origin", "HEAD:main"]
             )
+            subprocess.run(push_cmd, cwd=repo_dir, check=True, capture_output=True)
             print("✅ Deployed successfully! Changes will be live shortly.")
 
             return True

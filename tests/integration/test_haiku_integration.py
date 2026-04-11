@@ -2,7 +2,7 @@
 
 import pytest
 from datetime import datetime
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from around_the_grounds.main import generate_web_data, _generate_haiku_for_today
 from around_the_grounds.models import Event
@@ -113,9 +113,19 @@ class TestHaikuIntegration:
         assert len(web_data["events"]) == 1
 
     @pytest.mark.asyncio
+    @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
+    @patch(
+        "around_the_grounds.utils.weather.fetch_weather",
+        new_callable=AsyncMock,
+        return_value=("53°F, overcast, light breeze, 66% humidity", "Afternoon"),
+    )
     @patch("around_the_grounds.utils.haiku_generator.anthropic.AsyncAnthropic")
     async def test_haiku_for_today_filters_events(
-        self, mock_anthropic_client: Mock, sample_events_today: list, sample_events_future: list
+        self,
+        mock_anthropic_client: Mock,
+        mock_fetch_weather: AsyncMock,
+        sample_events_today: list,
+        sample_events_future: list,
     ) -> None:
         """Test that _generate_haiku_for_today only uses today's events."""
         from unittest.mock import AsyncMock

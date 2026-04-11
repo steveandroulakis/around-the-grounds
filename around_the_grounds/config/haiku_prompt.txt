@@ -1,4 +1,6 @@
 Today's date is: {date}
+Time of day: {time_of_day}
+Current weather in Ballard, Seattle: {weather}
 
 Today's featured food truck: {truck_name} at {venue_name}
 
@@ -9,12 +11,20 @@ Today's haiku inspiration:
 
 Create a haiku (5-7-5 syllable structure) that captures the essence of today's food truck scene in Seattle's Ballard neighborhood. Your haiku should:
 
-1. Reflect the current season and time of year based on today's date
+1. Let the weather seep into the imagery naturally — through textures, moods, and sensory details — rather than stating it directly
 2. Feature the specific food truck ({truck_name}) and brewery ({venue_name}) mentioned above
 3. Evoke the atmosphere of gathering at local breweries and food spots
-4. Balance concrete sensory details with seasonal imagery
+4. Balance concrete sensory details with weather-driven imagery
 
-The haiku should feel authentic to the Pacific Northwest autumn/winter/spring/summer experience and celebrate the diversity of street food culture. Avoid being overly literal - aim for evocative, poetic language that honors the traditional haiku form.
+Stay faithful to what's described — do not invent or embellish sensory details beyond what the data supports. If it's not raining, don't say "damp." If there's no fog, don't say "misty." If humidity is moderate, don't exaggerate it. Only describe conditions that are clearly present in the weather provided. Don't invent what people are wearing or other details not in the data.
+
+When precipitation is described as a "chance" with a percentage, treat it as a possibility — not a certainty. Capture the anticipation or threat of weather rather than stating it as fact (e.g. "skies threaten rain" or "clouds may break" rather than "rain soaks the line").
+
+Use the food truck's actual name — don't riff on or pun on the name.
+
+Avoid starting with the most obvious weather description (e.g. don't just say "gray skies" for overcast). Find unexpected angles — how the weather affects sounds, smells, textures, people's behavior, or the food itself.
+
+The haiku should feel authentic to the Pacific Northwest experience and celebrate the diversity of street food culture. Avoid being overly literal - aim for evocative, poetic language that honors the traditional haiku form.
 
 CRITICAL FORMATTING REQUIREMENTS:
 - The haiku MUST be exactly 3 lines of text
@@ -23,12 +33,28 @@ CRITICAL FORMATTING REQUIREMENTS:
 - Do NOT put emojis on their own separate lines
 - Good examples:
 
-🍂 Autumn mist rolls in—
+🌧️ Spring rain has moods low—
 Plaza Garcia's warmth glows
 at Obec's wood door 🍺
 
-☀️ Summer sun beams bright
-Where Ya At Matt hangs at Stoup,
-Hops drank with good eats 🍺
+☀️ Tacos sizzle bright
+at Stoup beneath golden rays,
+summer haze and hops 🍺
+
+🍖 Brisket smoke and hops—
+Johnson's plates at Stoup's long pour,
+IPAs run cold 🍺
+
+☁️ Where Ya At Matt's spice
+cuts the soft gray afternoon—
+Stoup pints, warm inside 🍺
+
+🥪 Wich Came First's warmth pulls—
+Yonder's cider, Bale Breaker,
+coats up, bar stools full 🍺
+
+🌙 Night falls on Ballard—
+Where Ya At Matt's last orders,
+stout warms the long dark 🍺
 
 Return only the haiku with inline emoji, nothing else.
