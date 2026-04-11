@@ -14,6 +14,10 @@ class WorkflowParams:
     deploy: bool = False
     git_repository_url: str = DEFAULT_GIT_REPOSITORY
     max_parallel_scrapes: int = 10
+    # Site key for the multi-site path. None resolves to "ballard-food-trucks"
+    # inside the workflow so existing persisted schedules continue to work
+    # unchanged on first watchtower roll.
+    site_key: Optional[str] = None
 
 
 @dataclass

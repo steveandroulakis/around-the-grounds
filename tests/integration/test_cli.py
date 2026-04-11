@@ -5,18 +5,12 @@ import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, Generator, List
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from around_the_grounds.main import (
-    format_events_output,
-    load_brewery_config,
-    main,
-    scrape_food_trucks,
-)
-from around_the_grounds.config.loader import load_site_config  # noqa: F401 (used in patch)
-from around_the_grounds.models import Venue, Event
+from around_the_grounds.main import format_events_output, main
+from around_the_grounds.models import Event, Venue
 from around_the_grounds.scrapers.coordinator import ScrapingError
 
 
@@ -25,16 +19,15 @@ class TestCLI:
 
     @pytest.fixture
     def temp_config_file(
-        self, test_breweries_config: List[Dict[str, Any]]
+        self, test_site_config: Dict[str, Any]
     ) -> Generator[str, None, None]:
-        """Create a temporary config file for testing."""
+        """Create a temporary SiteConfig-shaped config file for testing."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            json.dump(test_breweries_config, f)
+            json.dump(test_site_config, f)
             temp_path = f.name
 
         yield temp_path
 
-        # Cleanup
         Path(temp_path).unlink()
 
     @pytest.fixture
@@ -60,72 +53,6 @@ class TestCLI:
                 end_time=future_date.replace(hour=21),
             ),
         ]
-
-    def test_load_brewery_config_success(self, temp_config_file: str) -> None:
-        """Test successful loading of brewery configuration."""
-        breweries = load_brewery_config(temp_config_file)
-
-        assert len(breweries) == 2
-        assert breweries[0].key == "test-brewery-1"
-        assert breweries[0].name == "Test Brewery 1"
-        assert breweries[0].url == "https://example1.com/food-trucks"
-        assert breweries[1].key == "test-brewery-2"
-
-    def test_load_brewery_config_default_path(self) -> None:
-        """Test loading brewery config from default path."""
-        # Should use the default config file
-        with patch("around_the_grounds.main.Path") as mock_path:
-            mock_config_path = (
-                mock_path.return_value.parent / "config" / "breweries.json"
-            )
-            mock_config_path.exists.return_value = True
-
-            with patch("builtins.open", create=True) as mock_open:
-                mock_open.return_value.__enter__.return_value.read.return_value = (
-                    json.dumps(
-                        {
-                            "breweries": [
-                                {
-                                    "key": "default",
-                                    "name": "Default",
-                                    "url": "https://example.com",
-                                }
-                            ]
-                        }
-                    )
-                )
-
-                with patch("json.load") as mock_json_load:
-                    mock_json_load.return_value = {
-                        "breweries": [
-                            {
-                                "key": "default",
-                                "name": "Default",
-                                "url": "https://example.com",
-                            }
-                        ]
-                    }
-
-                    breweries = load_brewery_config()
-                    assert len(breweries) == 1
-                    assert breweries[0].key == "default"
-
-    def test_load_brewery_config_file_not_found(self) -> None:
-        """Test loading config when file doesn't exist."""
-        with pytest.raises(FileNotFoundError):
-            load_brewery_config("/nonexistent/config.json")
-
-    def test_load_brewery_config_invalid_json(self) -> None:
-        """Test loading config with invalid JSON."""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            f.write("invalid json content")
-            temp_path = f.name
-
-        try:
-            with pytest.raises(json.JSONDecodeError):
-                load_brewery_config(temp_path)
-        finally:
-            Path(temp_path).unlink()
 
     def test_format_events_output_with_events(
         self, sample_cli_events: List[Event]
@@ -228,66 +155,16 @@ class TestCLI:
         # Ensure no AI emojis for regular events
         assert "Taco Supreme 🖼️🤖" not in output
 
-    @pytest.mark.asyncio
-    async def test_scrape_food_trucks_success(
-        self, temp_config_file: str, sample_cli_events: List[Event]
-    ) -> None:
-        """Test successful food truck scraping."""
-        with patch(
-            "around_the_grounds.main.ScraperCoordinator"
-        ) as mock_coordinator_class:
-            mock_coordinator = Mock()
-            mock_coordinator.scrape_all = AsyncMock(return_value=sample_cli_events)
-            mock_coordinator.get_errors = Mock(return_value=[])
-            mock_coordinator_class.return_value = mock_coordinator
-
-            events, errors = await scrape_food_trucks(temp_config_file)
-
-            assert len(events) == 2
-            assert len(errors) == 0
-            assert events[0].title == "Amazing BBQ Truck"
-
-    @pytest.mark.asyncio
-    async def test_scrape_food_trucks_with_errors(self, temp_config_file: str) -> None:
-        """Test scraping with some errors."""
-        brewery = Venue("failed", "Failed", "https://example.com")
-        errors = [ScrapingError(brewery, "Network Error", "Failed")]
-
-        with patch(
-            "around_the_grounds.main.ScraperCoordinator"
-        ) as mock_coordinator_class:
-            mock_coordinator = Mock()
-            mock_coordinator.scrape_all = AsyncMock(return_value=[])
-            mock_coordinator.get_errors = Mock(return_value=errors)
-            mock_coordinator_class.return_value = mock_coordinator
-
-            events, returned_errors = await scrape_food_trucks(temp_config_file)
-
-            assert len(events) == 0
-            assert len(returned_errors) == 1
-
-    @pytest.mark.asyncio
-    async def test_scrape_food_trucks_no_breweries(self) -> None:
-        """Test scraping with no breweries configured."""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            json.dump({"breweries": []}, f)
-            temp_path = f.name
-
-        try:
-            events, errors = await scrape_food_trucks(temp_path)
-            assert len(events) == 0
-            assert len(errors) == 0
-        finally:
-            Path(temp_path).unlink()
-
     def test_main_success(
         self,
         temp_config_file: str,
         sample_cli_events: List[Event],
         capsys: Any,
     ) -> None:
-        """Test successful main function execution."""
-        with patch("around_the_grounds.main.scrape_food_trucks") as mock_scrape:
+        """Test successful main function execution via --config path."""
+        with patch(
+            "around_the_grounds.main.scrape_site", new_callable=AsyncMock
+        ) as mock_scrape:
             mock_scrape.return_value = (sample_cli_events, [])
 
             exit_code = main(["--config", temp_config_file])
@@ -302,7 +179,9 @@ class TestCLI:
         brewery = Venue("failed", "Failed", "https://example.com")
         errors = [ScrapingError(brewery, "Network Error", "Failed")]
 
-        with patch("around_the_grounds.main.scrape_food_trucks") as mock_scrape:
+        with patch(
+            "around_the_grounds.main.scrape_site", new_callable=AsyncMock
+        ) as mock_scrape:
             mock_scrape.return_value = ([], errors)
 
             exit_code = main(["--config", temp_config_file])
@@ -321,7 +200,9 @@ class TestCLI:
         brewery = Venue("failed", "Failed", "https://example.com")
         errors = [ScrapingError(brewery, "Network Error", "Failed")]
 
-        with patch("around_the_grounds.main.scrape_food_trucks") as mock_scrape:
+        with patch(
+            "around_the_grounds.main.scrape_site", new_callable=AsyncMock
+        ) as mock_scrape:
             mock_scrape.return_value = (sample_cli_events, errors)
 
             exit_code = main(["--config", temp_config_file])
@@ -380,19 +261,21 @@ class TestCLI:
 
         assert exit_code == 1
         captured = capsys.readouterr()
-        assert "Critical Error:" in captured.out
-        assert "not found" in captured.out
+        # Either Critical Error: ... or our explicit Config file invalid message
+        assert (
+            "not found" in captured.out or "Config file invalid" in captured.out
+        )
 
-    def test_main_default_config(self, capsys: Any) -> None:
-        """Test main function using default config path."""
-        with patch("around_the_grounds.main.load_site_config") as mock_site, \
-             patch("around_the_grounds.main.load_brewery_config") as mock_load:
-            mock_site.side_effect = FileNotFoundError("Site not found")
-            mock_load.side_effect = FileNotFoundError("Config not found")
+    def test_main_default_site_missing(self, capsys: Any) -> None:
+        """Test main function when the default site config is missing."""
+        with patch("around_the_grounds.main.load_site_config") as mock_load:
+            mock_load.side_effect = FileNotFoundError("Site not found")
 
             exit_code = main([])
 
             assert exit_code == 1
+            captured = capsys.readouterr()
+            assert "Default site" in captured.out
 
     @pytest.mark.asyncio
     async def test_main_integration_end_to_end(self, temp_config_file: str) -> None:

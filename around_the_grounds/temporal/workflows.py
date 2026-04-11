@@ -22,15 +22,21 @@ class FoodTruckWorkflow:
         deploy_activities = DeploymentActivities()
 
         try:
-            # Step 1: Load brewery configuration
-            venue_configs = await workflow.execute_activity(
-                scrape_activities.load_brewery_config,
-                params.config_path,
+            # Step 1: Resolve site and load its configuration via the
+            # multi-site loader. site_key=None preserves backward compat with
+            # any persisted schedule that predates this field.
+            effective_site_key = params.site_key or "ballard-food-trucks"
+            site_config_dict = await workflow.execute_activity(
+                scrape_activities.load_site,
+                effective_site_key,
                 schedule_to_close_timeout=timedelta(seconds=30),
             )
 
+            venue_configs = site_config_dict["venues"]
+
             workflow.logger.info(
-                f"Loaded {len(venue_configs)} venue configurations"
+                f"Loaded site '{effective_site_key}' with "
+                f"{len(venue_configs)} venue configurations"
             )
 
             # Step 2: Scrape food truck data across breweries in parallel batches
@@ -79,7 +85,11 @@ class FoodTruckWorkflow:
             if params.deploy and events:
                 web_data = await workflow.execute_activity(
                     deploy_activities.generate_web_data,
-                    {"events": events, "errors": errors},
+                    {
+                        "events": events,
+                        "errors": errors,
+                        "site": site_config_dict,
+                    },
                     # generate_web_data includes haiku generation, which calls
                     # the Anthropic API and can be slow on self-hosted network
                     # paths. Cap any single attempt at 90s so a hung call can't
@@ -91,7 +101,7 @@ class FoodTruckWorkflow:
 
                 deployed = await workflow.execute_activity(
                     deploy_activities.deploy_to_git,
-                    {"web_data": web_data, "repository_url": params.git_repository_url},
+                    {"web_data": web_data, "site": site_config_dict},
                     schedule_to_close_timeout=timedelta(minutes=2),
                 )
 

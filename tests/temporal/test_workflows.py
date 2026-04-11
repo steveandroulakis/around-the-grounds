@@ -12,15 +12,33 @@ class TestWorkflowDataClasses:
         assert params.config_path is None
         assert params.deploy is False
         assert params.max_parallel_scrapes == 10
+        assert params.site_key is None
 
     def test_workflow_params_custom(self) -> None:
         """Test WorkflowParams with custom values."""
         params = WorkflowParams(
-            config_path="/test/config.json", deploy=True, max_parallel_scrapes=3
+            config_path="/test/config.json",
+            deploy=True,
+            max_parallel_scrapes=3,
+            site_key="ballard-food-trucks",
         )
         assert params.config_path == "/test/config.json"
         assert params.deploy is True
         assert params.max_parallel_scrapes == 3
+        assert params.site_key == "ballard-food-trucks"
+
+    def test_workflow_params_site_key_default_persists_schedule_compat(self) -> None:
+        """A persisted schedule predating site_key must still deserialize.
+
+        Temporal serializes WorkflowParams as JSON; missing fields fall back
+        to Python defaults. This test pins that contract — site_key must
+        remain Optional with a None default so existing schedules keep
+        firing after a worker upgrade.
+        """
+        from dataclasses import fields
+
+        site_key_field = next(f for f in fields(WorkflowParams) if f.name == "site_key")
+        assert site_key_field.default is None
 
     def test_workflow_result_minimal(self) -> None:
         """Test WorkflowResult with minimal data."""
@@ -97,8 +115,7 @@ class TestActivitiesImport:
         )
 
         scrape_activities = ScrapeActivities()
-        assert hasattr(scrape_activities, "load_brewery_config")
-        assert hasattr(scrape_activities, "scrape_food_trucks")
+        assert hasattr(scrape_activities, "load_site")
         assert hasattr(scrape_activities, "scrape_single_venue")
 
         deploy_activities = DeploymentActivities()
