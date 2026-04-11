@@ -1,0 +1,10 @@
+{
+  "feature_number": "005",
+  "slug": "005-adapter-interface-update",
+  "friendly_name": "Adapter Interface Update",
+  "mission": "software-dev",
+  "source_description": "Update around-the-grounds' existing parser/adapter layer to use the generic Venue and Event types introduced in spec 004. The parser structure, registry pattern, and BaseParser logic stay intact — only the type signatures change. Each parser accepts a Venue instead of a Brewery and returns List[Event] instead of List[FoodTruckEvent].",
+  "created_at": "2026-02-25T00:00:00Z",
+  "target_branch": "main",
+  "vcs": "git"
+}

@@ -1,0 +1,24 @@
+{
+  "events": [
+    {
+      "id": 101,
+      "title": "Summer Jazz Festival",
+      "start_date": "2025-07-04 18:00:00",
+      "end_date": "2025-07-04 22:00:00",
+      "description": "<p>Live jazz performances in the courtyard.</p>",
+      "url": "https://industrycity.com/event/summer-jazz-festival/",
+      "all_day": false
+    },
+    {
+      "id": 102,
+      "title": "Makers Market",
+      "start_date": "2025-07-05 10:00:00",
+      "end_date": "2025-07-05 17:00:00",
+      "description": "<p>Local artisans and food vendors.</p>",
+      "url": "https://industrycity.com/event/makers-market/",
+      "all_day": false
+    }
+  ],
+  "total": 2,
+  "total_pages": 1
+}

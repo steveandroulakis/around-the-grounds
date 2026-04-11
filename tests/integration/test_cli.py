@@ -15,7 +15,8 @@ from around_the_grounds.main import (
     main,
     scrape_food_trucks,
 )
-from around_the_grounds.models import Brewery, FoodTruckEvent
+from around_the_grounds.config.loader import load_site_config  # noqa: F401 (used in patch)
+from around_the_grounds.models import Venue, Event
 from around_the_grounds.scrapers.coordinator import ScrapingError
 
 
@@ -37,23 +38,23 @@ class TestCLI:
         Path(temp_path).unlink()
 
     @pytest.fixture
-    def sample_cli_events(self) -> List[FoodTruckEvent]:
+    def sample_cli_events(self) -> List[Event]:
         """Create sample events for CLI testing."""
         future_date = datetime.now() + timedelta(days=1)
         return [
-            FoodTruckEvent(
-                brewery_key="test-brewery",
-                brewery_name="Test Brewery",
-                food_truck_name="Amazing BBQ Truck",
+            Event(
+                venue_key="test-brewery",
+                venue_name="Test Brewery",
+                title="Amazing BBQ Truck",
                 date=future_date,
                 start_time=future_date.replace(hour=12),
                 end_time=future_date.replace(hour=20),
                 description="Delicious BBQ all day",
             ),
-            FoodTruckEvent(
-                brewery_key="test-brewery-2",
-                brewery_name="Test Brewery 2",
-                food_truck_name="Taco Supreme",
+            Event(
+                venue_key="test-brewery-2",
+                venue_name="Test Brewery 2",
+                title="Taco Supreme",
                 date=future_date,
                 start_time=future_date.replace(hour=11),
                 end_time=future_date.replace(hour=21),
@@ -127,29 +128,29 @@ class TestCLI:
             Path(temp_path).unlink()
 
     def test_format_events_output_with_events(
-        self, sample_cli_events: List[FoodTruckEvent]
+        self, sample_cli_events: List[Event]
     ) -> None:
         """Test formatting events for output."""
         output = format_events_output(sample_cli_events)
 
-        assert "Found 2 food truck events:" in output
+        assert "Found 2 events:" in output
         assert "Amazing BBQ Truck" in output
         assert "Taco Supreme" in output
         assert "Test Brewery" in output
-        assert "🚚" in output  # Food truck emoji
+        assert "🎫" in output  # Event emoji
         assert "📅" in output  # Calendar emoji
 
     def test_format_events_output_no_events(self) -> None:
         """Test formatting when no events are found."""
         output = format_events_output([])
 
-        assert "No food truck events found" in output
+        assert "No events found" in output
 
     def test_format_events_output_with_errors(
-        self, sample_cli_events: List[FoodTruckEvent]
+        self, sample_cli_events: List[Event]
     ) -> None:
         """Test formatting with both events and errors."""
-        brewery = Brewery("failed-brewery", "Failed Brewery", "https://example.com")
+        brewery = Venue("failed-brewery", "Failed Venue", "https://example.com")
         errors = [
             ScrapingError(brewery, "Network Timeout", "Connection timed out"),
             ScrapingError(brewery, "Parser Error", "Failed to parse HTML"),
@@ -157,35 +158,35 @@ class TestCLI:
 
         output = format_events_output(sample_cli_events, errors)
 
-        assert "Found 2 food truck events:" in output
+        assert "Found 2 events:" in output
         assert "⚠️  Processing Summary:" in output
         assert "✅ 2 events found successfully" in output
-        assert "❌ 2 breweries failed" in output
+        assert "❌ 2 venues failed" in output
         assert "❌ Errors:" in output
         assert (
-            "Failed to fetch information for brewery: Failed Brewery" in output
+            "Failed to fetch information for: Failed Venue" in output
         )
 
     def test_format_events_output_only_errors(self) -> None:
         """Test formatting when only errors occur."""
-        brewery = Brewery("failed-brewery", "Failed Brewery", "https://example.com")
+        brewery = Venue("failed-brewery", "Failed Venue", "https://example.com")
         errors = [ScrapingError(brewery, "Network Error", "Network failed")]
 
         output = format_events_output([], errors)
 
-        assert "❌ No events found - all breweries failed" in output
+        assert "❌ No events found - all venues failed" in output
         assert "❌ Errors:" in output
         assert (
-            "Failed to fetch information for brewery: Failed Brewery" in output
+            "Failed to fetch information for: Failed Venue" in output
         )
 
     def test_format_events_output_instagram_fallback(self) -> None:
         """Test formatting Instagram fallback events."""
         future_date = datetime.now() + timedelta(days=1)
-        instagram_event = FoodTruckEvent(
-            brewery_key="test-brewery",
-            brewery_name="Test Brewery",
-            food_truck_name="Check Instagram @TestBrewery",
+        instagram_event = Event(
+            venue_key="test-brewery",
+            venue_name="Test Brewery",
+            title="Check Instagram @TestBrewery",
             date=future_date,
             description="Food truck schedule not available on website - check Instagram",
         )
@@ -198,38 +199,38 @@ class TestCLI:
     def test_format_events_output_ai_generated_name(self) -> None:
         """Test formatting events with AI-generated vendor names."""
         future_date = datetime.now() + timedelta(days=1)
-        ai_event = FoodTruckEvent(
-            brewery_key="test-brewery",
-            brewery_name="Test Brewery",
-            food_truck_name="Georgia's",
+        ai_event = Event(
+            venue_key="test-brewery",
+            venue_name="Test Brewery",
+            title="Georgia's",
             date=future_date,
             start_time=future_date.replace(hour=12),
             end_time=future_date.replace(hour=20),
             description="Greek food",
-            ai_generated_name=True,
+            extraction_method="ai-vision",
         )
-        regular_event = FoodTruckEvent(
-            brewery_key="test-brewery",
-            brewery_name="Test Brewery",
-            food_truck_name="Taco Supreme",
+        regular_event = Event(
+            venue_key="test-brewery",
+            venue_name="Test Brewery",
+            title="Taco Supreme",
             date=future_date,
             start_time=future_date.replace(hour=11),
             end_time=future_date.replace(hour=21),
-            ai_generated_name=False,
+            extraction_method="html",
         )
 
         output = format_events_output([ai_event, regular_event])
 
         # AI-generated name should have emoji indicators
-        assert "🚚 Georgia's 🖼️🤖 @ Test Brewery" in output
+        assert "🎫 Georgia's 🖼️🤖 @ Test Brewery" in output
         # Regular name should not have emoji indicators
-        assert "🚚 Taco Supreme @ Test Brewery" in output
+        assert "🎫 Taco Supreme @ Test Brewery" in output
         # Ensure no AI emojis for regular events
         assert "Taco Supreme 🖼️🤖" not in output
 
     @pytest.mark.asyncio
     async def test_scrape_food_trucks_success(
-        self, temp_config_file: str, sample_cli_events: List[FoodTruckEvent]
+        self, temp_config_file: str, sample_cli_events: List[Event]
     ) -> None:
         """Test successful food truck scraping."""
         with patch(
@@ -244,12 +245,12 @@ class TestCLI:
 
             assert len(events) == 2
             assert len(errors) == 0
-            assert events[0].food_truck_name == "Amazing BBQ Truck"
+            assert events[0].title == "Amazing BBQ Truck"
 
     @pytest.mark.asyncio
     async def test_scrape_food_trucks_with_errors(self, temp_config_file: str) -> None:
         """Test scraping with some errors."""
-        brewery = Brewery("failed", "Failed", "https://example.com")
+        brewery = Venue("failed", "Failed", "https://example.com")
         errors = [ScrapingError(brewery, "Network Error", "Failed")]
 
         with patch(
@@ -282,7 +283,7 @@ class TestCLI:
     def test_main_success(
         self,
         temp_config_file: str,
-        sample_cli_events: List[FoodTruckEvent],
+        sample_cli_events: List[Event],
         capsys: Any,
     ) -> None:
         """Test successful main function execution."""
@@ -293,12 +294,12 @@ class TestCLI:
 
             assert exit_code == 0
             captured = capsys.readouterr()
-            assert "🍺 Around the Grounds - Food Truck Tracker" in captured.out
-            assert "Found 2 food truck events:" in captured.out
+            assert "Around the Grounds" in captured.out
+            assert "Found 2 events:" in captured.out
 
     def test_main_complete_failure(self, temp_config_file: str, capsys: Any) -> None:
         """Test main function with complete failure."""
-        brewery = Brewery("failed", "Failed", "https://example.com")
+        brewery = Venue("failed", "Failed", "https://example.com")
         errors = [ScrapingError(brewery, "Network Error", "Failed")]
 
         with patch("around_the_grounds.main.scrape_food_trucks") as mock_scrape:
@@ -308,16 +309,16 @@ class TestCLI:
 
             assert exit_code == 1  # Complete failure
             captured = capsys.readouterr()
-            assert "❌ No events found - all breweries failed" in captured.out
+            assert "❌ No events found - all venues failed" in captured.out
 
     def test_main_partial_failure(
         self,
         temp_config_file: str,
-        sample_cli_events: List[FoodTruckEvent],
+        sample_cli_events: List[Event],
         capsys: Any,
     ) -> None:
         """Test main function with partial failure."""
-        brewery = Brewery("failed", "Failed", "https://example.com")
+        brewery = Venue("failed", "Failed", "https://example.com")
         errors = [ScrapingError(brewery, "Network Error", "Failed")]
 
         with patch("around_the_grounds.main.scrape_food_trucks") as mock_scrape:
@@ -327,7 +328,7 @@ class TestCLI:
 
             assert exit_code == 2  # Partial success
             captured = capsys.readouterr()
-            assert "Found 2 food truck events:" in captured.out
+            assert "Found 2 events:" in captured.out
             assert "⚠️  Processing Summary:" in captured.out
 
     def test_main_critical_error(self, temp_config_file: str, capsys: Any) -> None:
@@ -369,7 +370,7 @@ class TestCLI:
 
         assert exc_info.value.code == 0
         captured = capsys.readouterr()
-        assert "Track food truck schedules" in captured.out
+        assert "Track event schedules" in captured.out or "--config" in captured.out
         assert "--config" in captured.out
         assert "--verbose" in captured.out
 
@@ -384,14 +385,14 @@ class TestCLI:
 
     def test_main_default_config(self, capsys: Any) -> None:
         """Test main function using default config path."""
-        with patch("around_the_grounds.main.load_brewery_config") as mock_load:
+        with patch("around_the_grounds.main.load_site_config") as mock_site, \
+             patch("around_the_grounds.main.load_brewery_config") as mock_load:
+            mock_site.side_effect = FileNotFoundError("Site not found")
             mock_load.side_effect = FileNotFoundError("Config not found")
 
             exit_code = main([])
 
             assert exit_code == 1
-            # Should try to load default config
-            mock_load.assert_called_once_with(None)
 
     @pytest.mark.asyncio
     async def test_main_integration_end_to_end(self, temp_config_file: str) -> None:

@@ -1,0 +1,9 @@
+vcs:
+  type: git
+agents:
+  available:
+  - claude
+  selection:
+    strategy: preferred
+    preferred_implementer: claude
+    preferred_reviewer: claude

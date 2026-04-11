@@ -1,0 +1,40 @@
+{
+  "key": "childrens-events",
+  "name": "Brooklyn Children's Events",
+  "template": "kids",
+  "timezone": "America/New_York",
+  "target_repo": "https://github.com/jredding/atg-childrens-events.git",
+  "generate_description": false,
+  "venues": [
+    {
+      "key": "macaroni-kid",
+      "name": "MacaroniKid Brooklyn NW",
+      "url": "https://brooklynnw.macaronikid.com/events",
+      "source_type": "ajax",
+      "parser_config": {
+        "api_url": "https://api.macaronikid.com/api/v1/event/v2",
+        "params": {
+          "query": "{\"status\":\"active\",\"townOwner\":\"58252a806f1aaf645c94f4c7\",\"startDate\":\"{{today_iso}}\",\"endDate\":\"{{end_date_iso}}\"}"
+        },
+        "field_map": {
+          "title": "title",
+          "date": "startDateTime",
+          "start_time": "startDateTime",
+          "end_time": "endDateTime",
+          "description": "where"
+        }
+      }
+    },
+    {
+      "key": "little-kid-big-city",
+      "name": "Little Kid Big City",
+      "url": "https://littlekidbigcity.com",
+      "source_type": "wordpress",
+      "parser_config": {
+        "api_path": "/wp-json/wp/v2/posts",
+        "category_id": "939,940,933,929,1145",
+        "per_page": 20
+      }
+    }
+  ]
+}

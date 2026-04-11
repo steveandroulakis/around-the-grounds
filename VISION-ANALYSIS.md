@@ -29,8 +29,8 @@ The Urban Family parser demonstrates integration:
 from ..utils.vision_analyzer import VisionAnalyzer
 
 class UrbanFamilyParser(BaseParser):
-    def __init__(self, brewery):
-        super().__init__(brewery)
+    def __init__(self, venue):
+        super().__init__(venue)
         self._vision_analyzer = None
 
     @property
@@ -81,7 +81,7 @@ async def test_parser_with_vision_fallback(self, mock_vision, parser):
 
 ## Real-World Results
 
-The vision analysis successfully extracts vendor names from actual brewery images:
+The vision analysis successfully extracts vendor names from actual venue images:
 
 - **"Georgia's"** from Georgia's Greek Food Truck logo
 - **"TOLU"** from Tolu Modern Fijian Cuisine branding
@@ -129,8 +129,8 @@ To add vision analysis to a new parser:
 
 2. **Add lazy initialization**:
    ```python
-   def __init__(self, brewery):
-       super().__init__(brewery)
+   def __init__(self, venue):
+       super().__init__(venue)
        self._vision_analyzer = None
 
    @property

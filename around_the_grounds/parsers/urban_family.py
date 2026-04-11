@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import aiohttp
 from bs4 import BeautifulSoup
 
-from ..models import Brewery, FoodTruckEvent
+from ..models import Event, Venue
 from ..utils.date_utils import DateUtils
 from ..utils.timezone_utils import PACIFIC_TZ
 from ..utils.vision_analyzer import VisionAnalyzer
@@ -25,8 +25,8 @@ class UrbanFamilyParser(BaseParser):
     - Legacy Hivey API endpoint
     """
 
-    def __init__(self, brewery: Brewery) -> None:
-        super().__init__(brewery)
+    def __init__(self, venue: Venue) -> None:
+        super().__init__(venue)
         self._vision_analyzer: Optional[VisionAnalyzer] = None
         self._vision_cache: Dict[
             str, Optional[str]
@@ -39,7 +39,7 @@ class UrbanFamilyParser(BaseParser):
             self._vision_analyzer = VisionAnalyzer()
         return self._vision_analyzer
 
-    async def parse(self, session: aiohttp.ClientSession) -> List[FoodTruckEvent]:
+    async def parse(self, session: aiohttp.ClientSession) -> List[Event]:
         html_url = self._get_calendar_html_url()
 
         if html_url:
@@ -78,12 +78,12 @@ class UrbanFamilyParser(BaseParser):
 
     def _get_calendar_html_url(self) -> Optional[str]:
         """Return HTML calendar URL when the brewery source is WordPress-based."""
-        configured_url = self.brewery.parser_config.get("calendar_url")
+        configured_url = self.venue.parser_config.get("calendar_url")
         if isinstance(configured_url, str) and configured_url.strip():
             return configured_url.strip()
 
-        if "urbanfamilybrewing.com" in self.brewery.url:
-            return self.brewery.url
+        if "urbanfamilybrewing.com" in self.venue.url:
+            return self.venue.url
 
         return None
 
@@ -130,9 +130,9 @@ class UrbanFamilyParser(BaseParser):
         except aiohttp.ClientError as e:
             raise ValueError(f"Network error fetching Urban Family calendar: {str(e)}")
 
-    def _parse_sugar_calendar_events(self, soup: BeautifulSoup) -> List[FoodTruckEvent]:
+    def _parse_sugar_calendar_events(self, soup: BeautifulSoup) -> List[Event]:
         """Parse food truck events from Sugar Calendar event cells."""
-        events: List[FoodTruckEvent] = []
+        events: List[Event] = []
         event_cells = soup.select("div.sugar-calendar-block__event-cell")
 
         for event_cell in event_cells:
@@ -142,8 +142,8 @@ class UrbanFamilyParser(BaseParser):
 
         return events
 
-    def _parse_sugar_event_cell(self, event_cell: Any) -> Optional[FoodTruckEvent]:
-        """Parse a single Sugar Calendar event cell into FoodTruckEvent."""
+    def _parse_sugar_event_cell(self, event_cell: Any) -> Optional[Event]:
+        """Parse a single Sugar Calendar event cell into Event."""
         if not self._is_food_truck_calendar_event(event_cell):
             return None
 
@@ -185,15 +185,15 @@ class UrbanFamilyParser(BaseParser):
         date = start_time.replace(hour=0, minute=0, second=0, microsecond=0)
         event_url = event_cell.get("data-eventurl")
 
-        return FoodTruckEvent(
-            brewery_key=self.brewery.key,
-            brewery_name=self.brewery.name,
-            food_truck_name=food_truck_name,
+        return Event(
+            venue_key=self.venue.key,
+            venue_name=self.venue.name,
+            title=food_truck_name,
             date=date,
             start_time=start_time,
             end_time=end_time,
             description=event_url if isinstance(event_url, str) else None,
-            ai_generated_name=False,
+            extraction_method="html",
         )
 
     def _is_food_truck_calendar_event(self, event_cell: Any) -> bool:
@@ -247,7 +247,7 @@ class UrbanFamilyParser(BaseParser):
         html_url: str,
         soup: BeautifulSoup,
         html_content: str,
-    ) -> List[FoodTruckEvent]:
+    ) -> List[Event]:
         """Use Sugar Calendar AJAX endpoint to fetch next month events."""
         block = soup.select_one("#sc-code-1")
         if block is None:
@@ -283,7 +283,7 @@ class UrbanFamilyParser(BaseParser):
             return []
 
         ajax_url = str(
-            self.brewery.parser_config.get(
+            self.venue.parser_config.get(
                 "calendar_ajax_endpoint",
                 "https://urbanfamilybrewing.com/wp-admin/admin-ajax.php",
             )
@@ -333,13 +333,13 @@ class UrbanFamilyParser(BaseParser):
             )
             return []
 
-    def _dedupe_events(self, events: List[FoodTruckEvent]) -> List[FoodTruckEvent]:
+    def _dedupe_events(self, events: List[Event]) -> List[Event]:
         """Deduplicate events by key fields while preserving order."""
         seen = set()
-        deduped: List[FoodTruckEvent] = []
+        deduped: List[Event] = []
         for event in events:
             key = (
-                event.food_truck_name,
+                event.title,
                 event.start_time,
                 event.end_time,
                 event.description,
@@ -352,11 +352,11 @@ class UrbanFamilyParser(BaseParser):
 
     async def _parse_hivey_api(
         self, session: aiohttp.ClientSession
-    ) -> List[FoodTruckEvent]:
+    ) -> List[Event]:
         """Legacy Hivey API parser kept as fallback."""
         try:
             api_url = str(
-                self.brewery.parser_config.get(
+                self.venue.parser_config.get(
                     "api_endpoint",
                     "https://hivey-api-prod-pineapple.onrender.com/urbanfamily/public-calendar",
                 )
@@ -411,9 +411,9 @@ class UrbanFamilyParser(BaseParser):
                 raise
             raise ValueError(f"Failed to parse Urban Family API: {str(e)}")
 
-    def _parse_json_data(self, data: Any) -> List[FoodTruckEvent]:
+    def _parse_json_data(self, data: Any) -> List[Event]:
         """
-        Parse JSON data from the Urban Family API into FoodTruckEvent objects.
+        Parse JSON data from the Urban Family API into Event objects.
         """
         events = []
 
@@ -451,7 +451,7 @@ class UrbanFamilyParser(BaseParser):
 
         return events
 
-    def _parse_event_item(self, item: Dict[str, Any]) -> Optional[FoodTruckEvent]:
+    def _parse_event_item(self, item: Dict[str, Any]) -> Optional[Event]:
         """
         Parse a single event item from the JSON data.
         """
@@ -476,15 +476,15 @@ class UrbanFamilyParser(BaseParser):
             # Extract description if available
             description = self._extract_description(item)
 
-            return FoodTruckEvent(
-                brewery_key=self.brewery.key,
-                brewery_name=self.brewery.name,
-                food_truck_name=food_truck_name,
+            return Event(
+                venue_key=self.venue.key,
+                venue_name=self.venue.name,
+                title=food_truck_name,
                 date=date,
                 start_time=start_time,
                 end_time=end_time,
                 description=description,
-                ai_generated_name=ai_generated,
+                extraction_method="ai-vision" if ai_generated else "html",
             )
 
         except Exception as e:

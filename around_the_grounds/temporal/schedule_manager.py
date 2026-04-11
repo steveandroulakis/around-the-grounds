@@ -67,7 +67,7 @@ class ScheduleManager:
         Args:
             schedule_id: Unique identifier for the schedule
             interval_minutes: Interval in minutes between workflow executions
-            config_path: Path to brewery configuration file
+            config_path: Path to venue configuration file
             deploy: Whether to deploy results to web
             note: Optional note about the schedule
             paused: Whether to create the schedule in paused state
@@ -388,7 +388,7 @@ Examples:
         required=True,
         help="Interval in minutes between executions",
     )
-    create_parser.add_argument("--config", help="Path to brewery configuration file")
+    create_parser.add_argument("--config", help="Path to venue configuration file")
     create_parser.add_argument(
         "--no-deploy", action="store_true", help="Don't deploy results to web"
     )

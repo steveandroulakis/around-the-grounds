@@ -8,7 +8,7 @@ import aiohttp
 import pytest
 from aioresponses import aioresponses
 
-from around_the_grounds.models import Brewery
+from around_the_grounds.models import Venue
 from around_the_grounds.parsers.urban_family import UrbanFamilyParser
 
 
@@ -16,9 +16,9 @@ class TestUrbanFamilyParser:
     """Test the UrbanFamilyParser class."""
 
     @pytest.fixture
-    def brewery(self) -> Brewery:
+    def brewery(self) -> Venue:
         """Create a test brewery for Urban Family."""
-        return Brewery(
+        return Venue(
             key="urban-family",
             name="Urban Family Brewing",
             url="https://app.hivey.io/urbanfamily/public-calendar",
@@ -29,14 +29,14 @@ class TestUrbanFamilyParser:
         )
 
     @pytest.fixture
-    def parser(self, brewery: Brewery) -> UrbanFamilyParser:
+    def parser(self, brewery: Venue) -> UrbanFamilyParser:
         """Create a parser instance."""
         return UrbanFamilyParser(brewery)
 
     @pytest.fixture
-    def wordpress_brewery(self) -> Brewery:
+    def wordpress_brewery(self) -> Venue:
         """Create a test brewery using WordPress Sugar Calendar source."""
-        return Brewery(
+        return Venue(
             key="urban-family",
             name="Urban Family Brewing",
             url="https://urbanfamilybrewing.com/home/calendar/",
@@ -48,7 +48,7 @@ class TestUrbanFamilyParser:
         )
 
     @pytest.fixture
-    def wordpress_parser(self, wordpress_brewery: Brewery) -> UrbanFamilyParser:
+    def wordpress_parser(self, wordpress_brewery: Venue) -> UrbanFamilyParser:
         """Create a parser instance configured for WordPress source."""
         return UrbanFamilyParser(wordpress_brewery)
 
@@ -223,19 +223,19 @@ class TestUrbanFamilyParser:
 
         # Check first event (with explicit title)
         event1 = events[0]
-        assert event1.brewery_key == "urban-family"
-        assert event1.brewery_name == "Urban Family Brewing"
-        assert event1.food_truck_name == "Kaosamia Thai"
+        assert event1.venue_key == "urban-family"
+        assert event1.venue_name == "Urban Family Brewing"
+        assert event1.title == "Kaosamia Thai"
         assert event1.date == datetime(2025, 7, 6)
         assert event1.start_time == datetime(2025, 7, 6, 13, 0)
         assert event1.end_time == datetime(2025, 7, 6, 19, 0)
 
         # Check second event (vendor ID mapping now provides correct name)
         event2 = events[1]
-        assert event2.brewery_key == "urban-family"
-        assert event2.brewery_name == "Urban Family Brewing"
+        assert event2.venue_key == "urban-family"
+        assert event2.venue_name == "Urban Family Brewing"
         assert (
-            event2.food_truck_name == "Tolu Modern Fijian Cuisine"
+            event2.title == "Tolu Modern Fijian Cuisine"
         )  # Mapped from vendor ID 67f6f44de4ca31e444ef637d (was incorrectly "Blk" from filename before)
         assert event2.date == datetime(2025, 7, 7)
         assert event2.start_time == datetime(2025, 7, 7, 16, 0)
@@ -261,8 +261,8 @@ class TestUrbanFamilyParser:
         assert len(events) == 2
 
         # Check name extraction from image filenames (improved logic removes "Logo")
-        assert events[0].food_truck_name == "Georgia Greek"
-        assert events[1].food_truck_name == "Woodshop Bbq"
+        assert events[0].title == "Georgia Greek"
+        assert events[1].title == "Woodshop Bbq"
 
     @pytest.mark.asyncio
     async def test_parse_empty_response(self, parser: UrbanFamilyParser) -> None:
@@ -403,11 +403,11 @@ class TestUrbanFamilyParser:
         event_by_date = {event.date.day: event for event in events}
 
         # Event without valid name should get TBD
-        assert event_by_date[10].food_truck_name == "TBD"
+        assert event_by_date[10].title == "TBD"
         assert event_by_date[10].date == datetime(2025, 7, 10)
 
         # Event with valid name should keep it
-        assert event_by_date[11].food_truck_name == "Good Eats"
+        assert event_by_date[11].title == "Good Eats"
         assert event_by_date[11].date == datetime(2025, 7, 11)
 
     def test_extract_food_truck_name_from_title(
@@ -581,7 +581,7 @@ class TestUrbanFamilyParser:
 
         events = parser._parse_json_data(data)
         assert len(events) == 1
-        assert events[0].food_truck_name == "Test Truck"
+        assert events[0].title == "Test Truck"
 
     def test_parse_json_data_invalid_structure(self, parser: UrbanFamilyParser) -> None:
         """Test parsing invalid JSON data structure."""
@@ -613,7 +613,7 @@ class TestUrbanFamilyParser:
 
         # Should include only food-truck calendar events
         assert len(events) == 2
-        event_names = sorted(event.food_truck_name for event in events)
+        event_names = sorted(event.title for event in events)
         assert event_names == ["9th and Hennepin", "Kaosamai"]
 
     @pytest.mark.asyncio
@@ -643,4 +643,4 @@ class TestUrbanFamilyParser:
                 events = await wordpress_parser.parse(session)
 
         assert len(events) == 1
-        assert events[0].food_truck_name == "Kaosamia Thai"
+        assert events[0].title == "Kaosamia Thai"

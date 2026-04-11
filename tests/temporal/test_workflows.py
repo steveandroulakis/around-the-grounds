@@ -99,7 +99,7 @@ class TestActivitiesImport:
         scrape_activities = ScrapeActivities()
         assert hasattr(scrape_activities, "load_brewery_config")
         assert hasattr(scrape_activities, "scrape_food_trucks")
-        assert hasattr(scrape_activities, "scrape_single_brewery")
+        assert hasattr(scrape_activities, "scrape_single_venue")
 
         deploy_activities = DeploymentActivities()
         assert hasattr(deploy_activities, "generate_web_data")

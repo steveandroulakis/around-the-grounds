@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from around_the_grounds.models import Brewery
+from around_the_grounds.models import Venue
 from around_the_grounds.parsers.obec_brewing import ObecBrewingParser
 from around_the_grounds.parsers.stoup_ballard import StoupBallardParser
 from around_the_grounds.parsers.urban_family import UrbanFamilyParser
@@ -17,9 +17,9 @@ class TestParserTimezoneConsistency:
     """Test that all parsers handle timezones consistently."""
 
     @pytest.fixture
-    def sample_brewery(self) -> Brewery:
+    def sample_brewery(self) -> Venue:
         """Create a test brewery."""
-        return Brewery(
+        return Venue(
             key="test-brewery",
             name="Test Brewery",
             url="https://test.example.com",
@@ -27,17 +27,17 @@ class TestParserTimezoneConsistency:
         )
 
     @pytest.fixture
-    def stoup_parser(self, sample_brewery: Brewery) -> StoupBallardParser:
+    def stoup_parser(self, sample_brewery: Venue) -> StoupBallardParser:
         """Create StoupBallard parser."""
         return StoupBallardParser(sample_brewery)
 
     @pytest.fixture
-    def urban_parser(self, sample_brewery: Brewery) -> UrbanFamilyParser:
+    def urban_parser(self, sample_brewery: Venue) -> UrbanFamilyParser:
         """Create UrbanFamily parser."""
         return UrbanFamilyParser(sample_brewery)
 
     @pytest.fixture
-    def obec_parser(self, sample_brewery: Brewery) -> ObecBrewingParser:
+    def obec_parser(self, sample_brewery: Venue) -> ObecBrewingParser:
         """Create ObecBrewing parser."""
         return ObecBrewingParser(sample_brewery)
 
@@ -46,9 +46,9 @@ class TestStoupBallardTimezone:
     """Test StoupBallard parser timezone handling."""
 
     @pytest.fixture
-    def sample_brewery(self) -> Brewery:
+    def sample_brewery(self) -> Venue:
         """Create a test brewery."""
-        return Brewery(
+        return Venue(
             key="stoup-ballard",
             name="Stoup Ballard",
             url="https://stoup.com",
@@ -56,7 +56,7 @@ class TestStoupBallardTimezone:
         )
 
     @pytest.fixture
-    def parser(self, sample_brewery: Brewery) -> StoupBallardParser:
+    def parser(self, sample_brewery: Venue) -> StoupBallardParser:
         """Create parser instance."""
         return StoupBallardParser(sample_brewery)
 
@@ -137,9 +137,9 @@ class TestUrbanFamilyTimezone:
     """Test UrbanFamily parser timezone handling."""
 
     @pytest.fixture
-    def sample_brewery(self) -> Brewery:
+    def sample_brewery(self) -> Venue:
         """Create a test brewery."""
-        return Brewery(
+        return Venue(
             key="urban-family",
             name="Urban Family",
             url="https://urbanfamily.com",
@@ -147,7 +147,7 @@ class TestUrbanFamilyTimezone:
         )
 
     @pytest.fixture
-    def parser(self, sample_brewery: Brewery) -> UrbanFamilyParser:
+    def parser(self, sample_brewery: Venue) -> UrbanFamilyParser:
         """Create parser instance."""
         return UrbanFamilyParser(sample_brewery)
 
@@ -195,9 +195,9 @@ class TestObecBrewingTimezone:
     """Test ObecBrewing parser timezone handling."""
 
     @pytest.fixture
-    def sample_brewery(self) -> Brewery:
+    def sample_brewery(self) -> Venue:
         """Create a test brewery."""
-        return Brewery(
+        return Venue(
             key="obec-brewing",
             name="Obec Brewing",
             url="https://obec.com",
@@ -205,7 +205,7 @@ class TestObecBrewingTimezone:
         )
 
     @pytest.fixture
-    def parser(self, sample_brewery: Brewery) -> ObecBrewingParser:
+    def parser(self, sample_brewery: Venue) -> ObecBrewingParser:
         """Create parser instance."""
         return ObecBrewingParser(sample_brewery)
 
@@ -255,7 +255,7 @@ class TestDSTTransitionScenarios:
         spring_forward_date = datetime(2025, 3, 9)
 
         # Test that we can create times around the transition
-        brewery = Brewery(key="test", name="Test", url="http://test.com")
+        brewery = Venue(key="test", name="Test", url="http://test.com")
         parser = StoupBallardParser(brewery)
 
         # 1:30 AM should work (before transition)
@@ -273,7 +273,7 @@ class TestDSTTransitionScenarios:
         # November 2, 2025 is Fall Back
         fall_back_date = datetime(2025, 11, 2)
 
-        brewery = Brewery(key="test", name="Test", url="http://test.com")
+        brewery = Venue(key="test", name="Test", url="http://test.com")
         parser = StoupBallardParser(brewery)
 
         # Times around 1-2 AM (ambiguous during fall back) should still work

@@ -18,7 +18,7 @@ Web deployment uses GitHub App authentication for secure repository access:
 #### 2. Install App on Repository
 1. Go to your GitHub App settings
 2. Click "Install App" 
-3. Select your target repository (e.g., `ballard-food-trucks`)
+3. Select your target repositories (e.g., `atg-ballard-food-trucks`, `atg-park-slope-music`, `atg-childrens-events`)
 4. The installation ID will be automatically retrieved by the system
 
 #### 3. Configure Environment Variables
@@ -30,7 +30,6 @@ cp .env.example .env
 GITHUB_APP_ID=123456
 GITHUB_CLIENT_ID=your-github-client-id
 GITHUB_APP_PRIVATE_KEY_B64=$(base64 -i path/to/your-app.private-key.pem)
-GIT_REPOSITORY_URL=https://github.com/username/ballard-food-trucks.git
 
 # Optional: AI vision analysis
 ANTHROPIC_API_KEY=your-anthropic-api-key
@@ -40,46 +39,57 @@ ANTHROPIC_API_KEY=your-anthropic-api-key
 
 #### 4. Target Repository Setup
 
-The system pushes a complete static website to a **separate target repository** which is then deployed by platforms like Vercel:
+The system pushes a complete static website to **separate target repositories**. Each target repo is served by either GitHub Pages (jredding's sites) or Vercel (Ballard's site), depending on the site's `deploy_subdir` configuration.
 
 **Two-Repository Architecture**:
-- **Source repo** (this one): Contains scraping code, runs workers, web templates
-- **Target repo** (e.g., `ballard-food-trucks`): Receives complete website, served as static site
+- **Source repo** (this one): Contains scraping code, parsers, site configs, per-site templates
+- **Target repos**: Each site has its own target repo configured in `config/sites/<key>.json`
 
-**Configuration Options**:
+**Configured Target Repos**:
+| Site | Target Repo | `deploy_subdir` | Hosting |
+|------|-------------|-----------------|---------|
+| `ballard-food-trucks` | `steveandroulakis/ballard-food-trucks` | `"public"` | Vercel (watches `public/`) |
+| `park-slope-music` | `jredding/atg-park-slope-music` | `""` (root) | GitHub Pages (main branch root) |
+| `childrens-events` | `jredding/atg-childrens-events` | `""` (root) | GitHub Pages (main branch root) |
 
-**Default Repository**: `steveandroulakis/ballard-food-trucks`
+**`deploy_subdir` selects the git strategy** (see `main.py:_deploy_with_github_auth`):
+- **Empty** → `git init` a fresh local repo, copy template to repo root, `git add .`, and **force-push** `HEAD:main`. Rewrites history on every deploy. Safe for target repos that are dedicated bot-output sinks.
+- **Non-empty** (e.g. `"public"`) → `git clone` the target, write into that subdirectory, scoped `git add <subdir>/`, short-circuit if no diff, and **normal push**. Preserves history and any files that live outside the subdirectory. Required when the target repo also holds config files a host reads (e.g. `vercel.json`).
+
+**Deploy a specific site**:
 ```bash
-# Uses default repository from settings
-uv run around-the-grounds --deploy
+uv run around-the-grounds --site park-slope-music --deploy
 ```
 
-**Custom Repository via CLI**:
+**Deploy all sites**:
+```bash
+uv run around-the-grounds --site all --deploy
+```
+
+**Override target repo via CLI**:
 ```bash
 uv run around-the-grounds --deploy --git-repo https://github.com/username/custom-repo.git
-```
-
-**Custom Repository via Environment**:
-```bash
-export GIT_REPOSITORY_URL="https://github.com/username/custom-repo.git"
-uv run around-the-grounds --deploy
 ```
 
 **Configuration Precedence**:
 1. CLI argument (`--git-repo`)
 2. Environment variable (`GIT_REPOSITORY_URL`)
-3. Default (`steveandroulakis/ballard-food-trucks`)
+3. Site config `target_repo` field
 
 #### 5. Deployment Workflow
 
 When you run `--deploy`, the system:
-1. **Scrapes** all brewery websites for fresh data
-2. **Copies** web templates from `public_template/` to target repository
-3. **Generates** web-friendly JSON data in target repository
-4. **Authenticates** using GitHub App credentials
-5. **Commits** and pushes complete website to target repository
-6. **Triggers** automatic deployment (Vercel/Netlify/etc.)
-7. **Website** updates live within minutes
+1. **Scrapes** all venue websites for the selected site
+2. **Authenticates** using GitHub App JWT credentials (builds an authenticated HTTPS URL)
+3. **Prepares** a working directory in one of two ways, based on the site's `deploy_subdir`:
+   - **Root mode** (`deploy_subdir: ""`): `git init` a fresh local repo
+   - **Subdir mode** (`deploy_subdir: "public"` etc.): `git clone` the target repo into a temp dir
+4. **Copies** the site-specific template from `public_templates/<template>/` into either the repo root (root mode) or `repo/<deploy_subdir>/` (subdir mode)
+5. **Generates** web-friendly JSON data (`data.json`) alongside the template
+6. **Stages** either `.` (root mode) or `<subdir>/` (subdir mode), short-circuiting empty diffs in subdir mode
+7. **Commits** with a per-site title
+8. **Pushes** — `git push --force origin HEAD:main` in root mode, or a normal `git push origin HEAD:main` in subdir mode
+9. **The target host** (GitHub Pages or Vercel) picks up the push and redeploys the live site
 
 ### Temporal Workflow Execution
 
@@ -124,32 +134,36 @@ uv run python -m around_the_grounds.temporal.worker
 uv run python -m around_the_grounds.temporal.starter --deploy --verbose
 ```
 
-### Production Deployment via CI/CD
+### Production Deployment via Cloud Run
 
-For automated production updates using Docker and Watchtower:
+The current production setup uses Google Cloud Run Jobs with Cloud Scheduler:
 
 ```bash
-# 1. GitHub Actions builds and pushes to Docker Hub (takes ~4 minutes)
-# 2. Watchtower runs every 5 minutes to pull latest image
-# 3. Monitor worker container:
-ssh admin@192.168.0.20
-docker ps -a -f "ancestor=steveandroulakis/around-the-grounds-worker:latest"
-docker logs -f around-the-grounds-worker
-
-# 4. Trigger schedule via Temporal UI and watch execution
+# 3 Cloud Run Jobs (one per site), triggered daily by Cloud Scheduler:
+#   - atg-ballard-food-trucks  (8:00 AM PT daily)
+#   - atg-park-slope-music     (8:15 AM ET daily)
+#   - atg-childrens-events     (8:30 AM ET daily)
+#
+# Each job runs:
+#   /bin/sh -c "/usr/local/bin/uv run around-the-grounds --site <key> --deploy"
+#
+# Image: us-central1-docker.pkg.dev/event-curation/around-the-grounds/app:latest
+# Secrets: GITHUB_APP_PRIVATE_KEY_B64, ANTHROPIC_API_KEY (from Secret Manager)
 ```
 
-**CI/CD Workflow:**
-1. **Code changes** → GitHub Actions → Docker Hub (4 minutes)
-2. **Watchtower** detects new image → pulls and restarts worker (every 5 minutes)
+**Cloud Run Workflow:**
+1. **Cloud Scheduler** triggers Cloud Run Job at configured time
+2. **Cloud Run** spins up container, runs scrape + deploy, exits
+3. **GitHub Pages** serves updated site automatically
+
+### Alternative: Temporal Worker + Docker
+
+For Temporal-based scheduling with Docker and Watchtower:
+
+1. **Code changes** → GitHub Actions → Docker Hub
+2. **Watchtower** detects new image → pulls and restarts worker
 3. **Temporal schedules** trigger workflows → worker executes deployment
 4. **Data deploys** automatically to target repository → live website updates
-
-**Production Monitoring:**
-- Monitor Docker containers on production server
-- Check worker logs for execution status
-- Trigger immediate updates via Temporal UI
-- Verify deployment success on live website
 
 #### Custom Server with mTLS
 ```bash

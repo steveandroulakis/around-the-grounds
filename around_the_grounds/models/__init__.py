@@ -1,4 +1,9 @@
-from .brewery import Brewery
-from .schedule import FoodTruckEvent
+from .brewery import Venue
+from .schedule import Event
+from .site import SiteConfig
 
-__all__ = ["Brewery", "FoodTruckEvent"]
+__all__ = [
+    "Venue",
+    "Event",
+    "SiteConfig",
+]

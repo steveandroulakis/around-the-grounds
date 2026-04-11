@@ -1,0 +1,10 @@
+{
+  "feature_number": "008",
+  "slug": "008-add-venues-to-site",
+  "friendly_name": "Add New Venues to a Site",
+  "mission": "software-dev",
+  "source_description": "Add new venue URLs to an existing site config. Support venues across different web platforms using generic parsers (JSON-LD, WordPress Tribe Events upgrade), with AI vision/OCR as fallback, and venue-specific parsers as last resort. Deliver four new venues for park-slope-music.",
+  "created_at": "2026-02-28T00:00:00Z",
+  "target_branch": "main",
+  "vcs": "git"
+}

@@ -7,7 +7,7 @@ import pytest
 from aioresponses import aioresponses
 from freezegun import freeze_time
 
-from around_the_grounds.models import Brewery
+from around_the_grounds.models import Venue
 from around_the_grounds.parsers.channel_marker import ChannelMarkerParser
 
 
@@ -15,9 +15,9 @@ class TestChannelMarkerParser:
     """Test the ChannelMarkerParser class."""
 
     @pytest.fixture
-    def brewery(self) -> Brewery:
-        """Create a test brewery for Channel Marker."""
-        return Brewery(
+    def venue(self) -> Venue:
+        """Create a test venue for Channel Marker."""
+        return Venue(
             key="channel-marker",
             name="Channel Marker Cider",
             url="https://docs.google.com/spreadsheets/d/e/2PACX-1vRaaJmiJ4YrKmvwiFdsHYij1kLUVP6394gMrTPpgHwu1zTtM5aoIy9JfLyeK4WrLLDDiHcFRAtbZci_/pub?output=csv",
@@ -28,9 +28,9 @@ class TestChannelMarkerParser:
         )
 
     @pytest.fixture
-    def parser(self, brewery: Brewery) -> ChannelMarkerParser:
+    def parser(self, venue: Venue) -> ChannelMarkerParser:
         """Create a parser instance."""
-        return ChannelMarkerParser(brewery)
+        return ChannelMarkerParser(venue)
 
     @pytest.fixture
     def sample_csv(self, csv_fixtures_dir: Path) -> str:
@@ -47,21 +47,21 @@ class TestChannelMarkerParser:
     ) -> None:
         """Test parsing the sample CSV data."""
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=sample_csv)
+            m.get(parser.venue.url, status=200, body=sample_csv)
 
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
 
                 assert len(events) > 0
-                assert all(event.brewery_key == "channel-marker" for event in events)
+                assert all(event.venue_key == "channel-marker" for event in events)
                 assert all(
-                    event.brewery_name == "Channel Marker Cider"
+                    event.venue_name == "Channel Marker Cider"
                     for event in events
                 )
-                assert all(event.food_truck_name.strip() != "" for event in events)
+                assert all(event.title.strip() != "" for event in events)
                 assert all(event.date is not None for event in events)
 
-                event_names = [event.food_truck_name for event in events]
+                event_names = [event.title for event in events]
                 assert "Where Ya At, Matt?" in event_names
                 assert "La Rivera Maya" in event_names
                 assert "La Costenita" in event_names
@@ -77,7 +77,7 @@ class TestChannelMarkerParser:
     ) -> None:
         """Test that rows without a food truck name are skipped."""
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=sample_csv)
+            m.get(parser.venue.url, status=200, body=sample_csv)
 
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
@@ -92,14 +92,14 @@ class TestChannelMarkerParser:
     ) -> None:
         """Test that times are parsed correctly."""
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=sample_csv)
+            m.get(parser.venue.url, status=200, body=sample_csv)
 
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
 
                 # Find the LA COSTENITA event (5PM-9PM)
                 costenita = [
-                    e for e in events if e.food_truck_name == "La Costenita"
+                    e for e in events if e.title == "La Costenita"
                 ][0]
                 assert costenita.start_time is not None
                 assert costenita.start_time.hour == 17
@@ -108,7 +108,7 @@ class TestChannelMarkerParser:
 
                 # Find a 5PM-8PM event
                 maya = [
-                    e for e in events if e.food_truck_name == "La Rivera Maya"
+                    e for e in events if e.title == "La Rivera Maya"
                 ][0]
                 assert maya.start_time is not None
                 assert maya.start_time.hour == 17
@@ -122,13 +122,13 @@ class TestChannelMarkerParser:
     ) -> None:
         """Test that dates are parsed correctly."""
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=sample_csv)
+            m.get(parser.venue.url, status=200, body=sample_csv)
 
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
 
                 matt = [
-                    e for e in events if e.food_truck_name == "Where Ya At, Matt?"
+                    e for e in events if e.title == "Where Ya At, Matt?"
                 ][0]
                 assert matt.date.year == 2026
                 assert matt.date.month == 3
@@ -143,7 +143,7 @@ class TestChannelMarkerParser:
         redirect_url = "https://doc-0s-3s-sheets.googleusercontent.com/pub/example/csv"
 
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=307, headers={"Location": redirect_url})
+            m.get(parser.venue.url, status=307, headers={"Location": redirect_url})
             m.get(redirect_url, status=200, body=sample_csv)
 
             async with aiohttp.ClientSession() as session:
@@ -156,7 +156,7 @@ class TestChannelMarkerParser:
     async def test_parse_empty_csv(self, parser: ChannelMarkerParser) -> None:
         """Test parsing when CSV is empty."""
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body="")
+            m.get(parser.venue.url, status=200, body="")
 
             async with aiohttp.ClientSession() as session:
                 with pytest.raises(ValueError, match="Failed to parse CSV data"):
@@ -168,7 +168,7 @@ class TestChannelMarkerParser:
         header_only_csv = "DATE,FOOD TRUCK,TIME,EVENT"
 
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=header_only_csv)
+            m.get(parser.venue.url, status=200, body=header_only_csv)
 
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
@@ -178,7 +178,7 @@ class TestChannelMarkerParser:
     async def test_parse_network_error(self, parser: ChannelMarkerParser) -> None:
         """Test handling of network errors."""
         with aioresponses() as m:
-            m.get(parser.brewery.url, exception=aiohttp.ClientError("Network error"))
+            m.get(parser.venue.url, exception=aiohttp.ClientError("Network error"))
 
             async with aiohttp.ClientSession() as session:
                 with pytest.raises(ValueError, match="Failed to parse CSV data"):
@@ -188,7 +188,7 @@ class TestChannelMarkerParser:
     async def test_parse_http_error(self, parser: ChannelMarkerParser) -> None:
         """Test handling of HTTP errors."""
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=404)
+            m.get(parser.venue.url, status=404)
 
             async with aiohttp.ClientSession() as session:
                 with pytest.raises(ValueError, match="Failed to parse CSV data"):
@@ -201,7 +201,7 @@ class TestChannelMarkerParser:
 Another,incomplete"""
 
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=malformed_csv)
+            m.get(parser.venue.url, status=200, body=malformed_csv)
 
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
@@ -281,9 +281,9 @@ Another,incomplete"""
 
         result = parser._parse_csv_row(row)
         assert result is not None
-        assert result.brewery_key == "channel-marker"
-        assert result.brewery_name == "Channel Marker Cider"
-        assert result.food_truck_name == "Where Ya At, Matt?"
+        assert result.venue_key == "channel-marker"
+        assert result.venue_name == "Channel Marker Cider"
+        assert result.title == "Where Ya At, Matt?"
         assert result.date.year == 2026
         assert result.date.month == 3
         assert result.date.day == 31

@@ -2,7 +2,7 @@ Today's date is: {date}
 Time of day: {time_of_day}
 Current weather in Ballard, Seattle: {weather}
 
-Today's featured food truck: {truck_name} at {brewery_name}
+Today's featured food truck: {truck_name} at {venue_name}
 
 Today's haiku inspiration:
 {events_summary}
@@ -12,7 +12,7 @@ Today's haiku inspiration:
 Create a haiku (5-7-5 syllable structure) that captures the essence of today's food truck scene in Seattle's Ballard neighborhood. Your haiku should:
 
 1. Let the weather seep into the imagery naturally — through textures, moods, and sensory details — rather than stating it directly
-2. Feature the specific food truck ({truck_name}) and brewery ({brewery_name}) mentioned above
+2. Feature the specific food truck ({truck_name}) and brewery ({venue_name}) mentioned above
 3. Evoke the atmosphere of gathering at local breweries and food spots
 4. Balance concrete sensory details with weather-driven imagery
 
@@ -40,6 +40,22 @@ at Obec's wood door 🍺
 ☀️ Tacos sizzle bright
 at Stoup beneath golden rays,
 summer haze and hops 🍺
+
+🍖 Brisket smoke and hops—
+Johnson's plates at Stoup's long pour,
+IPAs run cold 🍺
+
+☁️ Where Ya At Matt's spice
+cuts the soft gray afternoon—
+Stoup pints, warm inside 🍺
+
+🥪 Wich Came First's warmth pulls—
+Yonder's cider, Bale Breaker,
+coats up, bar stools full 🍺
+
+🌙 Night falls on Ballard—
+Where Ya At Matt's last orders,
+stout warms the long dark 🍺
 
 🍖 Brisket smoke and hops—
 Johnson's plates at Stoup's long pour,

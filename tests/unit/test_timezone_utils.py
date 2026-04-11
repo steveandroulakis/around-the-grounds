@@ -5,14 +5,18 @@ from unittest.mock import Mock, patch
 
 from around_the_grounds.utils.timezone_utils import (
     PACIFIC_TZ,
+    format_time_with_site_timezone,
     format_time_with_timezone,
     get_pacific_day,
     get_pacific_month,
     get_pacific_year,
+    get_timezone_full_name,
+    get_timezone_label,
     is_dst_transition_date,
     make_pacific_naive,
     now_in_pacific,
     now_in_pacific_naive,
+    now_in_site_timezone_naive,
     parse_date_with_pacific_context,
     utc_to_pacific_naive,
 )
@@ -198,3 +202,76 @@ class TestTimezoneIntegration:
             assert year == 2024
             assert month == 12
             assert day == 31
+
+
+class TestGenericTimezone:
+    """Test generic (non-Pacific-specific) timezone helpers."""
+
+    def test_get_timezone_label_pacific(self) -> None:
+        assert get_timezone_label("America/Los_Angeles") == "PT"
+
+    def test_get_timezone_label_eastern(self) -> None:
+        assert get_timezone_label("America/New_York") == "ET"
+
+    def test_get_timezone_label_central(self) -> None:
+        assert get_timezone_label("America/Chicago") == "CT"
+
+    def test_get_timezone_label_mountain(self) -> None:
+        assert get_timezone_label("America/Denver") == "MT"
+
+    def test_get_timezone_label_non_us(self) -> None:
+        """Non-US timezone returns strftime abbreviation (not empty)."""
+        label = get_timezone_label("Europe/London")
+        assert isinstance(label, str)
+        assert len(label) > 0
+
+    def test_get_timezone_full_name_pacific(self) -> None:
+        assert get_timezone_full_name("America/Los_Angeles") == "Pacific Time"
+
+    def test_get_timezone_full_name_eastern(self) -> None:
+        assert get_timezone_full_name("America/New_York") == "Eastern Time"
+
+    def test_get_timezone_full_name_non_us(self) -> None:
+        result = get_timezone_full_name("America/Toronto")
+        assert result == "Toronto Time"
+
+    def test_get_timezone_full_name_underscore_city(self) -> None:
+        result = get_timezone_full_name("America/Argentina/Buenos_Aires")
+        assert result == "Buenos Aires Time"
+
+    def test_now_in_site_timezone_naive_returns_naive(self) -> None:
+        result = now_in_site_timezone_naive("America/New_York")
+        assert result.tzinfo is None
+
+    def test_now_in_site_timezone_naive_pacific_matches(self) -> None:
+        """Pacific site timezone should be close to now_in_pacific_naive."""
+        from around_the_grounds.utils.timezone_utils import now_in_pacific_naive
+
+        pacific = now_in_pacific_naive()
+        site = now_in_site_timezone_naive("America/Los_Angeles")
+        # Should be within a second of each other
+        diff = abs((pacific - site).total_seconds())
+        assert diff < 2
+
+    def test_format_time_with_site_timezone_eastern(self) -> None:
+        dt = datetime(2025, 7, 15, 14, 30)
+        result = format_time_with_site_timezone(dt, "America/New_York")
+        assert result == "2:30 PM ET"
+
+    def test_format_time_with_site_timezone_pacific(self) -> None:
+        dt = datetime(2025, 7, 15, 14, 30)
+        result = format_time_with_site_timezone(dt, "America/Los_Angeles")
+        assert result == "2:30 PM PT"
+
+    def test_format_time_with_site_timezone_no_tz(self) -> None:
+        dt = datetime(2025, 7, 15, 14, 30)
+        result = format_time_with_site_timezone(
+            dt, "America/New_York", include_timezone=False
+        )
+        assert result == "2:30 PM"
+
+    def test_format_time_with_site_timezone_strips_leading_zero(self) -> None:
+        dt = datetime(2025, 7, 15, 9, 5)
+        result = format_time_with_site_timezone(dt, "America/New_York")
+        assert result == "9:05 AM ET"
+        assert not result.startswith("0")

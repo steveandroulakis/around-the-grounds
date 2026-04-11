@@ -8,7 +8,7 @@ import aiohttp
 import pytest
 from aioresponses import aioresponses
 
-from around_the_grounds.models import Brewery
+from around_the_grounds.models import Venue
 from around_the_grounds.parsers.lucky_envelope import LuckyEnvelopeParser
 
 
@@ -16,8 +16,8 @@ class TestLuckyEnvelopeParser:
     """Test the LuckyEnvelopeParser class."""
 
     @pytest.fixture
-    def brewery(self) -> Brewery:
-        return Brewery(
+    def venue(self) -> Venue:
+        return Venue(
             key="lucky-envelope",
             name="Lucky Envelope Brewing",
             url="https://www.luckyenvelopebrewing.com/",
@@ -27,8 +27,8 @@ class TestLuckyEnvelopeParser:
         )
 
     @pytest.fixture
-    def parser(self, brewery: Brewery) -> LuckyEnvelopeParser:
-        return LuckyEnvelopeParser(brewery)
+    def parser(self, venue: Venue) -> LuckyEnvelopeParser:
+        return LuckyEnvelopeParser(venue)
 
     @pytest.fixture
     def sample_html(self) -> str:
@@ -49,12 +49,12 @@ class TestLuckyEnvelopeParser:
         self, parser: LuckyEnvelopeParser, sample_html: str
     ) -> None:
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=sample_html)
+            m.get(parser.venue.url, status=200, body=sample_html)
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
 
         assert len(events) == 4
-        names = [e.food_truck_name for e in events]
+        names = [e.title for e in events]
         assert "El Koreano" in names
         assert "Tacos El Cunado" in names
         assert "Noodle Haus" in names
@@ -65,13 +65,13 @@ class TestLuckyEnvelopeParser:
         self, parser: LuckyEnvelopeParser, sample_html: str
     ) -> None:
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=sample_html)
+            m.get(parser.venue.url, status=200, body=sample_html)
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
 
-        el_koreano = next(e for e in events if e.food_truck_name == "El Koreano")
-        assert el_koreano.brewery_key == "lucky-envelope"
-        assert el_koreano.brewery_name == "Lucky Envelope Brewing"
+        el_koreano = next(e for e in events if e.title == "El Koreano")
+        assert el_koreano.venue_key == "lucky-envelope"
+        assert el_koreano.venue_name == "Lucky Envelope Brewing"
         assert el_koreano.date == datetime(2026, 3, 13)
         assert el_koreano.start_time is not None
         assert el_koreano.start_time.hour == 17  # 5pm
@@ -84,11 +84,11 @@ class TestLuckyEnvelopeParser:
     ) -> None:
         """4:30-7:30pm: start should inherit pm from end."""
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=sample_html)
+            m.get(parser.venue.url, status=200, body=sample_html)
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
 
-        tacos = next(e for e in events if e.food_truck_name == "Tacos El Cunado")
+        tacos = next(e for e in events if e.title == "Tacos El Cunado")
         assert tacos.start_time is not None
         assert tacos.start_time.hour == 16  # 4:30pm
         assert tacos.start_time.minute == 30
@@ -102,11 +102,11 @@ class TestLuckyEnvelopeParser:
     ) -> None:
         """4:30pm-8pm: both have am/pm explicitly."""
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=sample_html)
+            m.get(parser.venue.url, status=200, body=sample_html)
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
 
-        noodle = next(e for e in events if e.food_truck_name == "Noodle Haus")
+        noodle = next(e for e in events if e.title == "Noodle Haus")
         assert noodle.start_time is not None
         assert noodle.start_time.hour == 16  # 4:30pm
         assert noodle.start_time.minute == 30
@@ -119,7 +119,7 @@ class TestLuckyEnvelopeParser:
     async def test_parse_no_carousel_element(self, parser: LuckyEnvelopeParser) -> None:
         html_content = "<html><body><p>No carousel here</p></body></html>"
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=html_content)
+            m.get(parser.venue.url, status=200, body=html_content)
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
         assert events == []
@@ -132,7 +132,7 @@ class TestLuckyEnvelopeParser:
         </div></body></html>
         """
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=html_content)
+            m.get(parser.venue.url, status=200, body=html_content)
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
         assert events == []
@@ -147,7 +147,7 @@ class TestLuckyEnvelopeParser:
         </body></html>
         """
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=html_content)
+            m.get(parser.venue.url, status=200, body=html_content)
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
         assert events == []
@@ -162,7 +162,7 @@ class TestLuckyEnvelopeParser:
         </div></body></html>
         """
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=html_content)
+            m.get(parser.venue.url, status=200, body=html_content)
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
         assert events == []
@@ -172,7 +172,7 @@ class TestLuckyEnvelopeParser:
     @pytest.mark.asyncio
     async def test_parse_network_error(self, parser: LuckyEnvelopeParser) -> None:
         with aioresponses() as m:
-            m.get(parser.brewery.url, exception=aiohttp.ClientError("Network error"))
+            m.get(parser.venue.url, exception=aiohttp.ClientError("Network error"))
             async with aiohttp.ClientSession() as session:
                 with pytest.raises(ValueError):
                     await parser.parse(session)
@@ -180,7 +180,7 @@ class TestLuckyEnvelopeParser:
     @pytest.mark.asyncio
     async def test_parse_http_404(self, parser: LuckyEnvelopeParser) -> None:
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=404)
+            m.get(parser.venue.url, status=404)
             async with aiohttp.ClientSession() as session:
                 with pytest.raises(ValueError):
                     await parser.parse(session)
@@ -188,7 +188,7 @@ class TestLuckyEnvelopeParser:
     @pytest.mark.asyncio
     async def test_parse_http_500(self, parser: LuckyEnvelopeParser) -> None:
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=500)
+            m.get(parser.venue.url, status=500)
             async with aiohttp.ClientSession() as session:
                 with pytest.raises(ValueError):
                     await parser.parse(session)

@@ -23,37 +23,37 @@ class FoodTruckWorkflow:
 
         try:
             # Step 1: Load brewery configuration
-            brewery_configs = await workflow.execute_activity(
+            venue_configs = await workflow.execute_activity(
                 scrape_activities.load_brewery_config,
                 params.config_path,
                 schedule_to_close_timeout=timedelta(seconds=30),
             )
 
             workflow.logger.info(
-                f"Loaded {len(brewery_configs)} brewery configurations"
+                f"Loaded {len(venue_configs)} venue configurations"
             )
 
             # Step 2: Scrape food truck data across breweries in parallel batches
             max_parallel = max(1, params.max_parallel_scrapes)
             workflow.logger.info(
-                f"Scraping breweries with max_parallel_scrapes={max_parallel}"
+                f"Scraping venues with max_parallel_scrapes={max_parallel}"
             )
 
             all_events: List[Dict[str, Any]] = []
             all_errors: List[Dict[str, str]] = []
 
-            if brewery_configs:
-                for start in range(0, len(brewery_configs), max_parallel):
-                    batch = brewery_configs[start : start + max_parallel]
+            if venue_configs:
+                for start in range(0, len(venue_configs), max_parallel):
+                    batch = venue_configs[start : start + max_parallel]
                     workflow.logger.info(
-                        f"Launching scrape activities for breweries {start + 1}-"
-                        f"{start + len(batch)} of {len(brewery_configs)}"
+                        f"Launching scrape activities for venues {start + 1}-"
+                        f"{start + len(batch)} of {len(venue_configs)}"
                     )
 
                     batch_results = await asyncio.gather(
                         *[
                             workflow.execute_activity(
-                                scrape_activities.scrape_single_brewery,
+                                scrape_activities.scrape_single_venue,
                                 config,
                                 schedule_to_close_timeout=timedelta(minutes=2),
                             )

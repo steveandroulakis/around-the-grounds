@@ -7,7 +7,7 @@ import pytest
 from aioresponses import aioresponses
 from freezegun import freeze_time
 
-from around_the_grounds.models import Brewery
+from around_the_grounds.models import Venue
 from around_the_grounds.parsers.chucks_greenwood import ChucksGreenwoodParser
 
 
@@ -15,9 +15,9 @@ class TestChucksGreenwoodParser:
     """Test the ChucksGreenwoodParser class."""
 
     @pytest.fixture
-    def brewery(self) -> Brewery:
+    def brewery(self) -> Venue:
         """Create a test brewery for Chuck's Greenwood."""
-        return Brewery(
+        return Venue(
             key="chucks-greenwood",
             name="Chuck's Hop Shop Greenwood",
             url="https://docs.google.com/spreadsheets/d/e/2PACX-1vS8BmXLSrsUVJ1x_x8FslWooOXRLeEJV-Jq5NzhfUCI9TtO-qXr0ey2BzY8KI-GflT7ekl5015XX3uj/pub?gid=1143085558&single=true&output=csv",
@@ -29,7 +29,7 @@ class TestChucksGreenwoodParser:
         )
 
     @pytest.fixture
-    def parser(self, brewery: Brewery) -> ChucksGreenwoodParser:
+    def parser(self, brewery: Venue) -> ChucksGreenwoodParser:
         """Create a parser instance."""
         return ChucksGreenwoodParser(brewery)
 
@@ -54,23 +54,23 @@ class TestChucksGreenwoodParser:
     ) -> None:
         """Test parsing the sample CSV data."""
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=sample_csv)
+            m.get(parser.venue.url, status=200, body=sample_csv)
 
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
 
                 # Validate results
                 assert len(events) > 0
-                assert all(event.brewery_key == "chucks-greenwood" for event in events)
+                assert all(event.venue_key == "chucks-greenwood" for event in events)
                 assert all(
-                    event.brewery_name == "Chuck's Hop Shop Greenwood"
+                    event.venue_name == "Chuck's Hop Shop Greenwood"
                     for event in events
                 )
-                assert all(event.food_truck_name.strip() != "" for event in events)
+                assert all(event.title.strip() != "" for event in events)
                 assert all(event.date is not None for event in events)
 
                 # Check specific events from sample data
-                event_names = [event.food_truck_name for event in events]
+                event_names = [event.title for event in events]
                 assert "T'Juana" in event_names  # From "Dinner: T'Juana"
                 assert (
                     "Good Morning Tacos" in event_names
@@ -79,8 +79,8 @@ class TestChucksGreenwoodParser:
 
                 # Verify events are only food trucks (no "Geeks Who Drink Trivia" or "Music Bingo")
                 for event in events:
-                    assert "Trivia" not in event.food_truck_name
-                    assert "Bingo" not in event.food_truck_name
+                    assert "Trivia" not in event.title
+                    assert "Bingo" not in event.title
 
     @pytest.mark.asyncio
     @freeze_time("2025-08-05")
@@ -92,7 +92,7 @@ class TestChucksGreenwoodParser:
 
         with aioresponses() as m:
             # Mock redirect from original URL to CDN
-            m.get(parser.brewery.url, status=307, headers={"Location": redirect_url})
+            m.get(parser.venue.url, status=307, headers={"Location": redirect_url})
             m.get(redirect_url, status=200, body=sample_csv)
 
             async with aiohttp.ClientSession() as session:
@@ -107,7 +107,7 @@ class TestChucksGreenwoodParser:
         empty_csv = ""
 
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=empty_csv)
+            m.get(parser.venue.url, status=200, body=empty_csv)
 
             async with aiohttp.ClientSession() as session:
                 with pytest.raises(ValueError, match="Failed to parse CSV data"):
@@ -119,7 +119,7 @@ class TestChucksGreenwoodParser:
         header_only_csv = "Greenwood Events & Food Trucks,,,,,,,Date Created,Last Updated,All Day Event,Recurring Event"
 
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=header_only_csv)
+            m.get(parser.venue.url, status=200, body=header_only_csv)
 
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
@@ -135,7 +135,7 @@ Wed,Aug 6,12 AM,to,Wed,Event,Geeks Who Drink Trivia,Thu,Wed,FALSE,TRUE
 Tue,Aug 12,12 AM,to,Tue,Event,Music Bingo,Wed,Tue,FALSE,TRUE"""
 
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=non_food_truck_csv)
+            m.get(parser.venue.url, status=200, body=non_food_truck_csv)
 
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
@@ -145,7 +145,7 @@ Tue,Aug 12,12 AM,to,Tue,Event,Music Bingo,Wed,Tue,FALSE,TRUE"""
     async def test_parse_network_error(self, parser: ChucksGreenwoodParser) -> None:
         """Test handling of network errors."""
         with aioresponses() as m:
-            m.get(parser.brewery.url, exception=aiohttp.ClientError("Network error"))
+            m.get(parser.venue.url, exception=aiohttp.ClientError("Network error"))
 
             async with aiohttp.ClientSession() as session:
                 with pytest.raises(ValueError, match="Failed to parse CSV data"):
@@ -155,7 +155,7 @@ Tue,Aug 12,12 AM,to,Tue,Event,Music Bingo,Wed,Tue,FALSE,TRUE"""
     async def test_parse_http_error(self, parser: ChucksGreenwoodParser) -> None:
         """Test handling of HTTP errors."""
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=404)
+            m.get(parser.venue.url, status=404)
 
             async with aiohttp.ClientSession() as session:
                 with pytest.raises(ValueError, match="Failed to parse CSV data"):
@@ -168,7 +168,7 @@ Tue,Aug 12,12 AM,to,Tue,Event,Music Bingo,Wed,Tue,FALSE,TRUE"""
 Another,incomplete"""
 
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=malformed_csv)
+            m.get(parser.venue.url, status=200, body=malformed_csv)
 
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
@@ -304,9 +304,9 @@ Another,incomplete"""
 
         result = parser._parse_csv_row(row)
         assert result is not None
-        assert result.brewery_key == "chucks-greenwood"
-        assert result.brewery_name == "Chuck's Hop Shop Greenwood"
-        assert result.food_truck_name == "T'Juana"
+        assert result.venue_key == "chucks-greenwood"
+        assert result.venue_name == "Chuck's Hop Shop Greenwood"
+        assert result.title == "T'Juana"
         assert result.date.year == 2025
         assert result.date.month == 8
         assert result.date.day == 1
@@ -417,7 +417,7 @@ Another,incomplete"""
         # Note: This HTML fixture represents the Google Sheets redirect page
         # In practice, the CSV URL redirects to actual CSV data
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=sample_html)
+            m.get(parser.venue.url, status=200, body=sample_html)
 
             async with aiohttp.ClientSession() as session:
                 # HTML content will be parsed as CSV but won't contain valid food truck events
@@ -438,22 +438,22 @@ Mon,Aug 4,12 AM,to,Mon,Event,Music Bingo,Sun,Mon,FALSE,TRUE
 Tue,Aug 5,12 AM,to,Tue,Food Truck,Tat's Deli,Wed,Tue,FALSE,TRUE"""
 
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=mixed_csv)
+            m.get(parser.venue.url, status=200, body=mixed_csv)
 
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
 
                 # Should only have food truck events
                 assert len(events) == 3
-                event_names = [event.food_truck_name for event in events]
+                event_names = [event.title for event in events]
                 assert "T'Juana" in event_names
                 assert "Good Morning Tacos" in event_names
                 assert "Tat's Deli" in event_names
 
                 # Should not have trivia or bingo events
                 for event in events:
-                    assert "Trivia" not in event.food_truck_name
-                    assert "Bingo" not in event.food_truck_name
+                    assert "Trivia" not in event.title
+                    assert "Bingo" not in event.title
 
     @pytest.mark.asyncio
     @freeze_time("2025-12-15")  # Test year rollover scenario
@@ -466,7 +466,7 @@ Mon,Jan 15,12 AM,to,Mon,Food Truck,New Year Vendor,Sat,Mon,FALSE,TRUE
 Tue,Feb 20,12 AM,to,Tue,Food Truck,February Truck,Sun,Tue,FALSE,TRUE"""
 
         with aioresponses() as m:
-            m.get(parser.brewery.url, status=200, body=rollover_csv)
+            m.get(parser.venue.url, status=200, body=rollover_csv)
 
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)

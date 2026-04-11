@@ -7,27 +7,28 @@ from typing import Any, AsyncGenerator, Dict
 import aiohttp
 import pytest
 
-from around_the_grounds.models import Brewery, FoodTruckEvent
+from around_the_grounds.models import Venue, Event
 
 
 @pytest.fixture
-def sample_brewery() -> Brewery:
-    """Sample brewery for testing."""
-    return Brewery(
+def sample_brewery() -> Venue:
+    """Sample venue for testing."""
+    return Venue(
         key="test-brewery",
         name="Test Brewery",
         url="https://example.com/food-trucks",
+        source_type="html",
         parser_config={"test": "config"},
     )
 
 
 @pytest.fixture
-def sample_food_truck_event() -> FoodTruckEvent:
-    """Sample food truck event for testing."""
-    return FoodTruckEvent(
-        brewery_key="test-brewery",
-        brewery_name="Test Brewery",
-        food_truck_name="Test Food Truck",
+def sample_food_truck_event() -> Event:
+    """Sample event for testing."""
+    return Event(
+        venue_key="test-brewery",
+        venue_name="Test Brewery",
+        title="Test Food Truck",
         date=datetime.now() + timedelta(days=1),
         start_time=datetime.now() + timedelta(days=1, hours=12),
         end_time=datetime.now() + timedelta(days=1, hours=20),

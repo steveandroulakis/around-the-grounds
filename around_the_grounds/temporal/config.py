@@ -6,6 +6,7 @@ Supports multiple authentication methods:
 - mTLS certificate authentication
 """
 
+import logging
 import os
 from typing import Union
 
@@ -20,15 +21,7 @@ except ImportError:
     # dotenv is optional, fall back to os.environ
     pass
 
-# Debug: Print environment variables at startup
-print("🔍 DEBUG: Environment variables:")
-print(f"   TEMPORAL_ADDRESS (env): {os.getenv('TEMPORAL_ADDRESS', 'NOT_SET')}")
-print(f"   TEMPORAL_NAMESPACE (env): {os.getenv('TEMPORAL_NAMESPACE', 'NOT_SET')}")
-print(f"   TEMPORAL_TLS_CERT (env): {os.getenv('TEMPORAL_TLS_CERT', 'NOT_SET')}")
-print(f"   TEMPORAL_TLS_KEY (env): {os.getenv('TEMPORAL_TLS_KEY', 'NOT_SET')}")
-print(
-    f"   TEMPORAL_API_KEY (env): {'SET' if os.getenv('TEMPORAL_API_KEY') else 'NOT_SET'}"
-)
+logger = logging.getLogger(__name__)
 
 # Temporal connection settings
 TEMPORAL_ADDRESS = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
@@ -39,12 +32,6 @@ TEMPORAL_TASK_QUEUE = os.getenv("TEMPORAL_TASK_QUEUE", "food-truck-task-queue")
 TEMPORAL_TLS_CERT = os.getenv("TEMPORAL_TLS_CERT", "")
 TEMPORAL_TLS_KEY = os.getenv("TEMPORAL_TLS_KEY", "")
 TEMPORAL_API_KEY = os.getenv("TEMPORAL_API_KEY", "")
-
-print("🔍 DEBUG: Final configuration values:")
-print(f"   TEMPORAL_ADDRESS: {TEMPORAL_ADDRESS}")
-print(f"   TEMPORAL_NAMESPACE: {TEMPORAL_NAMESPACE}")
-print(f"   TEMPORAL_TLS_CERT: {TEMPORAL_TLS_CERT}")
-print(f"   TEMPORAL_TLS_KEY: {TEMPORAL_TLS_KEY}")
 
 
 async def get_temporal_client() -> Client:
@@ -61,22 +48,12 @@ async def get_temporal_client() -> Client:
     # Default to no TLS for local development
     tls_config: Union[bool, TLSConfig] = False
 
-    # Debug logging for connection details
-    print("🔗 Connecting to Temporal server:")
-    print(f"   Address: {TEMPORAL_ADDRESS}")
-    print(f"   Namespace: {TEMPORAL_NAMESPACE}")
-    print(f"   Task Queue: {TEMPORAL_TASK_QUEUE}")
-
-    if TEMPORAL_ADDRESS == "localhost:7233":
-        print("   Mode: Local development (no authentication)")
-    else:
-        print("   Mode: Remote server")
+    mode = "local" if TEMPORAL_ADDRESS == "localhost:7233" else "remote"
+    logger.info(f"Connecting to Temporal: {TEMPORAL_ADDRESS} ({mode})")
 
     # Configure mTLS if certificate and key are provided
     if TEMPORAL_TLS_CERT and TEMPORAL_TLS_KEY:
-        print(f"   TLS Certificate: {TEMPORAL_TLS_CERT}")
-        print(f"   TLS Key: {TEMPORAL_TLS_KEY}")
-        print("   Authentication: mTLS")
+        logger.info("Authentication: mTLS")
 
         try:
             with open(TEMPORAL_TLS_CERT, "rb") as f:
@@ -94,8 +71,7 @@ async def get_temporal_client() -> Client:
 
     # Use API key authentication if provided
     if TEMPORAL_API_KEY:
-        print(f"   API Key: {TEMPORAL_API_KEY[:8]}...")
-        print("   Authentication: API Key")
+        logger.info("Authentication: API key")
 
         try:
             return await Client.connect(
@@ -157,7 +133,7 @@ def validate_configuration() -> None:
     if TEMPORAL_TLS_KEY and not os.path.exists(TEMPORAL_TLS_KEY):
         raise Exception(f"TLS key file not found: {TEMPORAL_TLS_KEY}")
 
-    print("✅ Configuration validation passed")
+    logger.debug("Configuration validation passed")
 
 
 def get_configuration_summary() -> dict:

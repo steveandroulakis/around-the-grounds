@@ -10,7 +10,7 @@ from typing import List, Optional, Union
 
 import anthropic
 
-from ..models import FoodTruckEvent
+from ..models import Event
 
 
 DEFAULT_PROMPT_PATH = (
@@ -21,7 +21,7 @@ DEFAULT_PROMPT_TEMPLATE = """Today's date is: {date}
 Time of day: {time_of_day}
 Current weather in Ballard, Seattle: {weather}
 
-Today's featured food truck: {truck_name} at {brewery_name}
+Today's featured food truck: {truck_name} at {venue_name}
 
 Today's haiku inspiration:
 {events_summary}
@@ -31,7 +31,7 @@ Today's haiku inspiration:
 Create a haiku (5-7-5 syllable structure) that captures the essence of today's food truck scene in Seattle's Ballard neighborhood. Your haiku should:
 
 1. Let the weather seep into the imagery naturally — through textures, moods, and sensory details — rather than stating it directly
-2. Feature the specific food truck ({truck_name}) and brewery ({brewery_name}) mentioned above
+2. Feature the specific food truck ({truck_name}) and brewery ({venue_name}) mentioned above
 3. Evoke the atmosphere of gathering at local breweries and food spots
 4. Balance concrete sensory details with weather-driven imagery
 
@@ -80,7 +80,7 @@ Return only the haiku with inline emoji, nothing else."""
 
 
 class HaikuGenerator:
-    """Generates haikus about food truck events using Claude Sonnet 4.6."""
+    """Generates haikus about food truck events using Claude Sonnet."""
 
     def __init__(
         self,
@@ -89,7 +89,7 @@ class HaikuGenerator:
         prompt_template: Optional[str] = None,
     ):
         """Initialize haiku generator with Anthropic API client."""
-        self.client = anthropic.Anthropic(
+        self.client = anthropic.AsyncAnthropic(
             api_key=api_key
         )  # Uses ANTHROPIC_API_KEY env var if None
         self.logger = logging.getLogger(__name__)
@@ -100,7 +100,11 @@ class HaikuGenerator:
         )
 
     async def generate_haiku(
-        self, date: datetime, events: List[FoodTruckEvent], max_retries: int = 2
+        self,
+        date: datetime,
+        events: List[Event],
+        max_retries: int = 2,
+        site_name: str = "Food Trucks",
     ) -> Optional[str]:
         """
         Generate a haiku based on today's food truck events.
@@ -109,6 +113,10 @@ class HaikuGenerator:
             date: The date for the haiku context
             events: List of food truck events for today
             max_retries: Maximum number of retry attempts
+            site_name: Name of the site requesting the haiku. Currently
+                accepted for API parity with the multi-site caller, but the
+                Ballard prompt template is weather- and Ballard-specific;
+                this parameter is not interpolated into that template.
 
         Returns:
             Haiku string with emojis and 3 lines, or None if generation fails
@@ -148,7 +156,7 @@ class HaikuGenerator:
         return None
 
     async def _generate_haiku_internal(
-        self, date: datetime, events: List[FoodTruckEvent]
+        self, date: datetime, events: List[Event]
     ) -> Optional[str]:
         """Internal method to generate haiku using Claude API."""
         try:
@@ -167,26 +175,26 @@ class HaikuGenerator:
             # Format date for prompt
             date_str = date.strftime("%B %d, %Y (%A)")
 
-            # Randomly select ONE food truck/brewery combination for diversity
+            # Randomly select ONE event/venue combination for diversity
             selected_event = random.choice(events)
-            truck_name = selected_event.food_truck_name
-            brewery_name = selected_event.brewery_name
+            truck_name = selected_event.title
+            venue_name = selected_event.venue_name
 
             self.logger.debug(
-                f"Selected truck for haiku: {truck_name} at {brewery_name}"
+                f"Selected truck for haiku: {truck_name} at {venue_name}"
             )
 
             # Build prompt from template
             prompt = self._build_prompt(
                 date_str=date_str,
                 truck_name=truck_name,
-                brewery_name=brewery_name,
+                venue_name=venue_name,
                 events=[selected_event],
                 weather=weather_summary,
                 time_of_day=time_of_day,
             )
 
-            message = self.client.messages.create(
+            message = await self.client.messages.create(
                 model="claude-sonnet-4-6",
                 max_tokens=150,
                 temperature=0.85,
@@ -282,21 +290,21 @@ class HaikuGenerator:
         *,
         date_str: str,
         truck_name: str,
-        brewery_name: str,
-        events: List[FoodTruckEvent],
+        venue_name: str,
+        events: List[Event],
         weather: str,
         time_of_day: str,
     ) -> str:
         """Render the configured prompt template with context."""
         events_summary = "\n".join(
-            f"- {event.food_truck_name} at {event.brewery_name}" for event in events
+            f"- {event.title} at {event.venue_name}" for event in events
         )
 
         template = self.prompt_template
         format_kwargs = dict(
             date=date_str,
             truck_name=truck_name,
-            brewery_name=brewery_name,
+            venue_name=venue_name,
             events_summary=events_summary,
             weather=weather,
             time_of_day=time_of_day,

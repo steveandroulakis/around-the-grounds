@@ -1,6 +1,6 @@
 # Temporal Workflow Integration
 
-This directory contains the Temporal workflow integration for Around the Grounds food truck tracking system. The integration provides reliable, observable, and schedulable execution of the complete scraping and deployment pipeline.
+This directory contains the Temporal workflow integration for Around the Grounds multi-site event aggregator. The integration provides reliable, observable, and schedulable execution of the complete scraping and deployment pipeline.
 
 ## Overview
 
@@ -29,7 +29,7 @@ temporal/
 ### Core Components
 
 - **FoodTruckWorkflow**: Main workflow that orchestrates the complete pipeline
-- **ScrapeActivities**: Activities wrapping brewery configuration and scraping functionality
+- **ScrapeActivities**: Activities wrapping venue configuration and scraping functionality
 - **DeploymentActivities**: Activities for web data generation and git operations
 - **FoodTruckWorker**: Production worker with thread pools and signal handling
 - **FoodTruckStarter**: CLI client for manual workflow execution
@@ -236,14 +236,14 @@ The workflow accepts parameters via the `WorkflowParams` data class:
 ```python
 @dataclass
 class WorkflowParams:
-    config_path: Optional[str] = None      # Path to brewery config JSON
+    config_path: Optional[str] = None      # Path to venues config JSON
     deploy: bool = False                   # Whether to deploy to web
     git_repository_url: str = DEFAULT_GIT_REPOSITORY
     max_parallel_scrapes: int = 10         # Max concurrent scrape activities
 ```
 
-- `max_parallel_scrapes` controls how many `scrape_single_brewery` activities execute
-  concurrently before the workflow batches additional breweries.
+- `max_parallel_scrapes` controls how many `scrape_single_venue` activities execute
+  concurrently before the workflow batches additional venues.
 
 ### Workflow Results
 
@@ -265,12 +265,12 @@ class WorkflowResult:
 
 Activities that wrap existing scraping functionality:
 
-- `load_brewery_config(config_path)`: Load brewery configuration
-- `scrape_single_brewery(brewery_config)`: Scrape one brewery (used for fan-out)
-- `scrape_food_trucks(brewery_configs)`: Scrape all breweries for events
+- `load_venue_config(config_path)`: Load venue configuration
+- `scrape_single_venue(venue_config)`: Scrape one venue (used for fan-out)
+- `scrape_venues(venue_configs)`: Scrape all venues for events
 
-`scrape_single_brewery` powers the parallel fan-out within the workflow. The legacy
-`scrape_food_trucks` activity remains available for sequential batch scraping and
+`scrape_single_venue` powers the parallel fan-out within the workflow. The legacy
+`scrape_venues` activity remains available for sequential batch scraping and
 compatibility with existing tests or tooling.
 
 ### DeploymentActivities
@@ -284,7 +284,7 @@ Activities for web deployment:
 
 Activities are configured with appropriate timeouts:
 - Configuration loading: 30 seconds
-- Single-brewery scraping: 2 minutes per activity (runs in parallel batches)
+- Single-venue scraping: 2 minutes per activity (runs in parallel batches)
 - Batch scraping fallback: 5 minutes (legacy sequential activity)
 - Web data generation: 30 seconds
 - Git deployment: 2 minutes
@@ -309,7 +309,7 @@ The integration provides structured logging at multiple levels:
 2025-07-05 21:28:42,600 - __main__ - INFO - 🚀 Starting workflow: food-truck-workflow-20250705-212842
 
 # DEBUG level (with --verbose)
-2025-07-05 21:28:42,600 - __main__ - DEBUG - Loading brewery configuration from default path
+2025-07-05 21:28:42,600 - __main__ - DEBUG - Loading venue configuration from default path
 ```
 
 ### Workflow IDs
@@ -347,7 +347,7 @@ The workflow handles activity failures gracefully:
    ```
    Activity timed out after 5 minutes
    ```
-   - Solution: Check network connectivity and brewery website availability
+   - Solution: Check network connectivity and venue website availability
 
 3. **Git Deployment Failures**:
    ```
@@ -405,7 +405,7 @@ uv run python -m around_the_grounds.temporal.schedule_manager delete --schedule-
 - **Multiple Deployment Modes**: Works with local, Temporal Cloud, and mTLS configurations
 - **Comprehensive Management**: Create, list, describe, pause, unpause, trigger, update, and delete
 - **Production Ready**: Built-in error handling and detailed logging
-- **Custom Configuration**: Support for custom brewery configs and workflow parameters
+- **Custom Configuration**: Support for custom venue configs and workflow parameters
 
 ### Manual Scheduling
 
@@ -531,8 +531,8 @@ import asyncio
 from around_the_grounds.temporal.activities import ScrapeActivities
 async def test():
     activities = ScrapeActivities()
-    result = await activities.load_brewery_config()
-    print(f'Loaded {len(result)} breweries')
+    result = await activities.load_venue_config()
+    print(f'Loaded {len(result)} venues')
 asyncio.run(test())
 "
 ```
@@ -552,9 +552,9 @@ Main workflow that orchestrates the complete pipeline.
 ### ScrapeActivities
 
 - `test_connectivity() -> str`: Test activity connectivity
-- `load_brewery_config(config_path: Optional[str]) -> List[Dict]`: Load brewery configuration
-- `scrape_single_brewery(brewery_config: Dict) -> Dict`: Scrape events for a single brewery
-- `scrape_food_trucks(brewery_configs: List[Dict]) -> Tuple[List[Dict], List[Dict]]`: Scrape events
+- `load_venue_config(config_path: Optional[str]) -> List[Dict]`: Load venue configuration
+- `scrape_single_venue(venue_config: Dict) -> Dict`: Scrape events for a single venue
+- `scrape_venues(venue_configs: List[Dict]) -> Tuple[List[Dict], List[Dict]]`: Scrape events
 
 ### DeploymentActivities
 

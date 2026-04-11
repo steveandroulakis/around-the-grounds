@@ -1,29 +1,36 @@
 # Around the Grounds 🍺🚚
 
-A Python CLI tool for tracking food truck schedules across multiple breweries. Scrapes brewery websites asynchronously and generates a unified 7-day schedule with AI-powered enhancements.
+A multi-site event aggregator platform built in Python. Each site is defined by a JSON config file — no new parser code needed unless the site uses an unsupported platform. Currently tracks food truck schedules in Ballard (Seattle), indie music shows in Park Slope (Brooklyn), and children's events across Brooklyn. Jointly maintained by [@steveandroulakis](https://github.com/steveandroulakis) (Ballard) and [@jredding](https://github.com/jredding) (Brooklyn sites).
+
+> 📦 **Pulling the multi-site merge into an existing checkout?** See [MIGRATION.md](./MIGRATION.md) for per-maintainer migration notes, recommended post-pull hygiene, and suggested follow-up work.
 
 ## Features
 
-- 🔄 **Async Web Scraping**: Concurrent processing of multiple brewery websites
+- 🔄 **Multi-Site Support**: Independent site configs for different event domains (food trucks, music, kids events), each with its own target repository and deploy strategy
+- 🔌 **Generic Parsers**: Config-driven parsers for WordPress, HTML (CSS selectors), AJAX/JSON APIs, and JSON-LD
 - 🖼️ **AI Vision Analysis**: Extracts vendor names from food truck images using Claude Vision API
-- 🎋 **AI Haiku Generation**: Creates weather-aware, seasonal haikus about daily food truck scenes using real-time weather data
-- 🌐 **Auto-Deployment**: Git-based deployment to static site platforms (Vercel, Netlify, etc.)
-- ⏰ **Temporal Workflows**: Reliable scheduling with cloud or local execution
-- 🧪 **Comprehensive Testing**: 196 tests covering unit, integration, and error scenarios
+- 🎋 **AI Haiku Generation**: Creates weather-grounded haikus for Ballard using Claude Sonnet 4.6 + Open-Meteo
+- 🌐 **Two Deploy Strategies**: Fresh-init + force-push for repo-root targets (GitHub Pages) or clone + scoped-add for subdirectory targets (Vercel `public/`)
+- ☁️ **Cloud Run Jobs**: Google Cloud Run with Cloud Scheduler for daily automated updates (Brooklyn sites)
+- ⏰ **Temporal Workflows**: Reliable scheduling with cloud or local execution (used by Ballard via a self-hosted Temporal worker)
+- 🧪 **Comprehensive Testing**: 499 tests covering unit, integration, weather, multi-site deploy, and error scenarios
 
 ## How It Works
 
 This repository contains the **scraping and scheduling engine**. When run with `--deploy`, it:
 
-1. **Scrapes** brewery websites for food truck schedules
+1. **Scrapes** venue websites for event data
 2. **Generates AI content**: Creates daily haikus and extracts vendor names from images (when `ANTHROPIC_API_KEY` is set)
-3. **Copies** web templates from `public_template/` to target repository
-4. **Generates** static site data (`data.json`) in target repository
-5. **Target repo** is automatically deployed by platforms like Vercel
+3. **Copies** site-specific templates from `public_templates/<template>/` into the target repository (at root or into a `deploy_subdir`, per site config)
+4. **Generates** static site data (`data.json`) next to those templates
+5. **Pushes** to target repo — force-push if deploying to root, or a scoped normal push if deploying into a subdirectory of an existing repo
 
 **Two-Repository Architecture:**
-- **Source repo** (this one): Contains scraping code, runs workers, web templates
-- **Target repo** (e.g., `ballard-food-trucks`): Receives complete website, served as static site
+- **Source repo** (this one): Contains scraping code, parsers, site configs, per-site templates
+- **Target repos** (one per site): Receive the generated website and serve it via GitHub Pages or Vercel
+  - `steveandroulakis/ballard-food-trucks` — Vercel watches the `public/` subdirectory
+  - `jredding/atg-park-slope-music` — GitHub Pages from repo root
+  - `jredding/atg-childrens-events` — GitHub Pages from repo root
 
 ## Quick Start
 
@@ -36,9 +43,21 @@ uv sync
 
 ### Basic CLI Usage
 ```bash
-uv run around-the-grounds              # Show 7-day schedule
+uv run around-the-grounds              # Show 7-day schedule (default: ballard-food-trucks)
 uv run around-the-grounds --verbose    # With detailed logging
 uv run around-the-grounds --preview    # Generate local preview files
+uv run around-the-grounds --deploy     # Scrape and deploy to web
+
+# Run a specific site
+uv run around-the-grounds --site ballard-food-trucks
+uv run around-the-grounds --site park-slope-music
+uv run around-the-grounds --site childrens-events
+
+# Run all configured sites
+uv run around-the-grounds --site all
+
+# Combine flags
+uv run around-the-grounds --site ballard-food-trucks --deploy --verbose
 ```
 
 ### Example Output
@@ -66,9 +85,10 @@ at Obec's wood door 🍺
 To deploy a live website, you need a **target repository** and **GitHub App** for authentication.
 
 ### Prerequisites
-- Target GitHub repository (e.g., `username/ballard-food-trucks`)  
-- GitHub App with repository access
-- Deployment platform (Vercel, Netlify, etc.)
+- Target GitHub repository (one per site — e.g., `steveandroulakis/ballard-food-trucks`, `jredding/atg-park-slope-music`)
+- GitHub App with Contents: Read & Write access, installed on every target repo
+- For repo-root targets: GitHub Pages enabled on the target repo's `main` branch root
+- For subdirectory targets (Ballard): a hosting provider (Vercel, Netlify) watching the target repo's configured subdirectory
 
 ### GitHub App Setup
 
@@ -84,7 +104,6 @@ To deploy a live website, you need a **target repository** and **GitHub App** fo
    # GITHUB_APP_ID=123456
    # GITHUB_CLIENT_ID=your-github-client-id
    # GITHUB_APP_PRIVATE_KEY_B64=<base64-encoded-private-key>
-   # GIT_REPOSITORY_URL=https://github.com/username/ballard-food-trucks.git
    ```
    
    **Note:** The system includes working defaults for `GITHUB_APP_ID` and `GITHUB_CLIENT_ID`. You only need to override these if using a different GitHub App.
@@ -94,7 +113,7 @@ To deploy a live website, you need a **target repository** and **GitHub App** fo
    uv run around-the-grounds --deploy
    ```
 
-This will copy web templates and generate fresh data in your target repository, triggering automatic deployment.
+This will copy site-specific templates and generate fresh data in the target repository configured in the site's JSON config, triggering GitHub Pages deployment.
 
 ## Local Preview & Testing
 
@@ -138,9 +157,9 @@ const puppeteer = require('puppeteer');
 ```
 
 **What `--preview` does:**
-1. Scrapes fresh data from all brewery websites
-2. Copies templates from `public_template/` to `public/`
-3. Generates `data.json` with current food truck data
+1. Scrapes fresh data from all venue websites for the selected site
+2. Copies site-specific templates from `public_templates/<template>/` to `public/`
+3. Generates `data.json` with current event data
 4. Creates complete website in `public/` directory (git-ignored)
 
 This allows you to test web interface changes, verify data accuracy, and debug issues before deploying to production.
@@ -174,7 +193,7 @@ uv run python -m around_the_grounds.temporal.schedule_manager trigger --schedule
 uv run python -m around_the_grounds.temporal.schedule_manager delete --schedule-id daily-scrape
 ```
 
-Workers can run on any system (local, cloud, Synology NAS) and will receive scheduled workflow executions from Temporal.
+Workers can run on any system that can reach your Temporal server and will receive scheduled workflow executions from Temporal.
 
 ### Production Deployment via CI/CD
 
@@ -188,37 +207,35 @@ A **Temporal Worker** runs in a Docker container and continuously listens for sc
 3. **Temporal Worker** in container listens for scheduled workflow executions
 4. **Schedules trigger** automatically (every 30 minutes, etc.) or manually starting workflows via UI/CLI/API
 5. **Worker executes** scraping and deployment workflow which pushes to the target repository
-6. **Data deploys** automatically to target repository → live website updates (Vercel, Netlify, etc.)
+6. **Data deploys** automatically to target repository → live website updates (GitHub Pages)
 
 The containerized worker provides reliable, continuous execution of scheduled food truck data updates without manual intervention.
 
-In my case it looks like this:
+**Alternative: Google Cloud Run** (current production setup):
 ```bash
-# 1. GitHub Actions builds and pushes to Docker Hub (takes ~4 minutes)
-# 2. Watchtower runs every 5 minutes on my home server to pull the latest Temporal worker image
-# 3. Monitor worker container (it should auto-restart with the new image):
-ssh admin@192.168.0.20
-docker ps -a -f "ancestor=steveandroulakis/around-the-grounds-worker:latest"
-docker logs -f around-the-grounds-worker
-
-# 4. Trigger Temporal schedules manually via:
-#    - Temporal UI (web interface)
-#    - CLI: uv run python -m around_the_grounds.temporal.schedule_manager trigger --schedule-id daily-scrape
-#    - Temporal API (programmatic)
-
-# 5. Worker executes the scraping workflow
-# 6. Data is pushed to target repository (e.g., github.com/steveandroulakis/ballard-food-trucks)
-# 7. Target repository is deployed automatically (e.g., Vercel, Netlify
+# 3 Cloud Run Jobs (one per site), triggered daily by Cloud Scheduler:
+#   - atg-ballard-food-trucks  (8:00 AM PT daily)
+#   - atg-park-slope-music     (8:15 AM ET daily)
+#   - atg-childrens-events     (8:30 AM ET daily)
+# Each job runs: /bin/sh -c "/usr/local/bin/uv run around-the-grounds --site <key> --deploy"
+# Image: us-central1-docker.pkg.dev/event-curation/around-the-grounds/app:latest
 ```
 
 ## Configuration
 
-### Supported Breweries
-- **Stoup Brewing - Ballard**: HTML parsing with date/time extraction
-- **Yonder Cider & Bale Breaker - Ballard**: Squarespace API integration  
-- **Obec Brewing**: Text-based parsing
-- **Urban Family Brewing**: Hivey API with AI vision analysis fallback
-- **Wheelie Pop Brewing**: HTML parsing with date/time extraction
+### Configured Sites
+
+Site configs live in `around_the_grounds/config/sites/`. Each site has its own venues, template, timezone, target repo, and deploy strategy (see the `deploy_subdir` field).
+
+| Site Key | Name | Venues | Template | Target Repo | Deploy |
+|---|---|---|---|---|---|
+| `ballard-food-trucks` | Food Trucks in Ballard | Stoup, Yonder/Bale Breaker, Obec, Urban Family, Wheelie Pop, Chuck's, Saleh's, Channel Marker, Lucky Envelope (9) | `food-trucks` | `steveandroulakis/ballard-food-trucks` | Clone + `public/` subdir → Vercel |
+| `park-slope-music` | Park Slope Music | Union Hall, Littlefield, Barbès, Industry City (4) | `music` | `jredding/atg-park-slope-music` | Fresh init + force-push to root → GitHub Pages |
+| `childrens-events` | Brooklyn Children's Events | MacaroniKid, Little Kid Big City (2) | `kids` | `jredding/atg-childrens-events` | Fresh init + force-push to root → GitHub Pages |
+
+**Deploy strategy** is selected automatically from the `deploy_subdir` field in the site config:
+- `deploy_subdir: ""` (default) → fresh `git init` + force-push, writes to repo root. Rewrites history.
+- `deploy_subdir: "public"` (or any non-empty value) → `git clone` + scoped `git add <subdir>/` + normal push. Preserves history and files outside the subdirectory.
 
 ### Environment Variables
 ```bash
@@ -243,22 +260,14 @@ TEMPORAL_API_KEY=your-temporal-api-key
 ### Haiku Prompt Template
 - Default prompt: `around_the_grounds/config/haiku_prompt.txt`
 - Override via env var: `HAIKU_PROMPT_FILE=/path/to/custom_prompt.txt`
-- Template placeholders: `{date}`, `{truck_name}`, `{brewery_name}`, `{events_summary}`, `{weather}`, `{time_of_day}`
-- Model: `claude-sonnet-4-6`
-
-**Weather integration**: The haiku generator fetches real-time weather from the [Open-Meteo API](https://open-meteo.com/) (free, no API key needed). By default, weather is fetched for Ballard, Seattle, but the location is configurable via environment variables (see below). Weather conditions are woven into the generated haikus for more authentic, grounded poetry. Time-based logic selects the appropriate forecast window:
-- Before 6pm PT: uses afternoon forecast
-- 6-9pm PT: uses evening forecast
-- 9pm+ PT: uses next day's afternoon forecast
-
-If the weather fetch fails, haiku generation is gracefully skipped.
+- Template placeholders: `{date}`, `{truck_name}`, `{venue_name}`, `{events_summary}`
 
 Copy the default file and tweak the location descriptions, tone, or formatting to suit your own food truck scene. Missing placeholders trigger a safe fallback to the built-in prompt.
 
 ### Custom Repository
 ```bash
-# Deploy to specific repository
-uv run around-the-grounds --deploy --git-repo https://github.com/username/custom-repo.git
+# Deploy to specific repository (overrides site config target_repo)
+uv run around-the-grounds --site ballard-food-trucks --deploy --git-repo https://github.com/username/custom-repo.git
 
 # Or set environment variable
 export GIT_REPOSITORY_URL="https://github.com/username/custom-repo.git"
@@ -289,9 +298,9 @@ uv run python -m pytest
 uv run around-the-grounds --deploy
 ```
 
-### Testing  
+### Testing
 ```bash
-uv run python -m pytest                # Run all 196 tests
+uv run python -m pytest                # Run all 499 tests
 uv run python -m pytest -v             # Verbose output
 uv run python -m pytest tests/parsers/ # Parser-specific tests
 ```
@@ -303,23 +312,32 @@ uv run flake8                          # Lint code
 uv run mypy around_the_grounds/        # Type checking
 ```
 
-### Adding New Breweries
-1. Create parser class in `around_the_grounds/parsers/`
-2. Register parser in `around_the_grounds/parsers/registry.py`
-3. Add brewery config to `around_the_grounds/config/breweries.json`
+### Adding New Sites/Venues
+For sites using supported platforms (WordPress, HTML with CSS selectors, AJAX/JSON API):
+1. Create a new JSON config file in `around_the_grounds/config/sites/`
+2. No parser code needed — just configure `source_type` and `parser_config`
+
+For sites with unsupported platforms:
+1. Create a venue-specific parser class in `around_the_grounds/parsers/`
+2. Register it in `around_the_grounds/parsers/registry.py`
+3. Add venue config to your site JSON
 4. Write tests in `tests/parsers/`
 
 See [CLAUDE.md](CLAUDE.md) for detailed development documentation.
 
 ## Architecture
 
-- **CLI Tool**: `around_the_grounds/main.py` - Entry point
-- **Parsers**: Extensible system for different brewery websites
+- **CLI Tool**: `around_the_grounds/main.py` - Multi-site entry point with `--site` flag
+- **Site Configs**: JSON files in `config/sites/` define venues, templates, timezones, target repos, and deploy strategy (`deploy_subdir`)
+- **Generic Parsers**: `parsers/generic/` — WordPress, HTML selector, AJAX, JSON-LD (config-driven)
+- **Venue-Specific Parsers**: `parsers/` — 9 Ballard food truck parsers (hand-written)
+- **Registry**: Two-tier lookup — venue key (specific) then source_type (generic)
 - **Scrapers**: Async coordinator with error handling and retries
-- **AI Utils**: Vision analyzer for vendor identification, weather-aware haiku generator for daily scenes
+- **AI Utils**: Vision analyzer for vendor identification, weather-grounded haiku generator (Open-Meteo + Claude Sonnet 4.6)
 - **Temporal**: Workflow orchestration for reliable scheduling
-- **Web Interface**: Template files in `public_template/` (copied to target repo)
-- **Tests**: 196 tests covering unit, integration, and error scenarios
+- **Web Templates**: Per-site templates in `public_templates/<template>/`, deployed to either the target repo root or a configured subdirectory
+- **Spec-driven tooling**: `.kittify/` and `kitty-specs/` are jredding's dev-time workflow; they have **no runtime impact** and can be ignored if you don't use the spec-kit process
+- **Tests**: 499 tests covering unit, integration, generic parsers, weather, haiku, multi-site deploy config, and error scenarios
 
 ## Requirements
 

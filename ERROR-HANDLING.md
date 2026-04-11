@@ -4,13 +4,13 @@ The application implements comprehensive error handling with these principles:
 
 ## Error Isolation
 
-- **Individual brewery failures don't affect others** - each brewery is processed independently
-- **Concurrent processing with isolation** - failures are captured per brewery
-- **Graceful degradation** - partial results are returned when some breweries fail
+- **Individual venue failures don't affect others** - each venue is processed independently
+- **Concurrent processing with isolation** - failures are captured per venue
+- **Graceful degradation** - partial results are returned when some venues fail
 
 ### How It Works
 
-The `ScraperCoordinator` processes breweries concurrently using `asyncio.gather(..., return_exceptions=True)`:
+The `ScraperCoordinator` processes venues concurrently using `asyncio.gather(..., return_exceptions=True)`:
 
 ```python
 results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -18,16 +18,16 @@ results = await asyncio.gather(*tasks, return_exceptions=True)
 for i, result in enumerate(results):
     if isinstance(result, Exception):
         # Log error but continue processing other breweries
-        self.logger.error(f"Failed to scrape {breweries[i].name}: {str(result)}")
-        failures.append((breweries[i].name, result))
+        self.logger.error(f"Failed to scrape {venues[i].name}: {str(result)}")
+        failures.append((venues[i].name, result))
     else:
         # Add successful results
         all_events.extend(result)
 ```
 
 This ensures that:
-- One brewery's failure doesn't crash the entire scraping process
-- Users still get data from working breweries
+- One venue's failure doesn't crash the entire scraping process
+- Users still get data from working venues
 - All failures are logged for debugging
 
 ## Error Types & Handling
@@ -50,7 +50,7 @@ for attempt in range(max_retries):
         raise
 ```
 
-**Exit behavior**: Continue processing other breweries
+**Exit behavior**: Continue processing other venues
 
 ### HTTP Errors
 
@@ -63,7 +63,7 @@ if response.status >= 400:
     raise ValueError(f"HTTP {response.status}: {url}")
 ```
 
-**Exit behavior**: Skip brewery, continue with others
+**Exit behavior**: Skip venue, continue with others
 
 ### Parser Errors
 
@@ -73,15 +73,15 @@ if response.status >= 400:
 
 ```python
 try:
-    container = soup.select_one('.food-truck-container')
+    container = soup.select_one('.event-container')
     if not container:
-        raise ValueError("Missing food truck container element")
+        raise ValueError("Missing event container element")
 except Exception as e:
     self.logger.error(f"Parser error: {str(e)}")
     raise
 ```
 
-**Exit behavior**: Skip brewery, continue with others
+**Exit behavior**: Skip venue, continue with others
 
 ### Vision API Errors
 
@@ -102,17 +102,17 @@ except anthropic.APIError as e:
 
 ### Configuration Errors
 
-**Types**: Missing parsers, invalid URLs, malformed brewery config
+**Types**: Missing parsers, invalid URLs, malformed venue config
 
 **Handling**: Immediate failure, no retry
 
 ```python
-parser_class = ParserRegistry.get_parser(brewery.key)
+parser_class = ParserRegistry.get_parser(venue)
 if not parser_class:
-    raise ValueError(f"No parser registered for brewery: {brewery.key}")
+    raise ValueError(f"No parser for venue '{venue.key}' (source_type: '{venue.source_type}')")
 ```
 
-**Exit behavior**: Skip brewery, continue with others
+**Exit behavior**: Skip venue, continue with others
 
 ### Data Validation Errors
 
@@ -121,8 +121,8 @@ if not parser_class:
 **Handling**: Filter out invalid events, log for debugging
 
 ```python
-def validate_event(event: FoodTruckEvent) -> bool:
-    if not event.food_truck_name or event.food_truck_name == "TBD":
+def validate_event(event: Event) -> bool:
+    if not event.title or event.title == "TBD":
         return False
     if not event.date or not event.time:
         return False
@@ -145,7 +145,7 @@ Visual indicators and summary for end users:
 ❌ Bale Breaker: HTTP 500 error
 ✅ Chuck's Hop Shop (4 events)
 
-Summary: 12 events from 3/4 breweries (1 failure)
+Summary: 12 events from 3/4 venues (1 failure)
 ```
 
 ### Detailed Logging
@@ -154,9 +154,9 @@ Debug information for troubleshooting (enabled with `--verbose` flag):
 
 ```python
 self.logger.debug(f"Fetching URL: {url}")
-self.logger.info(f"Parsed {len(events)} events from {brewery.name}")
+self.logger.info(f"Parsed {len(events)} events from {venue.name}")
 self.logger.warning(f"Vision analysis failed for {url}: {str(e)}")
-self.logger.error(f"Failed to parse {brewery.name}: {str(e)}")
+self.logger.error(f"Failed to parse {venue.name}: {str(e)}")
 ```
 
 **Logging levels**:
@@ -171,7 +171,7 @@ Communicate success/failure status to calling processes:
 
 - **0**: Complete success (all breweries scraped successfully)
 - **1**: Complete failure (no breweries could be scraped)
-- **2**: Partial success (some breweries failed, some succeeded)
+- **2**: Partial success (some venues failed, some succeeded)
 
 ```python
 if all_events and failures:
@@ -252,14 +252,14 @@ Permanent issues that won't resolve on retry:
 - HTTP 404 (Not Found)
 - HTTP 403 (Forbidden)
 - Parser errors (invalid HTML structure)
-- Configuration errors (missing parser)
+- Configuration errors (missing parser, unsupported source_type)
 - Validation errors (invalid data format)
 
 ### Critical vs. Non-Critical
 
-**Critical errors** (stop processing brewery):
-- Missing parser registration
-- Invalid brewery configuration
+**Critical errors** (stop processing venue):
+- Missing parser registration (no specific or generic parser)
+- Invalid venue configuration
 - Fatal network errors (after retries exhausted)
 
 **Non-critical errors** (continue processing):
@@ -284,10 +284,10 @@ When adding new parsers or features:
 
 ```python
 class RobustParser(BaseParser):
-    async def parse(self, session: aiohttp.ClientSession) -> List[FoodTruckEvent]:
+    async def parse(self, session: aiohttp.ClientSession) -> List[Event]:
         try:
             # Use BaseParser's fetch_page (includes retries)
-            soup = await self.fetch_page(session, self.brewery.url)
+            soup = await self.fetch_page(session, self.venue.url)
 
             # Validate HTML structure early
             container = soup.select_one('.container')
@@ -313,5 +313,5 @@ class RobustParser(BaseParser):
 
         except Exception as e:
             self.logger.error(f"Parser error: {str(e)}")
-            raise  # Let coordinator handle brewery-level failure
+            raise  # Let coordinator handle venue-level failure
 ```

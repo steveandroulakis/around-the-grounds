@@ -5,7 +5,7 @@ This guide covers comprehensive testing strategies for the Around the Grounds pr
 ## Testing Commands
 
 ```bash
-# Full test suite (196 tests)
+# Full test suite (499 tests)
 uv run python -m pytest                    # Run all tests
 uv run python -m pytest tests/unit/        # Unit tests only
 uv run python -m pytest tests/parsers/     # Parser-specific tests
@@ -92,7 +92,7 @@ This approach catches issues that raw API testing misses and ensures users see t
 
 ## Testing Strategy
 
-The project includes a comprehensive test suite with 196 tests:
+The project includes a comprehensive test suite with 499 tests:
 
 ### Test Organization
 
@@ -101,19 +101,22 @@ tests/
 ├── conftest.py                 # Shared fixtures and configuration
 ├── fixtures/                   # Test data and HTML samples
 ├── unit/                       # Unit tests for individual components
-├── parsers/                    # Parser-specific functionality tests
+├── parsers/                    # Parser-specific tests (including generic parsers)
 ├── integration/                # End-to-end workflow tests
+├── temporal/                   # Temporal workflow tests
 └── test_error_handling.py      # Comprehensive error scenario tests
 ```
 
 ### Test Coverage Areas
 
-- **Models & Utilities**: Data validation, date parsing, registry operations
-- **Parser Functionality**: HTML parsing, data extraction, validation logic
+- **Models & Utilities**: Data validation, date parsing, registry operations, site config loading
+- **Parser Functionality**: HTML parsing, data extraction, validation logic (venue-specific + generic)
+- **Generic Parsers**: WordPress REST API, HTML selector, AJAX/JSON API parsers
 - **Vision Analysis**: AI image analysis, vendor name extraction, error handling, retry logic
 - **Error Scenarios**: Network failures, malformed data, timeout handling, API failures
 - **Integration Workflows**: CLI functionality, coordinator behavior, error reporting, vision integration
-- **Real Data Testing**: Uses actual HTML fixtures from brewery websites and real image URLs
+- **Temporal Workflows**: Activity serialization, workflow execution, schedule management
+- **Real Data Testing**: Uses actual HTML fixtures from venue websites and real image URLs
 
 ### Writing Tests
 

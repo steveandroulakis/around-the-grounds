@@ -145,6 +145,94 @@ def is_dst_transition_date(date: datetime) -> bool:
     return start_of_day.utcoffset() != end_of_day.utcoffset()
 
 
+def now_in_site_timezone_naive(tz_name: str) -> datetime:
+    """
+    Get current datetime in the given timezone as timezone-naive.
+
+    Args:
+        tz_name: IANA timezone name (e.g. "America/New_York")
+
+    Returns:
+        Current datetime as timezone-naive datetime in the given timezone
+    """
+    return datetime.now(ZoneInfo(tz_name)).replace(tzinfo=None)
+
+
+# Mapping from IANA timezone to short label and full name for US timezones
+_US_TZ_INFO = {
+    "America/Los_Angeles": ("PT", "Pacific Time"),
+    "America/Denver": ("MT", "Mountain Time"),
+    "America/Chicago": ("CT", "Central Time"),
+    "America/New_York": ("ET", "Eastern Time"),
+    "US/Pacific": ("PT", "Pacific Time"),
+    "US/Mountain": ("MT", "Mountain Time"),
+    "US/Central": ("CT", "Central Time"),
+    "US/Eastern": ("ET", "Eastern Time"),
+}
+
+
+def get_timezone_label(tz_name: str) -> str:
+    """
+    Return a short timezone label (e.g. "PT", "ET") for display.
+
+    For US timezones, returns a DST-neutral abbreviation.
+    For non-US timezones, returns the current abbreviation via strftime.
+
+    Args:
+        tz_name: IANA timezone name
+
+    Returns:
+        Short timezone label string
+    """
+    info = _US_TZ_INFO.get(tz_name)
+    if info:
+        return info[0]
+    return datetime.now(ZoneInfo(tz_name)).strftime("%Z")
+
+
+def get_timezone_full_name(tz_name: str) -> str:
+    """
+    Return a human-readable timezone name (e.g. "Pacific Time", "Eastern Time").
+
+    For US timezones, returns a friendly name. For others, extracts the city
+    from the IANA string (e.g. "America/Toronto" -> "Toronto Time").
+
+    Args:
+        tz_name: IANA timezone name
+
+    Returns:
+        Human-readable timezone name
+    """
+    info = _US_TZ_INFO.get(tz_name)
+    if info:
+        return info[1]
+    # Fall back to city name from IANA string
+    city = tz_name.rsplit("/", 1)[-1].replace("_", " ")
+    return f"{city} Time"
+
+
+def format_time_with_site_timezone(
+    dt: datetime, tz_name: str, include_timezone: bool = True
+) -> str:
+    """
+    Format a datetime for display with an optional site-specific timezone label.
+
+    Args:
+        dt: Datetime to format
+        tz_name: IANA timezone name for label
+        include_timezone: Whether to include timezone indicator
+
+    Returns:
+        Formatted time string like "2:00 PM ET" or "2:00 PM"
+    """
+    time_str = dt.strftime("%I:%M %p").lstrip("0")
+
+    if include_timezone:
+        time_str += f" {get_timezone_label(tz_name)}"
+
+    return time_str
+
+
 def format_time_with_timezone(dt: datetime, include_timezone: bool = True) -> str:
     """
     Format a datetime for display with optional timezone indicator.

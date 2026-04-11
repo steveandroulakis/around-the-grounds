@@ -4,21 +4,27 @@ This guide covers the complete web deployment workflow for the Around the Ground
 
 ## Overview
 
-The system deploys a complete static website to a separate target repository, which is then automatically deployed by platforms like Vercel.
+The system deploys a complete static website to separate target repositories, which are served by GitHub Pages.
 
 ### Two-Repository Architecture
 
-- **Source repo** (this one): Contains scraping code, runs workers, web templates
-- **Target repo** (e.g., `ballard-food-trucks`): Receives complete website, served as static site
+- **Source repo** (this one): Contains scraping code, parsers, site configs, per-site templates
+- **Target repos** (one per site): Receive complete websites
+  - `steveandroulakis/ballard-food-trucks` — Vercel watches the `public/` subdirectory
+  - `jredding/atg-park-slope-music` — GitHub Pages serves repo root
+  - `jredding/atg-childrens-events` — GitHub Pages serves repo root
 
 ## Quick Start
 
 ```bash
-# Deploy with defaults
+# Deploy default site (ballard-food-trucks)
 uv run around-the-grounds --deploy
 
-# Deploy to custom repository
-uv run around-the-grounds --deploy --git-repo https://github.com/username/custom-repo.git
+# Deploy a specific site
+uv run around-the-grounds --site park-slope-music --deploy
+
+# Deploy all configured sites
+uv run around-the-grounds --site all --deploy
 
 # Deploy with verbose logging
 uv run around-the-grounds --deploy --verbose
@@ -40,16 +46,16 @@ cd public && python -m http.server 8000
 ```
 
 **What `--preview` does:**
-- Scrapes fresh data from all brewery websites
-- Copies templates from `public_template/` to `public/`
-- Generates `data.json` with current food truck data
+- Scrapes fresh data from all venue websites for the selected site
+- Copies site-specific templates from `public_templates/<template>/` to `public/`
+- Generates `data.json` with current event data
 - Creates complete website in `public/` directory (git-ignored)
 
 This allows you to test web interface changes, verify data accuracy, and debug issues before deploying to production.
 
 ### Testing Web Interface Changes
 
-1. **Edit templates**: Make changes to files in `public_template/`
+1. **Edit templates**: Make changes to files in `public_templates/<template>/`
 2. **Generate preview**: Run `uv run around-the-grounds --preview`
 3. **Test locally**: Serve with `cd public && python -m http.server 8000`
 4. **Verify changes**: Check http://localhost:8000 in browser
@@ -73,103 +79,102 @@ cd public && timeout 10s python -m http.server 8000 > /dev/null 2>&1 & sleep 1 &
 ### Manual Deployment
 
 ```bash
-# Full deployment workflow
+# Deploy default site
 uv run around-the-grounds --deploy
 
+# Deploy a specific site
+uv run around-the-grounds --site park-slope-music --deploy
+
 # This command will:
-# 1. Scrape all brewery websites for fresh data
-# 2. Copy web templates from public_template/ to target repository
-# 3. Generate web-friendly JSON data in target repository
-# 4. Authenticate using GitHub App credentials
-# 5. Commit and push complete website to target repository
-# 6. Trigger automatic deployment (Vercel/Netlify/etc.)
-# 7. Website updates live within minutes
+# 1. Scrape all venue websites for the selected site
+# 2. Authenticate using GitHub App JWT credentials
+# 3. Prepare a working directory:
+#    - If the site sets deploy_subdir="": `git init` a fresh repo
+#    - If the site sets deploy_subdir="<name>": `git clone` the target repo
+# 4. Copy the site-specific template from public_templates/<template>/ into
+#    repo root (root mode) or repo/<deploy_subdir>/ (subdir mode)
+# 5. Generate web-friendly JSON data (data.json) next to the template
+# 6. Stage with `git add .` (root) or `git add <subdir>/` (subdir); skip empty commits
+# 7. Commit with a per-site title
+# 8. Push — `git push --force origin HEAD:main` (root) or normal push (subdir)
+# 9. The target host (GitHub Pages or Vercel) picks up the change and redeploys
 ```
 
 ### Deployment Configuration
 
-**Default Repository**: `steveandroulakis/ballard-food-trucks`
-```bash
-# Uses default repository from settings
-uv run around-the-grounds --deploy
-```
+Each site has a `target_repo` and (optionally) a `deploy_subdir` configured in its JSON config file under `config/sites/`:
 
-**Custom Repository via CLI**:
+| Site | Target Repo | `deploy_subdir` | Strategy |
+|------|-------------|-----------------|----------|
+| `ballard-food-trucks` | `steveandroulakis/ballard-food-trucks` | `"public"` | Clone + scoped add to `public/`, normal push (Vercel reads `public/`) |
+| `park-slope-music` | `jredding/atg-park-slope-music` | `""` (default) | Fresh `git init` + force-push to repo root (GitHub Pages) |
+| `childrens-events` | `jredding/atg-childrens-events` | `""` (default) | Fresh `git init` + force-push to repo root (GitHub Pages) |
+
+When `deploy_subdir` is non-empty, `_deploy_with_github_auth` switches to the clone strategy so that any files outside the subdirectory (e.g. `vercel.json`, `README.md`) are preserved on each deploy.
+
+**Override via CLI**:
 ```bash
 uv run around-the-grounds --deploy --git-repo https://github.com/username/custom-repo.git
-```
-
-**Custom Repository via Environment**:
-```bash
-export GIT_REPOSITORY_URL="https://github.com/username/custom-repo.git"
-uv run around-the-grounds --deploy
 ```
 
 **Configuration Precedence**:
 1. CLI argument (`--git-repo`)
 2. Environment variable (`GIT_REPOSITORY_URL`)
-3. Default (`steveandroulakis/ballard-food-trucks`)
+3. Site config `target_repo` field
 
-## Scheduled Updates (Temporal)
+## Scheduled Updates
 
-For automated regular updates, use Temporal workflows:
+### Cloud Run Jobs (jredding's production path)
 
-### Manual Execution via Temporal
+Google Cloud Run Jobs run daily via Cloud Scheduler for jredding's Brooklyn sites:
+- `atg-park-slope-music` — 8:15 AM ET
+- `atg-childrens-events` — 8:30 AM ET
+
+Each job scrapes its site and deploys to the corresponding GitHub Pages repo.
+
+### Self-hosted Temporal Worker (Ballard production path)
+
+The Ballard food trucks site is deployed by a Temporal worker running in a Docker container on a self-hosted machine. The worker connects to a Temporal server (Temporal Cloud or self-hosted) and picks up scheduled workflow executions. See [SCHEDULES.md](./SCHEDULES.md) for schedule management. The worker invokes the same Python entry points as the Cloud Run path — only the orchestrator differs.
+
+### Temporal Workflows (Alternative)
+
+For Temporal-based scheduling:
 
 ```bash
 # Execute workflow with deployment
 uv run python -m around_the_grounds.temporal.starter --deploy --verbose
-
-# Execute workflow with custom configuration
-uv run python -m around_the_grounds.temporal.starter --config /path/to/config.json --deploy
 ```
 
-### Scheduled Execution
-
-Create a schedule that runs automatically:
-
-```bash
-# Create a schedule that runs every 30 minutes
-uv run python -m around_the_grounds.temporal.schedule_manager create --schedule-id daily-scrape --interval 30
-
-# The schedule will automatically:
-# 1. Trigger workflow every 30 minutes
-# 2. Scrape all brewery websites
-# 3. Deploy updated data to target repository
-# 4. Trigger Vercel deployment
-```
-
-See [SCHEDULES.md](./SCHEDULES.md) for complete schedule management documentation.
+See [SCHEDULES.md](./SCHEDULES.md) for Temporal schedule management documentation.
 
 ## Verifying Deployments
 
 ### Check Target Repository
 
 ```bash
-# Clone target repository
-git clone https://github.com/username/ballard-food-trucks.git
+# Clone a target repository
+git clone https://github.com/jredding/atg-park-slope-music.git
 
 # Check latest commit
-cd ballard-food-trucks
+cd atg-park-slope-music
 git log -1
 
 # Verify files are present
-ls -la  # Should see: index.html, data.json, vercel.json
+ls -la  # Should see: index.html, data.json
 ```
 
 ### Check Live Website
 
-1. **Visit website**: Go to your Vercel deployment URL
-2. **Verify data**: Check that latest food truck events are showing
+1. **Visit website**: Go to your GitHub Pages URL (e.g., `https://jredding.github.io/atg-park-slope-music/`)
+2. **Verify data**: Check that latest events are showing
 3. **Test mobile**: Verify responsive design on mobile viewport
 4. **Check console**: Open browser dev tools, verify no JavaScript errors
 
-### Monitor Vercel Deployment
+### Monitor GitHub Pages Deployment
 
-1. **Vercel Dashboard**: Visit https://vercel.com/dashboard
-2. **Find your project**: Navigate to `ballard-food-trucks` project
-3. **Check deployments**: View recent deployment history
-4. **View logs**: Check deployment logs for any errors
+1. Go to the target repo on GitHub
+2. Click **Settings** > **Pages**
+3. Verify the site is deployed from the `main` branch root
 
 ## Troubleshooting
 
@@ -193,20 +198,19 @@ diff public/data.json ~/path/to/ballard-food-trucks/data.json
 
 **Possible causes**:
 - Git push to target repository failed
-- Vercel deployment failed or is delayed
+- GitHub Pages deployment is delayed (usually <1 minute)
 - Browser cache showing old version
 
 **Solutions**:
 ```bash
 # Check target repository for latest commit
-cd ~/path/to/ballard-food-trucks
+cd ~/path/to/atg-park-slope-music
 git pull origin main
 git log -1
 
 # Force refresh browser (Cmd+Shift+R on Mac, Ctrl+Shift+R on Windows)
 
-# Check Vercel deployment logs
-# Visit Vercel dashboard and check deployment status
+# Check GitHub Pages deployment status in repo Settings > Pages
 ```
 
 ### Mobile display issues
@@ -218,7 +222,7 @@ git log -1
 
 **Solutions**:
 ```html
-<!-- Ensure viewport meta tag in public_template/index.html -->
+<!-- Ensure viewport meta tag in public_templates/<template>/index.html -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <!-- Test responsive design locally -->
@@ -273,35 +277,38 @@ See [DEPLOYMENT.MD](./DEPLOYMENT.MD) for GitHub App configuration details.
 
 ## Web Template Structure
 
-### public_template/
+### public_templates/
 
-This directory contains the web interface templates that get copied to the target repository:
+This directory contains per-site web interface templates:
 
-- **index.html**: Mobile-responsive web interface
-- **vercel.json**: Vercel deployment configuration
+- **`food-trucks/index.html`**: Ballard food trucks template
+- **`music/index.html`**: Park Slope indie music template
+- **`kids/index.html`**: Brooklyn children's events template
+
+Each site's config specifies which template to use via the `template` field.
 
 ### Customizing the Web Interface
 
-1. **Edit templates**: Modify files in `public_template/`
-2. **Test locally**: Run `--preview` and serve locally
+1. **Edit templates**: Modify files in `public_templates/<template>/`
+2. **Test locally**: Run `--preview --site <key>` and serve locally
 3. **Verify changes**: Check http://localhost:8000
-4. **Deploy**: Run `--deploy` to push changes to target repo
+4. **Deploy**: Run `--deploy --site <key>` to push changes to target repo
 
 ### Generated Files
 
 During deployment, the system generates:
 
-- **data.json**: Food truck event data in web-friendly format
-- **Complete website**: All templates + generated data copied to target repo
+- **data.json**: Event data in web-friendly format
+- **Complete website**: Site-specific templates + generated data pushed to target repo root
 
 ## Best Practices
 
-1. **Test locally first**: Always run `--preview` before `--deploy`
+1. **Test locally first**: Always run `--preview --site <key>` before `--deploy`
 2. **Check data.json**: Verify generated JSON is valid and contains expected data
-3. **Monitor deployments**: Watch Vercel dashboard for deployment status
+3. **Monitor deployments**: Check GitHub Pages status in target repo Settings
 4. **Use version control**: Keep track of template changes in source repository
-5. **Set up schedules**: Use Temporal schedules for automated regular updates
-6. **Handle errors gracefully**: System continues even if some breweries fail
+5. **Set up schedules**: Use Cloud Scheduler or Temporal for automated regular updates
+6. **Handle errors gracefully**: System continues even if some venues fail
 7. **Log verbosely**: Use `--verbose` flag for troubleshooting
 8. **Test responsive design**: Check mobile viewport before deploying
 
@@ -309,10 +316,10 @@ During deployment, the system generates:
 
 Before deploying:
 
-- [ ] Templates in `public_template/` are up to date
+- [ ] Templates in `public_templates/<template>/` are up to date
 - [ ] GitHub App credentials are configured
-- [ ] Target repository exists and is accessible
-- [ ] Vercel project is configured for target repository
+- [ ] GitHub App installed on target repository
+- [ ] GitHub Pages enabled on target repository (deploy from main branch root)
 - [ ] Local preview tested and working
 - [ ] Data.json contains expected events
 - [ ] Mobile responsive design verified
@@ -320,8 +327,8 @@ Before deploying:
 After deploying:
 
 - [ ] Target repository received latest commit
-- [ ] Vercel deployment completed successfully
+- [ ] GitHub Pages deployment completed successfully
 - [ ] Live website shows updated data
 - [ ] No JavaScript errors in browser console
 - [ ] Mobile view works correctly
-- [ ] All brewery data is present
+- [ ] All venue data is present

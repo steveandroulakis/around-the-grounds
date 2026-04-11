@@ -13,7 +13,7 @@ from typing import List, Optional, Tuple
 
 import aiohttp
 
-from ..models import FoodTruckEvent
+from ..models import Event
 from ..utils.timezone_utils import (
     get_pacific_year,
     parse_date_with_pacific_context,
@@ -24,10 +24,10 @@ from .base import BaseParser
 class ChannelMarkerParser(BaseParser):
     """Parser for Channel Marker Cider food truck schedule."""
 
-    async def parse(self, session: aiohttp.ClientSession) -> List[FoodTruckEvent]:
+    async def parse(self, session: aiohttp.ClientSession) -> List[Event]:
         """Parse food truck events from Google Sheets CSV."""
         try:
-            csv_data = await self._fetch_csv(session, self.brewery.url)
+            csv_data = await self._fetch_csv(session, self.venue.url)
             if not csv_data:
                 raise ValueError("Failed to fetch CSV data")
 
@@ -59,7 +59,7 @@ class ChannelMarkerParser(BaseParser):
             return valid_events
 
         except Exception as e:
-            self.logger.error(f"Error parsing {self.brewery.name}: {str(e)}")
+            self.logger.error(f"Error parsing {self.venue.name}: {str(e)}")
             raise ValueError(f"Failed to parse CSV data: {str(e)}")
 
     async def _fetch_csv(
@@ -96,8 +96,8 @@ class ChannelMarkerParser(BaseParser):
                 raise
             raise ValueError(f"Failed to fetch CSV from {url}: {str(e)}")
 
-    def _parse_csv_row(self, row: List[str]) -> Optional[FoodTruckEvent]:
-        """Parse a single CSV row into a FoodTruckEvent.
+    def _parse_csv_row(self, row: List[str]) -> Optional[Event]:
+        """Parse a single CSV row into an Event.
 
         Expected CSV columns:
         Column 0 (DATE): "3/31/26" (M/D/YY format)
@@ -128,15 +128,15 @@ class ChannelMarkerParser(BaseParser):
         time_str = row[2].strip() if len(row) > 2 else ""
         start_time, end_time = self._parse_time_range(time_str, event_date)
 
-        return FoodTruckEvent(
-            brewery_key=self.brewery.key,
-            brewery_name=self.brewery.name,
-            food_truck_name=food_truck_name,
+        return Event(
+            venue_key=self.venue.key,
+            venue_name=self.venue.name,
+            title=food_truck_name,
             date=event_date,
             start_time=start_time,
             end_time=end_time,
             description=None,
-            ai_generated_name=False,
+            extraction_method="csv",
         )
 
     def _parse_date(self, date_str: str) -> Optional[datetime]:

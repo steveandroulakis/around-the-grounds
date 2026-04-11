@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brooklyn Children's Events</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Space Mono', monospace;
+            line-height: 1.5;
+            color: #1f2937;
+            background: #fffbeb;
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        .container {
+            max-width: 780px;
+            margin: 0 auto;
+            background: #fff;
+            border: 2px solid #fbbf24;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .header {
+            padding: 0 0 16px 0;
+            text-align: left;
+            border-bottom: 2px solid #fde68a;
+            margin-bottom: 20px;
+        }
+
+        .site-name {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #0d9488;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .active-filter {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding: 8px 0;
+            border-bottom: 1px solid #fde68a;
+        }
+
+        .active-filter.visible { display: flex; }
+
+        .active-filter-label {
+            font-size: 0.7rem;
+            color: #6b7280;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+            background: transparent;
+            color: #6b7280;
+            border: 1.5px solid #d1d5db;
+        }
+
+        .badge:hover { border-color: #0d9488; color: #0d9488; }
+
+        .badge-active {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+            background: #0d9488;
+            color: #fff;
+            border: 1.5px solid #0d9488;
+        }
+
+        .badge-active:hover { opacity: 0.85; }
+
+        .badge-x {
+            font-size: 0.75rem;
+            line-height: 1;
+            margin-left: 2px;
+        }
+
+        .day-section { margin-bottom: 24px; }
+
+        .day-header {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #d97706;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 6px 0;
+            border-bottom: 1px solid #fde68a;
+            margin-bottom: 12px;
+        }
+
+        .event-item {
+            padding: 10px 12px;
+            border-left: 4px solid #0d9488;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 8px;
+            background: #f0fdfa;
+        }
+
+        .event-item.hidden { display: none; }
+
+        .event-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #0f766e;
+        }
+
+        .event-meta {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-top: 3px;
+        }
+
+        .event-location {
+            display: inline;
+        }
+
+        .event-desc {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        .day-section.hidden { display: none; }
+
+        .verify-note {
+            font-size: 0.7rem;
+            color: #9ca3af;
+            margin-top: 20px;
+            padding-top: 12px;
+            border-top: 1px solid #fde68a;
+        }
+
+        .updated { font-size: 0.65rem; color: #d1d5db; margin-top: 8px; }
+        .loading { color: #6b7280; text-align: center; padding: 40px 0; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="site-name" id="site-name">Loading…</div>
+        <div class="subtitle" id="tz-note"></div>
+    </div>
+    <div class="active-filter" id="active-filter">
+        <span class="active-filter-label">Filtering:</span>
+        <span class="badge-active" id="active-filter-badge"></span>
+    </div>
+    <div id="events-container"><div class="loading">Loading events…</div></div>
+    <div class="verify-note">Events sourced from community guides — verify times directly with the venue before attending.</div>
+    <div class="updated" id="updated"></div>
+</div>
+
+<script>
+fetch('data.json')
+    .then(r => r.json())
+    .then(data => {
+        document.title = data.site_name || "Children's Events";
+        document.getElementById('site-name').textContent = data.site_name || "Children's Events";
+        document.getElementById('tz-note').textContent = data.timezone_note || '';
+        document.getElementById('updated').textContent =
+            data.updated ? 'Updated: ' + new Date(data.updated).toLocaleString() : '';
+
+        const container = document.getElementById('events-container');
+        const events = data.events || [];
+
+        if (!events.length) {
+            container.innerHTML = '<div class="loading">No upcoming events found.</div>';
+            return;
+        }
+
+        let activeLocation = null;
+
+        function setFilter(location) {
+            activeLocation = location;
+            const bar = document.getElementById('active-filter');
+            const badge = document.getElementById('active-filter-badge');
+
+            if (location) {
+                badge.innerHTML = location + '<span class="badge-x">\u00d7</span>';
+                bar.classList.add('visible');
+            } else {
+                bar.classList.remove('visible');
+            }
+
+            applyFilter();
+        }
+
+        document.getElementById('active-filter-badge').addEventListener('click', function() {
+            setFilter(null);
+        });
+
+        function applyFilter() {
+            document.querySelectorAll('.event-item[data-location]').forEach(item => {
+                const loc = item.dataset.location;
+                const hide = activeLocation && loc !== activeLocation;
+                item.classList.toggle('hidden', hide);
+
+                const badge = item.querySelector('.badge, .badge-active');
+                if (badge && badge.dataset.location) {
+                    if (activeLocation && badge.dataset.location === activeLocation) {
+                        badge.className = 'badge-active';
+                        badge.innerHTML = badge.dataset.location + '<span class="badge-x">\u00d7</span>';
+                    } else {
+                        badge.className = 'badge';
+                        badge.textContent = badge.dataset.location;
+                    }
+                }
+            });
+
+            document.querySelectorAll('.day-section').forEach(section => {
+                const visible = section.querySelectorAll('.event-item:not(.hidden)');
+                section.classList.toggle('hidden', visible.length === 0);
+            });
+        }
+
+        container.addEventListener('click', function(ev) {
+            const badge = ev.target.closest('.badge[data-location], .badge-active[data-location]');
+            if (!badge) return;
+            const loc = badge.dataset.location;
+            if (activeLocation === loc) {
+                setFilter(null);
+            } else {
+                setFilter(loc);
+            }
+        });
+
+        // Group by date
+        const byDate = {};
+        events.forEach(e => {
+            const d = e.date.split('T')[0];
+            if (!byDate[d]) byDate[d] = [];
+            byDate[d].push(e);
+        });
+
+        container.innerHTML = Object.entries(byDate).map(([date, evts]) => {
+            const tzOpts = data.timezone ? { timeZone: data.timezone } : {};
+            const label = new Date(date + 'T12:00:00').toLocaleDateString('en-US',
+                { weekday: 'long', month: 'long', day: 'numeric', ...tzOpts });
+            const items = evts.map(e => {
+                const timeStr = e.start_time_raw
+                    ? (e.end_time_raw ? e.start_time_raw + ' – ' + e.end_time_raw : e.start_time_raw)
+                    : '';
+                const source = e.venue || e.location || '';
+                const location = e.description || '';
+                const locEsc = location.replace(/"/g, '&quot;');
+                const locationBadge = location
+                    ? `<span class="badge" data-location="${locEsc}">${location}</span>`
+                    : '';
+                return `<div class="event-item" data-location="${locEsc}">
+                    <div class="event-title">${e.title || e.vendor}</div>
+                    <div class="event-meta">Source: ${source}${timeStr ? ' \u00b7 ' + timeStr : ''}</div>
+                    ${locationBadge}
+                </div>`;
+            }).join('');
+            return `<div class="day-section">
+                <div class="day-header">${label}</div>
+                ${items}
+            </div>`;
+        }).join('');
+    })
+    .catch(err => {
+        document.getElementById('events-container').innerHTML =
+            '<div class="loading">Could not load events.</div>';
+    });
+</script>
+</body>
+</html>

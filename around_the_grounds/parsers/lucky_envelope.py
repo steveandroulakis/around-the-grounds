@@ -7,15 +7,15 @@ from typing import Any, List, Optional, Tuple
 import aiohttp
 from bs4 import BeautifulSoup
 
-from ..models import FoodTruckEvent
+from ..models import Event
 from ..utils.timezone_utils import now_in_pacific_naive
 from .base import BaseParser
 
 
 class LuckyEnvelopeParser(BaseParser):
-    async def parse(self, session: aiohttp.ClientSession) -> List[FoodTruckEvent]:
+    async def parse(self, session: aiohttp.ClientSession) -> List[Event]:
         try:
-            soup = await self.fetch_page(session, self.brewery.url)
+            soup = await self.fetch_page(session, self.venue.url)
             items = self._extract_user_items(soup)
             events = []
             for item in items:
@@ -56,7 +56,7 @@ class LuckyEnvelopeParser(BaseParser):
             self.logger.warning(f"Failed to extract userItems: {str(e)}")
             return []
 
-    def _parse_event(self, item: dict) -> Optional[FoodTruckEvent]:
+    def _parse_event(self, item: dict) -> Optional[Event]:
         try:
             title = item.get("title", "").strip()
             if not title:
@@ -79,15 +79,15 @@ class LuckyEnvelopeParser(BaseParser):
 
             start_dt, end_dt = self._parse_time_range(time_text, event_date)
 
-            return FoodTruckEvent(
-                brewery_key=self.brewery.key,
-                brewery_name=self.brewery.name,
-                food_truck_name=title,
+            return Event(
+                venue_key=self.venue.key,
+                venue_name=self.venue.name,
+                title=title,
                 date=event_date,
                 start_time=start_dt,
                 end_time=end_dt,
                 description=None,
-                ai_generated_name=False,
+                extraction_method="html",
             )
         except Exception as e:
             self.logger.warning(f"Failed to parse event item: {str(e)}")

@@ -1,0 +1,10 @@
+{
+  "feature_number": "009",
+  "slug": "009-create-new-sites",
+  "friendly_name": "Create New Sites",
+  "mission": "software-dev",
+  "source_description": "Streamline the process of creating entirely new sites with their own config, template, and deployment target. A new site should be creatable with minimal effort and no code changes. Includes config validation, template resolution, and optional CLI scaffolding.",
+  "created_at": "2026-02-28T00:00:00Z",
+  "target_branch": "main",
+  "vcs": "git"
+}

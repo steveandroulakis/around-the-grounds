@@ -104,10 +104,10 @@ uv run mypy tests/conftest.py
 **Example Fixture Fixes:**
 ```python
 @pytest.fixture
-def sample_brewery():                     →  def sample_brewery() -> Brewery:
+def sample_venue():                     →  def sample_venue() -> Venue:
 
 @pytest.fixture
-def sample_food_truck_event():           →  def sample_food_truck_event() -> FoodTruckEvent:
+def sample_event():           →  def sample_event() -> Event:
 
 @pytest.fixture
 async def aiohttp_session():             →  async def aiohttp_session() -> AsyncGenerator[aiohttp.ClientSession, None]:
@@ -135,8 +135,8 @@ uv run mypy tests/unit/test_specific.py
 
 **Example Test Function Fixes:**
 ```python
-def test_brewery_creation(self):         →  def test_brewery_creation(self) -> None:
-def test_food_truck_event(self):         →  def test_food_truck_event(self) -> None:
+def test_venue_creation(self):         →  def test_venue_creation(self) -> None:
+def test_event(self):         →  def test_event(self) -> None:
 async def test_vision_analysis(self, mock_client):  →  async def test_vision_analysis(self, mock_client: Mock) -> None:
 
 # Parameter type annotations for better clarity

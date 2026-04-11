@@ -1,0 +1,10 @@
+{
+  "feature_number": "006",
+  "slug": "006-multi-config-deployment",
+  "friendly_name": "Multi-Config Deployment",
+  "mission": "software-dev",
+  "source_description": "Make each JSON config file a self-contained deployment unit. One JSON file describes one website: which venues to aggregate, where to deploy the generated site, and what template to use. The CLI accepts the JSON file path as a required argument. This enables running multiple independent deployments from the same codebase — food trucks, music venues, farmers markets, etc. — each producing a distinct live website.",
+  "created_at": "2026-02-25T00:00:00Z",
+  "target_branch": "main",
+  "vcs": "git"
+}

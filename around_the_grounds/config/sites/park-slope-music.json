@@ -1,0 +1,92 @@
+{
+  "key": "park-slope-music",
+  "name": "Park Slope Indie Music Events",
+  "template": "music",
+  "timezone": "America/New_York",
+  "target_repo": "https://github.com/jredding/atg-park-slope-music.git",
+  "generate_description": false,
+  "venues": [
+    {
+      "key": "union-hall",
+      "name": "Union Hall",
+      "url": "https://www.unionhallny.com/calendar",
+      "source_type": "html",
+      "parser_config": {
+        "event_container": ".eventColl-item",
+        "title_selector": ".eventColl-eventTitle h2",
+        "date_selector": ".eventColl-dateInfo",
+        "times_optional": true
+      }
+    },
+    {
+      "key": "littlefield",
+      "name": "Littlefield",
+      "url": "https://littlefieldnyc.com",
+      "source_type": "ajax",
+      "parser_config": {
+        "api_url": "https://littlefieldnyc.com/wp-json/widget-for-eventbrite-api/v1/eb_events",
+        "params": {"limit": 50},
+        "field_map": {
+          "title": "title",
+          "date": "start",
+          "start_time": "start",
+          "end_time": "end",
+          "description": "excerpt"
+        }
+      }
+    },
+    {
+      "key": "young-ethels",
+      "name": "Young Ethel's",
+      "url": "https://www.youngethels.com/events",
+      "source_type": "html",
+      "parser_config": {
+        "event_container": ".space-y-2 > li",
+        "title_selector": "span.block",
+        "date_selector": "time.font-bold",
+        "date_attribute": "datetime",
+        "time_selector": "time.font-bold",
+        "date_format": "auto"
+      }
+    },
+    {
+      "key": "eastville-comedy",
+      "name": "Eastville Comedy Club",
+      "url": "https://www.eastvillecomedy.com/calendar",
+      "source_type": "json-ld",
+      "parser_config": {
+        "event_types": ["ComedyEvent", "Event"]
+      }
+    },
+    {
+      "key": "industry-city",
+      "name": "Industry City",
+      "url": "https://industrycity.com",
+      "source_type": "wordpress",
+      "parser_config": {
+        "api_path": "/wp-json/tribe/events/v1/events",
+        "per_page": 50,
+        "response_path": "events",
+        "field_map": {
+          "title": "title",
+          "date": "start_date",
+          "end_time": "end_date",
+          "description": "description"
+        }
+      }
+    },
+    {
+      "key": "roulette-bk",
+      "name": "Roulette",
+      "url": "https://roulette.org/calendar/",
+      "source_type": "html",
+      "parser_config": {
+        "event_container": "div.event",
+        "title_selector": "h2.event-title a",
+        "date_selector": "div.event-time",
+        "description_selector": "div.event-desc",
+        "date_format": "auto"
+      }
+    }
+  ]
+}

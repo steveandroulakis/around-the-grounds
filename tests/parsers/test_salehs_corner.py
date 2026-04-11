@@ -9,7 +9,7 @@ import pytest
 from aioresponses import aioresponses
 from freezegun import freeze_time
 
-from around_the_grounds.models import Brewery
+from around_the_grounds.models import Venue
 from around_the_grounds.parsers.salehs_corner import SalehsCornerParser
 
 
@@ -17,9 +17,9 @@ class TestSalehsCornerParser:
     """Test the SalehsCornerParser class."""
 
     @pytest.fixture
-    def brewery(self) -> Brewery:
+    def brewery(self) -> Venue:
         """Create a test brewery for Saleh's Corner."""
-        return Brewery(
+        return Venue(
             key="salehs-corner",
             name="Saleh's Corner",
             url="https://www.seattlefoodtruck.com/api/events",
@@ -32,7 +32,7 @@ class TestSalehsCornerParser:
         )
 
     @pytest.fixture
-    def parser(self, brewery: Brewery) -> SalehsCornerParser:
+    def parser(self, brewery: Venue) -> SalehsCornerParser:
         """Create a parser instance."""
         return SalehsCornerParser(brewery)
 
@@ -130,20 +130,20 @@ class TestSalehsCornerParser:
 
                 # Check first event
                 event1 = events[0]
-                assert event1.brewery_key == "salehs-corner"
-                assert event1.brewery_name == "Saleh's Corner"
-                assert event1.food_truck_name == "Pumpkin Thai"
+                assert event1.venue_key == "salehs-corner"
+                assert event1.venue_name == "Saleh's Corner"
+                assert event1.title == "Pumpkin Thai"
                 assert event1.date.year == 2025
                 assert event1.date.month == 8
                 assert event1.date.day == 2
                 assert event1.start_time is not None
                 assert event1.end_time is not None
                 assert event1.description == "Cuisine: Asian, Thai, Vegetarian"
-                assert not event1.ai_generated_name
+                assert event1.extraction_method == "api"
 
                 # Check second event
                 event2 = events[1]
-                assert event2.food_truck_name == "MOMO Express"
+                assert event2.title == "MOMO Express"
                 assert event2.description == "Cuisine: Asian, BBQ, Sandwiches"
 
     @pytest.mark.asyncio
@@ -362,11 +362,11 @@ class TestSalehsCornerParser:
         result = parser._parse_single_event(event_data)
 
         assert result is not None
-        assert result.food_truck_name == "Pumpkin Thai"
+        assert result.title == "Pumpkin Thai"
         assert result.description == "Cuisine: Thai, Asian"
         assert result.start_time is not None
         assert result.end_time is not None
-        assert not result.ai_generated_name
+        assert result.extraction_method == "api"
 
     def test_parse_single_event_no_bookings(self, parser: SalehsCornerParser) -> None:
         """Test parsing event without bookings."""
@@ -406,7 +406,7 @@ class TestSalehsCornerParser:
         result = parser._parse_single_event(event_data)
 
         assert result is not None
-        assert result.food_truck_name == "TBD"  # Should fallback to TBD
+        assert result.title == "TBD"  # Should fallback to TBD
 
     def test_parse_single_event_invalid_timestamps(
         self, parser: SalehsCornerParser
@@ -571,7 +571,7 @@ class TestSalehsCornerParser:
 
                 # Should only get the valid event
                 assert len(events) == 1
-                assert events[0].food_truck_name == "Valid Truck"
+                assert events[0].title == "Valid Truck"
 
     # TIMEZONE EDGE CASE TESTS
 

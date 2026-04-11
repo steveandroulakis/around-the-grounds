@@ -5,7 +5,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 from around_the_grounds.main import generate_web_data, _generate_haiku_for_today
-from around_the_grounds.models import FoodTruckEvent
+from around_the_grounds.models import Event
 
 
 @pytest.fixture
@@ -15,18 +15,18 @@ def sample_events_today() -> list:
 
     today = date.today()
     return [
-        FoodTruckEvent(
-            brewery_key="stoup-ballard",
-            brewery_name="Stoup Brewing",
-            food_truck_name="Georgia's Greek",
+        Event(
+            venue_key="stoup-ballard",
+            venue_name="Stoup Brewing",
+            title="Georgia's Greek",
             date=datetime(today.year, today.month, today.day),
             start_time=datetime(today.year, today.month, today.day, 17, 0),
             end_time=datetime(today.year, today.month, today.day, 21, 0),
         ),
-        FoodTruckEvent(
-            brewery_key="urban-family",
-            brewery_name="Urban Family Brewing",
-            food_truck_name="MomoExpress",
+        Event(
+            venue_key="urban-family",
+            venue_name="Urban Family Brewing",
+            title="MomoExpress",
             date=datetime(today.year, today.month, today.day),
             start_time=datetime(today.year, today.month, today.day, 18, 0),
             end_time=datetime(today.year, today.month, today.day, 22, 0),
@@ -38,10 +38,10 @@ def sample_events_today() -> list:
 def sample_events_future() -> list:
     """Create sample food truck events for future dates."""
     return [
-        FoodTruckEvent(
-            brewery_key="stoup-ballard",
-            brewery_name="Stoup Brewing",
-            food_truck_name="Oskar's Pizza",
+        Event(
+            venue_key="stoup-ballard",
+            venue_name="Stoup Brewing",
+            title="Oskar's Pizza",
             date=datetime(2025, 12, 25),
             start_time=datetime(2025, 12, 25, 17, 0),
             end_time=datetime(2025, 12, 25, 21, 0),
@@ -113,12 +113,23 @@ class TestHaikuIntegration:
         assert len(web_data["events"]) == 1
 
     @pytest.mark.asyncio
-    @patch("around_the_grounds.utils.weather.fetch_weather", new_callable=AsyncMock, return_value=("53°F, overcast, light breeze, 66% humidity", "Afternoon"))
-    @patch("around_the_grounds.utils.haiku_generator.anthropic.Anthropic")
+    @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
+    @patch(
+        "around_the_grounds.utils.weather.fetch_weather",
+        new_callable=AsyncMock,
+        return_value=("53°F, overcast, light breeze, 66% humidity", "Afternoon"),
+    )
+    @patch("around_the_grounds.utils.haiku_generator.anthropic.AsyncAnthropic")
     async def test_haiku_for_today_filters_events(
-        self, mock_anthropic_client: Mock, mock_fetch_weather: AsyncMock, sample_events_today: list, sample_events_future: list
+        self,
+        mock_anthropic_client: Mock,
+        mock_fetch_weather: AsyncMock,
+        sample_events_today: list,
+        sample_events_future: list,
     ) -> None:
         """Test that _generate_haiku_for_today only uses today's events."""
+        from unittest.mock import AsyncMock
+
         # Mock the API response
         mock_message = Mock()
         mock_content = Mock()
@@ -126,7 +137,7 @@ class TestHaikuIntegration:
         mock_message.content = [mock_content]
 
         mock_client_instance = mock_anthropic_client.return_value
-        mock_create = Mock(return_value=mock_message)
+        mock_create = AsyncMock(return_value=mock_message)
         mock_client_instance.messages.create = mock_create
 
         # Combine today and future events
@@ -178,7 +189,7 @@ class TestHaikuIntegration:
         # Verify field values
         assert len(web_data["events"]) == 2
         assert web_data["total_events"] == 2
-        assert web_data["timezone"] == "PT"
+        assert web_data["timezone"] == "America/Los_Angeles"
         assert "Test error" in web_data["errors"]
         assert web_data["haiku"] == "Test haiku"
 

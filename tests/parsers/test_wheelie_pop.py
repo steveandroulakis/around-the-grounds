@@ -26,7 +26,7 @@ import pytest
 from aioresponses import aioresponses
 from freezegun import freeze_time
 
-from around_the_grounds.models import Brewery
+from around_the_grounds.models import Venue
 from around_the_grounds.parsers.wheelie_pop import WheeliePopParser
 
 
@@ -34,9 +34,9 @@ class TestWheeliePopParser:
     """Test the WheeliePopParser class."""
 
     @pytest.fixture
-    def brewery(self) -> Brewery:
+    def brewery(self) -> Venue:
         """Create a test brewery for Wheelie Pop."""
-        return Brewery(
+        return Venue(
             key="wheelie-pop",
             name="Wheelie Pop Brewing",
             url="https://wheeliepopbrewing.com/ballard-brewery-district-draft/",
@@ -46,7 +46,7 @@ class TestWheeliePopParser:
         )
 
     @pytest.fixture
-    def parser(self, brewery: Brewery) -> WheeliePopParser:
+    def parser(self, brewery: Venue) -> WheeliePopParser:
         """Create a parser instance."""
         return WheeliePopParser(brewery)
 

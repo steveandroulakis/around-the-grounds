@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Park Slope Indie Music Events</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/basecoat-css@0.3.11/dist/basecoat.cdn.min.css">
+    <style>
+        :root {
+            --background: oklch(0.975 0 0);
+            --foreground: oklch(0.3 0 0);
+            --card: oklch(0.975 0 0);
+            --card-foreground: oklch(0.3 0 0);
+            --primary: oklch(0.3 0 0);
+            --primary-foreground: oklch(0.98 0 0);
+            --muted: oklch(0.96 0 0);
+            --muted-foreground: oklch(0.55 0 0);
+            --accent: oklch(0.96 0 0);
+            --accent-foreground: oklch(0.3 0 0);
+            --border: oklch(0.87 0 0);
+            --input: oklch(0.9 0 0);
+            --ring: oklch(0.5 0 0);
+            --radius: 0.375rem;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: var(--foreground);
+            background: var(--background);
+            min-height: 100vh;
+            padding: 12px 16px;
+        }
+
+        .container {
+            max-width: 780px;
+            margin: 0 auto;
+            padding: 12px 24px;
+        }
+
+        .header {
+            padding: 0 0 16px 0;
+            text-align: left;
+            border-bottom: 1px dotted var(--border);
+            margin-bottom: 20px;
+        }
+
+        .site-name {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: oklch(0.13 0.005 280);
+            letter-spacing: -0.3px;
+            line-height: 1.2;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            color: var(--muted-foreground);
+            margin-top: 4px;
+        }
+
+        .day-section { margin-bottom: 20px; }
+
+        .day-header {
+            font-size: 13px;
+            font-weight: 400;
+            color: var(--foreground);
+            letter-spacing: 0.5px;
+            padding: 8px 12px;
+            background: var(--muted);
+            border-bottom: 1px dotted var(--border);
+            margin-bottom: 12px;
+        }
+
+        .day-weekday {
+            color: var(--muted-foreground);
+            font-weight: 400;
+            margin-left: 8px;
+        }
+
+        .event-item {
+            padding: 12px 0;
+            border-bottom: 1px dotted var(--border);
+        }
+
+        .event-item:last-child {
+            border-bottom: none;
+        }
+
+        .event-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--foreground);
+        }
+
+        .event-meta {
+            font-size: 12px;
+            color: var(--muted-foreground);
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 4px 16px;
+        }
+
+        .meta-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .meta-icon {
+            width: 12px;
+            height: 12px;
+            flex-shrink: 0;
+        }
+
+        .event-desc {
+            font-size: 13px;
+            color: var(--muted-foreground);
+            margin-top: 4px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .event-desc.expanded {
+            -webkit-line-clamp: unset;
+        }
+
+        .updated { font-size: 11px; color: var(--muted-foreground); margin-top: 20px; }
+        .loading { color: var(--muted-foreground); text-align: center; padding: 40px 0; font-size: 13px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="site-name" id="site-name">Loading…</div>
+        <div class="subtitle" id="tz-note"></div>
+    </div>
+    <div id="events-container"><div class="loading">Loading events…</div></div>
+    <div class="updated" id="updated"></div>
+</div>
+
+<script>
+fetch('data.json')
+    .then(r => r.json())
+    .then(data => {
+        document.title = data.site_name || 'Music Events';
+        document.getElementById('site-name').textContent = data.site_name || 'Music Events';
+        document.getElementById('tz-note').textContent = data.timezone_note || '';
+        document.getElementById('updated').textContent =
+            data.updated ? 'Updated: ' + new Date(data.updated).toLocaleString() : '';
+
+        const container = document.getElementById('events-container');
+        const events = data.events || [];
+
+        if (!events.length) {
+            container.innerHTML = '<div class="loading">No upcoming shows found.</div>';
+            return;
+        }
+
+        // Group by date
+        const byDate = {};
+        events.forEach(e => {
+            const d = e.date.split('T')[0];
+            if (!byDate[d]) byDate[d] = [];
+            byDate[d].push(e);
+        });
+
+        container.innerHTML = Object.entries(byDate).map(([date, evts]) => {
+            const d2 = new Date(date + 'T12:00:00');
+            const tzOpts = data.timezone ? { timeZone: data.timezone } : {};
+            const month = d2.toLocaleDateString('en-US', { month: 'long', ...tzOpts }).toUpperCase();
+            const day = d2.toLocaleDateString('en-US', { day: 'numeric', ...tzOpts });
+            const weekday = d2.toLocaleDateString('en-US', { weekday: 'long', ...tzOpts }).toUpperCase();
+            const label = `<strong>${month} ${day}</strong> <span class="day-weekday">${weekday}</span>`;
+            const items = evts.map(e => {
+                const timeStr = e.start_time_raw
+                    ? (e.end_time_raw ? e.start_time_raw + ' – ' + e.end_time_raw : e.start_time_raw)
+                    : '';
+                const desc = e.description ? `<div class="event-desc" onclick="this.classList.toggle('expanded')">${e.description}</div>` : '';
+                return `<div class="event-item">
+                    <div class="event-title">${e.title || e.vendor}</div>
+                    <div class="event-meta">${timeStr ? '<span class="meta-item"><svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ' + timeStr + '</span>' : ''}${(e.venue || e.location) ? '<span class="meta-item"><svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> <strong>' + (e.venue || e.location) + '</strong></span>' : ''}</div>
+                    ${desc}
+                </div>`;
+            }).join('');
+            return `<div class="day-section">
+                <div class="day-header">${label}</div>
+                ${items}
+            </div>`;
+        }).join('');
+    })
+    .catch(err => {
+        document.getElementById('events-container').innerHTML =
+            '<div class="loading">Could not load events.</div>';
+    });
+</script>
+</body>
+</html>

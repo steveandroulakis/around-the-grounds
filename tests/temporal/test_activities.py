@@ -13,7 +13,7 @@ from around_the_grounds.temporal.activities import (
 
 
 @pytest.fixture
-def mock_brewery_configs() -> List[Dict[str, Any]]:
+def mock_venue_configs() -> List[Dict[str, Any]]:
     """Fixture providing mock brewery configurations."""
     return [
         {
@@ -33,27 +33,27 @@ def mock_brewery_configs() -> List[Dict[str, Any]]:
 
 @pytest.fixture
 def mock_events() -> List[Dict[str, Any]]:
-    """Fixture providing mock food truck events."""
+    """Fixture providing mock food truck events (new field names)."""
     return [
         {
-            "brewery_key": "test-brewery-1",
-            "brewery_name": "Test Brewery 1",
-            "food_truck_name": "Test Truck 1",
+            "venue_key": "test-brewery-1",
+            "venue_name": "Test Brewery 1",
+            "title": "Test Truck 1",
             "date": "2025-07-06T00:00:00",
             "start_time": "2025-07-06T13:00:00",
             "end_time": "2025-07-06T20:00:00",
             "description": "Great food truck",
-            "ai_generated_name": False,
+            "extraction_method": "html",
         },
         {
-            "brewery_key": "test-brewery-1",
-            "brewery_name": "Test Brewery 1",
-            "food_truck_name": "AI Truck",
+            "venue_key": "test-brewery-1",
+            "venue_name": "Test Brewery 1",
+            "title": "AI Truck",
             "date": "2025-07-07T00:00:00",
             "start_time": None,
             "end_time": None,
             "description": None,
-            "ai_generated_name": True,
+            "extraction_method": "ai-vision",
         },
     ]
 
@@ -70,16 +70,16 @@ class TestScrapeActivities:
             "around_the_grounds.temporal.activities.load_brewery_config"
         ) as mock_load:
             # Mock breweries
-            from around_the_grounds.models import Brewery
+            from around_the_grounds.models import Venue
 
             mock_breweries = [
-                Brewery(
+                Venue(
                     key="stoup-ballard",
                     name="Stoup Brewing - Ballard",
                     url="https://stoup.com/food-trucks",
                     parser_config={"selector": ".event"},
                 ),
-                Brewery(
+                Venue(
                     key="urban-family",
                     name="Urban Family Brewing",
                     url="https://urbanfamilybrewing.com",
@@ -127,7 +127,7 @@ class TestScrapeActivities:
 
     @pytest.mark.asyncio
     async def test_scrape_food_trucks_success(
-        self, mock_brewery_configs: List[Dict[str, Any]]
+        self, mock_venue_configs: List[Dict[str, Any]]
     ) -> None:
         """Test successful food truck scraping."""
         activities = ScrapeActivities()
@@ -140,35 +140,35 @@ class TestScrapeActivities:
             mock_coordinator_class.return_value = mock_coordinator
 
             # Mock food truck events
-            from around_the_grounds.models import FoodTruckEvent
+            from around_the_grounds.models import Event
 
             mock_food_truck_events = [
-                FoodTruckEvent(
-                    brewery_key="test-brewery-1",
-                    brewery_name="Test Brewery 1",
-                    food_truck_name="Test Truck 1",
+                Event(
+                    venue_key="test-brewery-1",
+                    venue_name="Test Brewery 1",
+                    title="Test Truck 1",
                     date=datetime(2025, 7, 6),
                     start_time=datetime(2025, 7, 6, 13, 0),
                     end_time=datetime(2025, 7, 6, 20, 0),
                     description="Great food truck",
-                    ai_generated_name=False,
+                    extraction_method="html",
                 ),
-                FoodTruckEvent(
-                    brewery_key="test-brewery-2",
-                    brewery_name="Test Brewery 2",
-                    food_truck_name="AI Truck",
+                Event(
+                    venue_key="test-brewery-2",
+                    venue_name="Test Brewery 2",
+                    title="AI Truck",
                     date=datetime(2025, 7, 7),
                     start_time=None,
                     end_time=None,
                     description=None,
-                    ai_generated_name=True,
+                    extraction_method="ai-vision",
                 ),
             ]
 
             mock_coordinator.scrape_all = AsyncMock(return_value=mock_food_truck_events)
             mock_coordinator.get_errors = MagicMock(return_value=[])
 
-            events, errors = await activities.scrape_food_trucks(mock_brewery_configs)
+            events, errors = await activities.scrape_food_trucks(mock_venue_configs)
 
             assert isinstance(events, list)
             assert isinstance(errors, list)
@@ -177,29 +177,29 @@ class TestScrapeActivities:
 
             # Check first event serialization
             event1 = events[0]
-            assert event1["brewery_key"] == "test-brewery-1"
-            assert event1["brewery_name"] == "Test Brewery 1"
-            assert event1["food_truck_name"] == "Test Truck 1"
+            assert event1["venue_key"] == "test-brewery-1"
+            assert event1["venue_name"] == "Test Brewery 1"
+            assert event1["title"] == "Test Truck 1"
             assert event1["date"] == "2025-07-06T00:00:00"
             assert event1["start_time"] == "2025-07-06T13:00:00"
             assert event1["end_time"] == "2025-07-06T20:00:00"
             assert event1["description"] == "Great food truck"
-            assert event1["ai_generated_name"] is False
+            assert event1["extraction_method"] == "html"
 
             # Check second event serialization
             event2 = events[1]
-            assert event2["brewery_key"] == "test-brewery-2"
-            assert event2["brewery_name"] == "Test Brewery 2"
-            assert event2["food_truck_name"] == "AI Truck"
+            assert event2["venue_key"] == "test-brewery-2"
+            assert event2["venue_name"] == "Test Brewery 2"
+            assert event2["title"] == "AI Truck"
             assert event2["date"] == "2025-07-07T00:00:00"
             assert event2["start_time"] is None
             assert event2["end_time"] is None
             assert event2["description"] is None
-            assert event2["ai_generated_name"] is True
+            assert event2["extraction_method"] == "ai-vision"
 
     @pytest.mark.asyncio
     async def test_scrape_food_trucks_with_errors(
-        self, mock_brewery_configs: List[Dict[str, Any]]
+        self, mock_venue_configs: List[Dict[str, Any]]
     ) -> None:
         """Test food truck scraping with errors."""
         activities = ScrapeActivities()
@@ -212,10 +212,10 @@ class TestScrapeActivities:
             mock_coordinator_class.return_value = mock_coordinator
 
             # Mock scraping error
-            from around_the_grounds.models import Brewery
+            from around_the_grounds.models import Venue
             from around_the_grounds.scrapers.coordinator import ScrapingError
 
-            mock_error_brewery = Brewery(
+            mock_error_brewery = Venue(
                 key="test-brewery-1",
                 name="Test Brewery 1",
                 url="https://test1.com",
@@ -223,7 +223,7 @@ class TestScrapeActivities:
             )
 
             mock_error = ScrapingError(
-                brewery=mock_error_brewery,
+                venue=mock_error_brewery,
                 error_type="network_error",
                 message="Connection timeout",
             )
@@ -231,7 +231,7 @@ class TestScrapeActivities:
             mock_coordinator.scrape_all = AsyncMock(return_value=[])
             mock_coordinator.get_errors = MagicMock(return_value=[mock_error])
 
-            events, errors = await activities.scrape_food_trucks(mock_brewery_configs)
+            events, errors = await activities.scrape_food_trucks(mock_venue_configs)
 
             assert isinstance(events, list)
             assert isinstance(errors, list)
@@ -240,16 +240,16 @@ class TestScrapeActivities:
 
             # Check error serialization
             error = errors[0]
-            assert error["brewery_name"] == "Test Brewery 1"
+            assert error["venue_name"] == "Test Brewery 1"
             assert error["message"] == "Connection timeout"
             assert (
                 error["user_message"]
-                == "Failed to fetch information for brewery: Test Brewery 1"
+                == "Failed to fetch information for: Test Brewery 1"
             )
 
     @pytest.mark.asyncio
-    async def test_scrape_single_brewery_success(
-        self, mock_brewery_configs: List[Dict[str, Any]]
+    async def test_scrape_single_venue_success(
+        self, mock_venue_configs: List[Dict[str, Any]]
     ) -> None:
         """Test scraping a single brewery without errors."""
         activities = ScrapeActivities()
@@ -260,22 +260,22 @@ class TestScrapeActivities:
             mock_coordinator = AsyncMock()
             mock_coordinator_class.return_value = mock_coordinator
 
-            from around_the_grounds.models import FoodTruckEvent
+            from around_the_grounds.models import Event
 
-            mock_event = FoodTruckEvent(
-                brewery_key="test-brewery-1",
-                brewery_name="Test Brewery 1",
-                food_truck_name="Test Truck 1",
+            mock_event = Event(
+                venue_key="test-brewery-1",
+                venue_name="Test Brewery 1",
+                title="Test Truck 1",
                 date=datetime(2025, 7, 6),
                 start_time=None,
                 end_time=None,
                 description=None,
-                ai_generated_name=False,
+                extraction_method="html",
             )
 
             mock_coordinator.scrape_one = AsyncMock(return_value=([mock_event], None))
 
-            result = await activities.scrape_single_brewery(mock_brewery_configs[0])
+            result = await activities.scrape_single_venue(mock_venue_configs[0])
 
             assert "events" in result
             assert "error" in result
@@ -286,8 +286,8 @@ class TestScrapeActivities:
             mock_coordinator.scrape_one.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_scrape_single_brewery_with_error(
-        self, mock_brewery_configs: List[Dict[str, Any]]
+    async def test_scrape_single_venue_with_error(
+        self, mock_venue_configs: List[Dict[str, Any]]
     ) -> None:
         """Test scraping a single brewery that returns an error."""
         activities = ScrapeActivities()
@@ -298,10 +298,10 @@ class TestScrapeActivities:
             mock_coordinator = AsyncMock()
             mock_coordinator_class.return_value = mock_coordinator
 
-            from around_the_grounds.models import Brewery
+            from around_the_grounds.models import Venue
             from around_the_grounds.scrapers.coordinator import ScrapingError
 
-            error_brewery = Brewery(
+            error_brewery = Venue(
                 key="test-brewery-1",
                 name="Test Brewery 1",
                 url="https://test1.com",
@@ -309,21 +309,21 @@ class TestScrapeActivities:
             )
 
             mock_error = ScrapingError(
-                brewery=error_brewery,
+                venue=error_brewery,
                 error_type="network_error",
                 message="Connection timeout",
             )
 
             mock_coordinator.scrape_one = AsyncMock(return_value=([], mock_error))
 
-            result = await activities.scrape_single_brewery(mock_brewery_configs[0])
+            result = await activities.scrape_single_venue(mock_venue_configs[0])
 
             assert result["events"] == []
             assert result["error"] is not None
-            assert result["error"]["brewery_name"] == "Test Brewery 1"
+            assert result["error"]["venue_name"] == "Test Brewery 1"
             assert (
                 result["error"]["user_message"]
-                == "Failed to fetch information for brewery: Test Brewery 1"
+                == "Failed to fetch information for: Test Brewery 1"
             )
 
 
@@ -361,7 +361,7 @@ class TestDeploymentActivities:
                 "total_events": 2,
                 "updated": "2025-07-06T00:00:00",
                 "errors": [
-                    "Failed to fetch information for brewery: Test Brewery 1"
+                    "Failed to fetch information for brewery: Test Venue 1"
                 ],
             }
             mock_generate.return_value = mock_web_data
@@ -370,7 +370,7 @@ class TestDeploymentActivities:
                 "events": mock_events,
                 "errors": [
                     {
-                        "user_message": "Failed to fetch information for brewery: Test Brewery 1"
+                        "user_message": "Failed to fetch information for brewery: Test Venue 1"
                     }
                 ],
             }
@@ -388,22 +388,22 @@ class TestDeploymentActivities:
 
             assert len(reconstructed_events) == 2
             assert error_messages == [
-                "Failed to fetch information for brewery: Test Brewery 1"
+                "Failed to fetch information for brewery: Test Venue 1"
             ]
 
             # Check first reconstructed event
             event1 = reconstructed_events[0]
-            assert event1.brewery_key == "test-brewery-1"
-            assert event1.brewery_name == "Test Brewery 1"
-            assert event1.food_truck_name == "Test Truck 1"
-            assert event1.ai_generated_name is False
+            assert event1.venue_key == "test-brewery-1"
+            assert event1.venue_name == "Test Brewery 1"
+            assert event1.title == "Test Truck 1"
+            assert event1.extraction_method == "html"
 
             # Check second reconstructed event
             event2 = reconstructed_events[1]
-            assert event2.brewery_key == "test-brewery-1"
-            assert event2.brewery_name == "Test Brewery 1"
-            assert event2.food_truck_name == "AI Truck"
-            assert event2.ai_generated_name is True
+            assert event2.venue_key == "test-brewery-1"
+            assert event2.venue_name == "Test Brewery 1"
+            assert event2.title == "AI Truck"
+            assert event2.extraction_method == "ai-vision"
 
     @pytest.mark.asyncio
     async def test_deploy_to_git_success(self) -> None:

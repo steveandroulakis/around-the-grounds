@@ -7,14 +7,14 @@ import pytest
 from aioresponses import aioresponses
 from bs4 import BeautifulSoup
 
-from around_the_grounds.models import Brewery, FoodTruckEvent
+from around_the_grounds.models import Venue, Event
 from around_the_grounds.parsers.base import BaseParser
 
 
 class ConcreteParser(BaseParser):
     """Concrete implementation of BaseParser for testing."""
 
-    async def parse(self, session: aiohttp.ClientSession) -> List[FoodTruckEvent]:
+    async def parse(self, session: aiohttp.ClientSession) -> List[Event]:
         """Concrete implementation of parse method."""
         return []
 
@@ -23,15 +23,15 @@ class TestBaseParser:
     """Test the BaseParser class."""
 
     @pytest.fixture
-    def parser(self, sample_brewery: Brewery) -> ConcreteParser:
+    def parser(self, sample_brewery: Venue) -> ConcreteParser:
         """Create a parser instance for testing."""
         return ConcreteParser(sample_brewery)
 
-    def test_parser_initialization(self, sample_brewery: Brewery) -> None:
+    def test_parser_initialization(self, sample_brewery: Venue) -> None:
         """Test parser initialization."""
         parser = ConcreteParser(sample_brewery)
 
-        assert parser.brewery == sample_brewery
+        assert parser.venue == sample_brewery
         assert hasattr(parser, "logger")
 
     @pytest.mark.asyncio
@@ -109,38 +109,38 @@ class TestBaseParser:
                     await parser.fetch_page(session, "https://example.com/test")
 
     def test_validate_event_valid(
-        self, parser: ConcreteParser, sample_food_truck_event: FoodTruckEvent
+        self, parser: ConcreteParser, sample_food_truck_event: Event
     ) -> None:
         """Test validation of valid events."""
         result = parser.validate_event(sample_food_truck_event)
         assert result is True
 
-    def test_validate_event_missing_brewery_key(
-        self, parser: ConcreteParser, sample_food_truck_event: FoodTruckEvent
+    def test_validate_event_missing_venue_key(
+        self, parser: ConcreteParser, sample_food_truck_event: Event
     ) -> None:
-        """Test validation with missing brewery key."""
-        sample_food_truck_event.brewery_key = ""
+        """Test validation with missing venue key."""
+        sample_food_truck_event.venue_key = ""
         result = parser.validate_event(sample_food_truck_event)
         assert result is False
 
-    def test_validate_event_missing_brewery_name(
-        self, parser: ConcreteParser, sample_food_truck_event: FoodTruckEvent
+    def test_validate_event_missing_venue_name(
+        self, parser: ConcreteParser, sample_food_truck_event: Event
     ) -> None:
-        """Test validation with missing brewery name."""
-        sample_food_truck_event.brewery_name = ""
+        """Test validation with missing venue name."""
+        sample_food_truck_event.venue_name = ""
         result = parser.validate_event(sample_food_truck_event)
         assert result is False
 
-    def test_validate_event_missing_food_truck_name(
-        self, parser: ConcreteParser, sample_food_truck_event: FoodTruckEvent
+    def test_validate_event_missing_title(
+        self, parser: ConcreteParser, sample_food_truck_event: Event
     ) -> None:
-        """Test validation with missing food truck name."""
-        sample_food_truck_event.food_truck_name = ""
+        """Test validation with missing title."""
+        sample_food_truck_event.title = ""
         result = parser.validate_event(sample_food_truck_event)
         assert result is False
 
     def test_validate_event_missing_date(
-        self, parser: ConcreteParser, sample_food_truck_event: FoodTruckEvent
+        self, parser: ConcreteParser, sample_food_truck_event: Event
     ) -> None:
         """Test validation with missing date."""
         sample_food_truck_event.date = None  # type: ignore
@@ -148,16 +148,15 @@ class TestBaseParser:
         assert result is False
 
     def test_filter_valid_events(
-        self, parser: ConcreteParser, sample_food_truck_event: FoodTruckEvent
+        self, parser: ConcreteParser, sample_food_truck_event: Event
     ) -> None:
         """Test filtering of events."""
-        # Create valid and invalid events
         valid_event = sample_food_truck_event
 
-        invalid_event = FoodTruckEvent(
-            brewery_key="",  # Missing brewery key
-            brewery_name="Test Brewery",
-            food_truck_name="Test Truck",
+        invalid_event = Event(
+            venue_key="",  # Missing venue key
+            venue_name="Test Venue",
+            title="Test Show",
             date=valid_event.date,
         )
 
@@ -174,8 +173,8 @@ class TestBaseParser:
 
     def test_filter_valid_events_all_invalid(self, parser: ConcreteParser) -> None:
         """Test filtering when all events are invalid."""
-        invalid_event1 = FoodTruckEvent("", "Brewery", "Truck", None)  # type: ignore
-        invalid_event2 = FoodTruckEvent("key", "", "Truck", None)  # type: ignore
+        invalid_event1 = Event("", "Venue", "Show", None)  # type: ignore
+        invalid_event2 = Event("key", "", "Show", None)  # type: ignore
 
         events = [invalid_event1, invalid_event2]
         filtered_events = parser.filter_valid_events(events)
@@ -218,3 +217,27 @@ class TestBaseParser:
                 soup = await parser.fetch_page(session, "https://example.com/test")
                 assert isinstance(soup, BeautifulSoup)
                 assert soup.find("div") is not None
+
+    def test_validate_event_missing_venue_key(
+        self, parser: ConcreteParser, sample_food_truck_event: Event
+    ) -> None:
+        """Test validation with missing venue key."""
+        sample_food_truck_event.venue_key = ""
+        result = parser.validate_event(sample_food_truck_event)
+        assert result is False
+
+    def test_validate_event_missing_venue_name(
+        self, parser: ConcreteParser, sample_food_truck_event: Event
+    ) -> None:
+        """Test validation with missing venue name."""
+        sample_food_truck_event.venue_name = ""
+        result = parser.validate_event(sample_food_truck_event)
+        assert result is False
+
+    def test_validate_event_missing_title(
+        self, parser: ConcreteParser, sample_food_truck_event: Event
+    ) -> None:
+        """Test validation with missing title."""
+        sample_food_truck_event.title = ""
+        result = parser.validate_event(sample_food_truck_event)
+        assert result is False

@@ -30,8 +30,8 @@ RUN useradd -m -u 1000 worker && \
     chown -R worker:worker /app
 
 # Configure git defaults (as root)
-RUN git config --global user.name "steveandroulakis" && \
-    git config --global user.email "steve.androulakis@gmail.com"
+RUN git config --global user.name "Around the Grounds Bot" && \
+    git config --global user.email "bot@around-the-grounds.app"
 
 # Make uv accessible to worker user by copying it to /usr/local/bin
 RUN cp /root/.local/bin/uv /usr/local/bin/uv && \

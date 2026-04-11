@@ -2,14 +2,14 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from around_the_grounds.models.brewery import Brewery
+from around_the_grounds.models import Venue
 from around_the_grounds.parsers.urban_family import UrbanFamilyParser
 
 
 class TestVisionIntegration:
     @pytest.fixture
     def parser(self) -> UrbanFamilyParser:
-        brewery = Brewery(
+        brewery = Venue(
             key="urban-family", name="Urban Family", url="https://test.com"
         )
         return UrbanFamilyParser(brewery)

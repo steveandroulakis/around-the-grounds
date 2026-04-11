@@ -89,9 +89,12 @@ ssh admin@<synology-ip> '/volume1/docker/scripts/deploy-pull.sh'
 From any machine that can reach the Synology:
 
 ```bash
-TEMPORAL_ADDRESS=<synology-ip>:7233 TEMPORAL_NAMESPACE=default \
-  uv run python -m around_the_grounds.temporal.schedule_manager create \
-    --schedule-id daily-scrape --interval 60 --deploy
+# For single architecture (current platform)
+docker build -t around-the-grounds-worker .
+
+# For multi-architecture (e.g. Mac + x86 target host)
+docker buildx create --use
+docker buildx build --platform linux/amd64,linux/arm64 -t around-the-grounds-worker .
 ```
 
 Or directly on the Synology:
@@ -99,7 +102,31 @@ Or directly on the Synology:
 docker exec temporal-server temporal schedule list
 ```
 
-## Temporal Server Management
+If you're using mTLS authentication, you need to prepare your certificates:
+
+1. **Create a certs directory in your project:**
+   ```bash
+   mkdir -p certs
+   ```
+
+2. **Copy your certificates:**
+   ```bash
+   cp /path/to/your-cert.crt certs/client.crt
+   cp /path/to/your-key.key certs/client.key
+   ```
+
+3. **Update your `.env` file:**
+   ```bash
+   TEMPORAL_ADDRESS=your-server.address:7233
+   TEMPORAL_NAMESPACE=your-namespace
+   TEMPORAL_TLS_CERT=/certs/client.crt
+   TEMPORAL_TLS_KEY=/certs/client.key
+   CERT_DIR=/path/to/your/certs
+   ```
+
+## Step 4: Test Locally
+
+Test the container locally using docker-compose:
 
 ```bash
 # View server logs
@@ -117,6 +144,48 @@ docker stop temporal-server && docker rm temporal-server
 sudo bash /volume1/docker/scripts/synology-temporal-server.sh
 ```
 
+## Step 5: Manual Docker Run (Alternative)
+
+If you prefer not to use docker-compose:
+
+```bash
+docker run -d \
+  --name around-the-grounds-worker \
+  --restart unless-stopped \
+  -e TEMPORAL_ADDRESS="your-namespace.acct.tmprl.cloud:7233" \
+  -e TEMPORAL_NAMESPACE="your-namespace" \
+  -e TEMPORAL_API_KEY="your-temporal-api-key" \
+  -e GITHUB_APP_PRIVATE_KEY_B64="your-base64-encoded-private-key" \
+  -e ANTHROPIC_API_KEY="your-anthropic-api-key" \
+  around-the-grounds-worker
+```
+
+## Step 6: Deploy to Docker Hub
+
+Once tested, push to Docker Hub:
+
+```bash
+# Tag for Docker Hub
+docker tag around-the-grounds-worker your-dockerhub-username/around-the-grounds-worker:latest
+
+# Push to Docker Hub
+docker push your-dockerhub-username/around-the-grounds-worker:latest
+
+# For multi-architecture
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t your-dockerhub-username/around-the-grounds-worker:latest \
+  --push .
+```
+
+## Step 7: Deploy to Your Target Host
+
+On your target host (any machine that can run Docker and reach your Temporal server):
+
+1. Install Docker
+2. Pull your image: `docker pull your-dockerhub-username/around-the-grounds-worker:latest`
+3. Create a container with the same environment variables as above
+4. Start the container
+
 ## Environment Variables Reference
 
 ### Required Variables
@@ -125,7 +194,7 @@ sudo bash /volume1/docker/scripts/synology-temporal-server.sh
 
 ### Optional Variables
 
-- `ANTHROPIC_API_KEY`: Claude Vision API key for food truck name extraction
+- `ANTHROPIC_API_KEY`: Claude API key for vision analysis and haiku generation
 - `VISION_ANALYSIS_ENABLED`: Enable/disable vision analysis (default: true)
 - `VISION_MAX_RETRIES`: Max retry attempts for vision API (default: 2)
 - `VISION_TIMEOUT`: API timeout in seconds (default: 30)
@@ -150,6 +219,37 @@ sudo bash /volume1/docker/scripts/synology-temporal-server.sh
 2. Verify Temporal server is healthy: `docker exec temporal-server temporal workflow list --address localhost:7233`
 3. Check worker logs: `docker logs around-the-grounds-worker`
 
-### Schedules Lost After Restart
-- Ensure `--db-filename` is set (the setup script does this)
-- Verify the data volume is mounted: `docker inspect temporal-server | grep Mounts`
+### GitHub Authentication Issues
+
+1. Verify your private key is correctly base64 encoded
+2. Check that your GitHub App has the correct permissions
+3. Ensure the App is installed on your repository
+
+### Temporal Connection Issues
+
+1. Verify your Temporal Cloud credentials
+2. Check network connectivity from the container
+3. Ensure your namespace and API key are correct
+
+### Vision API Issues
+
+1. Check your Anthropic API key
+2. Vision analysis is optional - disable with `VISION_ANALYSIS_ENABLED=false`
+3. Monitor API usage and rate limits
+
+## Next Steps
+
+After successful testing, you can:
+
+1. Push to Docker Hub for easy deployment
+2. Set up automated builds with GitHub Actions
+3. Deploy to your target host
+4. Configure monitoring and alerting
+5. Set up log aggregation
+
+## Security Notes
+
+- Never commit your `.env` file to version control
+- Use Docker secrets in production environments
+- Regularly rotate your API keys and GitHub App private key
+- Monitor container logs for security issues

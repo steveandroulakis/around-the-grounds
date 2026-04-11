@@ -6,7 +6,7 @@ import aiohttp
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 
-from ..models import FoodTruckEvent
+from ..models import Event
 from ..utils.timezone_utils import (
     now_in_pacific,
     parse_date_with_pacific_context,
@@ -21,8 +21,8 @@ class WheeliePopParser(BaseParser):
     CALENDAR_ID = "mc-948a6a8e8cd15db324902317a630b853"
     BASE_URL = "https://wheeliepopbrewing.com/ballard-brewery-district-draft/"
 
-    async def parse(self, session: aiohttp.ClientSession) -> List[FoodTruckEvent]:
-        events: List[FoodTruckEvent] = []
+    async def parse(self, session: aiohttp.ClientSession) -> List[Event]:
+        events: List[Event] = []
         seen_event_keys: Set[str] = set()
 
         current = now_in_pacific()
@@ -110,7 +110,7 @@ class WheeliePopParser(BaseParser):
 
     def _parse_calendar_html(
         self, html: str, seen_event_keys: Set[str]
-    ) -> List[FoodTruckEvent]:
+    ) -> List[Event]:
         soup = BeautifulSoup(html, "html.parser")
 
         container = soup.find("div", id=self.CALENDAR_ID)
@@ -123,7 +123,7 @@ class WheeliePopParser(BaseParser):
             self.logger.debug("Wheelie Pop calendar list view missing")
             return []
 
-        events: List[FoodTruckEvent] = []
+        events: List[Event] = []
         for day_node in list_container.find_all("li"):
             if not isinstance(day_node, Tag):
                 continue
@@ -155,7 +155,7 @@ class WheeliePopParser(BaseParser):
 
     def _parse_food_truck_article(
         self, article: Tag, date: datetime
-    ) -> Optional[FoodTruckEvent]:
+    ) -> Optional[Event]:
         classes = article.get("class")
         if not isinstance(classes, list) or "mc_food-truck" not in classes:
             return None
@@ -170,14 +170,14 @@ class WheeliePopParser(BaseParser):
         start_time = self._parse_time(article, ".event-time time")
         end_time = self._parse_time(article, ".end-time time")
 
-        return FoodTruckEvent(
-            brewery_key=self.brewery.key,
-            brewery_name=self.brewery.name,
-            food_truck_name=food_truck_name,
+        return Event(
+            venue_key=self.venue.key,
+            venue_name=self.venue.name,
+            title=food_truck_name,
             date=date,
             start_time=start_time,
             end_time=end_time,
-            ai_generated_name=False,
+            extraction_method="html",
         )
 
     def _parse_time(self, article: Tag, selector: str) -> Optional[datetime]:
@@ -226,10 +226,10 @@ class WheeliePopParser(BaseParser):
 
         return raw_title.strip() or None
 
-    def _event_key(self, event: FoodTruckEvent) -> str:
+    def _event_key(self, event: Event) -> str:
         start_key = (
             event.start_time.strftime("%Y-%m-%d %H:%M")
             if event.start_time is not None
             else ""
         )
-        return f"{event.date.strftime('%Y-%m-%d')}|{start_key}|{event.food_truck_name.lower()}"
+        return f"{event.date.strftime('%Y-%m-%d')}|{start_key}|{event.title.lower()}"

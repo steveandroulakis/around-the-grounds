@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from around_the_grounds.models import Brewery
+from around_the_grounds.models import Venue
 from around_the_grounds.scrapers.coordinator import ScraperCoordinator, ScrapingError
 
 
@@ -13,9 +13,9 @@ class TestErrorHandling:
     """Essential error handling test suite."""
 
     @pytest.fixture
-    def test_brewery(self) -> Brewery:
+    def test_brewery(self) -> Venue:
         """Create a test brewery."""
-        return Brewery(
+        return Venue(
             key="test-brewery",
             name="Test Brewery",
             url="https://example.com/food-trucks",
@@ -28,7 +28,7 @@ class TestErrorHandling:
 
     @pytest.mark.asyncio
     async def test_connection_timeout_error(
-        self, coordinator: ScraperCoordinator, test_brewery: Brewery
+        self, coordinator: ScraperCoordinator, test_brewery: Venue
     ) -> None:
         """Test handling of connection timeouts."""
         with patch(
@@ -37,7 +37,7 @@ class TestErrorHandling:
             mock_parser = AsyncMock()
             mock_parser.parse.side_effect = asyncio.TimeoutError()
 
-            def mock_parser_class(brewery: Brewery) -> AsyncMock:
+            def mock_parser_class(brewery: Venue) -> AsyncMock:
                 return mock_parser
 
             mock_get_parser.return_value = mock_parser_class
@@ -51,7 +51,7 @@ class TestErrorHandling:
 
     @pytest.mark.asyncio
     async def test_parser_not_found_error(
-        self, coordinator: ScraperCoordinator, test_brewery: Brewery
+        self, coordinator: ScraperCoordinator, test_brewery: Venue
     ) -> None:
         """Test handling when parser is not found."""
         with patch(
@@ -65,17 +65,17 @@ class TestErrorHandling:
             assert len(coordinator.get_errors()) == 1
             error = coordinator.get_errors()[0]
             assert (
-                error.error_type == "Unexpected Error"
-            )  # This is what the coordinator actually returns
+                error.error_type == "Configuration Error"
+            )  # ValueError from get_parser maps to Configuration Error
 
     def test_scraping_error_properties(self) -> None:
         """Test ScrapingError properties."""
-        brewery = Brewery(key="test", name="Test Brewery", url="https://test.com")
+        brewery = Venue(key="test", name="Test Brewery", url="https://test.com")
         error = ScrapingError(
-            brewery=brewery, error_type="Test Error", message="Test message"
+            venue=brewery, error_type="Test Error", message="Test message"
         )
 
-        assert error.brewery.name == "Test Brewery"
+        assert error.venue.name == "Test Brewery"
         assert error.error_type == "Test Error"
         assert error.message == "Test message"
         assert str(error) == "Test Error: Test message"

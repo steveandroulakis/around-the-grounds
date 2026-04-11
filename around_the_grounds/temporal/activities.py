@@ -20,26 +20,26 @@ from around_the_grounds.main import (
     generate_web_data,
     load_brewery_config,
 )
-from around_the_grounds.models import Brewery, FoodTruckEvent
+from around_the_grounds.models import Venue, Event
 from around_the_grounds.scrapers import ScraperCoordinator
 from around_the_grounds.scrapers.coordinator import ScrapingError
 
 
 class ScrapeActivities:
-    """Activities for scraping food truck data."""
+    """Activities for scraping event data."""
 
     @staticmethod
-    def _serialize_event(event: FoodTruckEvent) -> Dict[str, Any]:
+    def _serialize_event(event: Event) -> Dict[str, Any]:
         """Convert an event to a JSON-serializable structure."""
         return {
-            "brewery_key": event.brewery_key,
-            "brewery_name": event.brewery_name,
-            "food_truck_name": event.food_truck_name,
+            "venue_key": event.venue_key,
+            "venue_name": event.venue_name,
+            "title": event.title,
             "date": event.date.isoformat(),
             "start_time": event.start_time.isoformat() if event.start_time else None,
             "end_time": event.end_time.isoformat() if event.end_time else None,
             "description": event.description,
-            "ai_generated_name": event.ai_generated_name,
+            "extraction_method": event.extraction_method,
         }
 
     @staticmethod
@@ -47,7 +47,7 @@ class ScrapeActivities:
         if not error:
             return None
         return {
-            "brewery_name": error.brewery.name,
+            "venue_name": error.venue.name,
             "message": error.message,
             "user_message": error.to_user_message(),
         }
@@ -61,36 +61,38 @@ class ScrapeActivities:
     async def load_brewery_config(
         self, config_path: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """Load brewery configuration and return as serializable data."""
-        breweries = load_brewery_config(config_path)
+        """Load venue configuration and return as serializable data."""
+        venues = load_brewery_config(config_path)
         return [
             {
-                "key": b.key,
-                "name": b.name,
-                "url": b.url,
-                "parser_config": b.parser_config,
+                "key": v.key,
+                "name": v.name,
+                "url": v.url,
+                "source_type": v.source_type,
+                "parser_config": v.parser_config,
             }
-            for b in breweries
+            for v in venues
         ]
 
     @activity.defn
     async def scrape_food_trucks(
-        self, brewery_configs: List[Dict[str, Any]]
+        self, venue_configs: List[Dict[str, Any]]
     ) -> Tuple[List[Dict[str, Any]], List[Dict[str, str]]]:
-        """Scrape food truck data from all breweries."""
-        # Convert dicts back to Brewery objects
-        breweries = [
-            Brewery(
+        """Scrape event data from all venues."""
+        # Convert dicts back to Venue objects
+        venues = [
+            Venue(
                 key=config["key"],
                 name=config["name"],
                 url=config["url"],
-                parser_config=config["parser_config"],
+                source_type=config.get("source_type", "html"),
+                parser_config=config.get("parser_config", {}),
             )
-            for config in brewery_configs
+            for config in venue_configs
         ]
 
         coordinator = ScraperCoordinator()
-        events = await coordinator.scrape_all(breweries)
+        events = await coordinator.scrape_all(venues)
         errors = coordinator.get_errors()
 
         serialized_events = [self._serialize_event(event) for event in events]
@@ -105,19 +107,20 @@ class ScrapeActivities:
         return serialized_events, serialized_errors
 
     @activity.defn
-    async def scrape_single_brewery(
-        self, brewery_config: Dict[str, Any]
+    async def scrape_single_venue(
+        self, venue_config: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Scrape one brewery and return serialized events and optional error."""
-        brewery = Brewery(
-            key=brewery_config["key"],
-            name=brewery_config["name"],
-            url=brewery_config["url"],
-            parser_config=brewery_config["parser_config"],
+        """Scrape one venue and return serialized events and optional error."""
+        venue = Venue(
+            key=venue_config["key"],
+            name=venue_config["name"],
+            url=venue_config["url"],
+            source_type=venue_config.get("source_type", "html"),
+            parser_config=venue_config.get("parser_config", {}),
         )
 
         coordinator = ScraperCoordinator(max_concurrent=1)
-        events, error = await coordinator.scrape_one(brewery)
+        events, error = await coordinator.scrape_one(venue)
 
         return {
             "events": [self._serialize_event(event) for event in events],
@@ -131,29 +134,29 @@ class DeploymentActivities:
     @activity.defn
     async def generate_web_data(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Generate web-friendly JSON data from events and errors."""
-        events = payload.get("events", [])
+        events_data = payload.get("events", [])
         errors = payload.get("errors")
 
         # Reconstruct events and use existing generate_web_data function
         reconstructed_events = []
-        for event_data in events:
-            event = FoodTruckEvent(
-                brewery_key=event_data["brewery_key"],
-                brewery_name=event_data["brewery_name"],
-                food_truck_name=event_data["food_truck_name"],
+        for event_data in events_data:
+            event = Event(
+                venue_key=event_data.get("venue_key", ""),
+                venue_name=event_data.get("venue_name", ""),
+                title=event_data.get("title", ""),
                 date=datetime.fromisoformat(event_data["date"]),
                 start_time=(
                     datetime.fromisoformat(event_data["start_time"])
-                    if event_data["start_time"]
+                    if event_data.get("start_time")
                     else None
                 ),
                 end_time=(
                     datetime.fromisoformat(event_data["end_time"])
-                    if event_data["end_time"]
+                    if event_data.get("end_time")
                     else None
                 ),
-                description=event_data["description"],
-                ai_generated_name=event_data["ai_generated_name"],
+                description=event_data.get("description"),
+                extraction_method=event_data.get("extraction_method", "html"),
             )
             reconstructed_events.append(event)
 
@@ -163,9 +166,9 @@ class DeploymentActivities:
                 if isinstance(error, dict):
                     if "user_message" in error and error["user_message"]:
                         error_messages.append(str(error["user_message"]))
-                    elif "brewery_name" in error and error["brewery_name"]:
+                    elif "venue_name" in error and error["venue_name"]:
                         error_messages.append(
-                            f"Failed to fetch information for brewery: {error['brewery_name']}"
+                            f"Failed to fetch information for: {error['venue_name']}"
                         )
                 elif isinstance(error, str) and error:
                     error_messages.append(error)
@@ -184,17 +187,16 @@ class DeploymentActivities:
         # Extract parameters
         web_data = params["web_data"]
         repository_url = params["repository_url"]
+        template_dir_name = params.get("template", "food-trucks")
 
         try:
             activity.logger.info(
                 f"Starting deployment with {web_data.get('total_events', 0)} events"
             )
 
-            # Create temporary directory for git operations
             with tempfile.TemporaryDirectory() as temp_dir:
                 repo_dir = Path(temp_dir) / "repo"
 
-                # Clone the repository
                 activity.logger.info(
                     f"Cloning repository {repository_url} to {repo_dir}"
                 )
@@ -204,7 +206,6 @@ class DeploymentActivities:
                     capture_output=True,
                 )
 
-                # Configure git user in the cloned repository
                 subprocess.run(
                     ["git", "config", "user.email", "steve.androulakis@gmail.com"],
                     cwd=repo_dir,
@@ -218,25 +219,28 @@ class DeploymentActivities:
                     capture_output=True,
                 )
 
-                # Copy template files from public_template to cloned repo
-                public_template_dir = Path.cwd() / "public_template"
+                # Try new multi-template path first, fall back to legacy
+                public_templates_dir = (
+                    Path.cwd() / "public_templates" / template_dir_name
+                )
+                if not public_templates_dir.exists():
+                    public_templates_dir = Path.cwd() / "public_template"
+
                 target_public_dir = repo_dir / "public"
 
                 activity.logger.info(
-                    f"Copying template files from {public_template_dir}"
+                    f"Copying template files from {public_templates_dir}"
                 )
                 shutil.copytree(
-                    public_template_dir, target_public_dir, dirs_exist_ok=True
+                    public_templates_dir, target_public_dir, dirs_exist_ok=True
                 )
 
-                # Write generated web data to cloned repository
                 json_path = target_public_dir / "data.json"
                 with open(json_path, "w") as f:
                     json.dump(web_data, f, indent=2)
 
                 activity.logger.info(f"Generated web data file: {json_path}")
 
-                # Add all files in public directory
                 subprocess.run(
                     ["git", "add", "public/"],
                     cwd=repo_dir,
@@ -244,7 +248,6 @@ class DeploymentActivities:
                     capture_output=True,
                 )
 
-                # Check if there are changes to commit
                 result = subprocess.run(
                     ["git", "diff", "--staged", "--quiet"],
                     cwd=repo_dir,
@@ -254,8 +257,8 @@ class DeploymentActivities:
                     activity.logger.info("No changes to deploy")
                     return True
 
-                # Commit changes
-                commit_msg = f"🚚 Update food truck data - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+                site_name = web_data.get("site_name", "Events")
+                commit_msg = f"📅 Update {site_name} - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
                 subprocess.run(
                     ["git", "commit", "-m", commit_msg],
                     cwd=repo_dir,
@@ -263,7 +266,6 @@ class DeploymentActivities:
                     capture_output=True,
                 )
 
-                # Set up GitHub App authentication and configure remote
                 auth = GitHubAppAuth(repository_url)
                 access_token = auth.get_access_token()
 
@@ -275,7 +277,6 @@ class DeploymentActivities:
                     capture_output=True,
                 )
 
-                # Push to origin
                 subprocess.run(
                     ["git", "push", "origin", "main"],
                     cwd=repo_dir,

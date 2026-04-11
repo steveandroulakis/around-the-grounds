@@ -1,0 +1,10 @@
+{
+  "feature_number": "004",
+  "slug": "004-generic-models",
+  "friendly_name": "Generic Models",
+  "mission": "software-dev",
+  "source_description": "Replace around-the-grounds' domain-specific Brewery and FoodTruckEvent models with ventr's generic Venue, Event, Location, and VenueList models. This unlocks the architecture to represent any event type — food trucks, music venues, concert halls, farmers markets, kids events, parties, clubs — without code changes to the core.",
+  "created_at": "2026-02-25T00:00:00Z",
+  "target_branch": "main",
+  "vcs": "git"
+}

@@ -108,7 +108,7 @@ async def main() -> None:
     """Main starter entry point with enhanced CLI arguments."""
     parser = argparse.ArgumentParser(description="Execute Food Truck Temporal Workflow")
     parser.add_argument(
-        "--config", "-c", help="Path to brewery configuration JSON file"
+        "--config", "-c", help="Path to venue configuration JSON file"
     )
     parser.add_argument(
         "--deploy", "-d", action="store_true", help="Deploy results to web"
