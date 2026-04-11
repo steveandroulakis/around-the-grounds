@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Around the Grounds is a multi-site event aggregator platform. Each site is defined by a JSON config file in `config/sites/` — no new parser code is needed unless the site uses an unsupported platform. This repo is jointly maintained: it produces the original ballardfoodtrucks.com (Vercel-backed, deploys to the `public/` subdir of a dedicated target repo) as well as jredding's Brooklyn music and children's-events sites (GitHub Pages–backed, deploy to the target repo root). Both setups coexist via per-site config.
 
-> **If you're merging the multi-site merge into an existing checkout**, read [MIGRATION.md](./MIGRATION.md) first. It covers per-maintainer migration notes, recommended post-pull hygiene, and suggested follow-up work (unifying the Temporal deploy path, retiring the legacy `breweries.json`, per-site haiku prompts, etc.).
+> **If you're merging the multi-site merge into an existing checkout**, read [MIGRATION.md](./MIGRATION.md) first. It covers per-maintainer migration notes, recommended post-pull hygiene, and the remaining latent follow-up work (per-site haiku prompts, per-site weather location, the `extraction_method` template shim, the `scrape_single_venue` timezone gap). The earlier follow-ups for unifying the Temporal deploy path and retiring `breweries.json` are now done.
 
 Key features:
 - **Multi-site support** with independent site configs for different event domains (food trucks, music, kids events), independent target repositories, and configurable per-site deploy strategies
@@ -180,7 +180,6 @@ around_the_grounds/
 │   │   ├── park-slope-music.json      # Park Slope music venues (2 venues, deploy to repo root)
 │   │   └── childrens-events.json      # Brooklyn children's events (2 venues, deploy to repo root)
 │   ├── loader.py                  # Site config loader (load_site_config, load_all_sites)
-│   ├── breweries.json             # Legacy venue list (kept for backward-compat wrappers only)
 │   ├── haiku_prompt.txt           # Weather-grounded haiku prompt template (Ballard-specific)
 │   └── settings.py                # Vision analysis and other settings
 ├── models/
@@ -271,13 +270,13 @@ kitty-specs/                       # Executed specifications (dev-time only, no 
   - **Venue-specific parsers** (9 for Ballard food trucks): StoupBallard, BaleBreaker, Obec, UrbanFamily, WheeliePop, ChucksGreenwood, SalehsCorner, ChannelMarker, LuckyEnvelope
 - **Registry**: Two-tier lookup — by `venue.key` (specific) then by `venue.source_type` (generic)
 - **Scrapers**: Async coordinator with concurrent processing, retry logic, and error isolation
-- **Temporal**: Workflow orchestration for reliable execution and scheduling
+- **Temporal**: Workflow orchestration for reliable execution and scheduling. The `FoodTruckWorkflow` resolves a `site_key` (default `"ballard-food-trucks"` when omitted, for back-compat with the persisted hourly schedule), calls a `load_site` activity to fetch the `SiteConfig` from `config/sites/<key>.json`, scrapes per-venue in parallel batches, and delegates `generate_web_data` and `deploy_to_git` to the same `main.py` functions the CLI uses — so both Temporal and CLI runs share one implementation
 - **Config**: Per-site JSON configs in `config/sites/`, loaded by `config/loader.py`
 - **Utils**: Date/time utilities, AI vision analysis, weather-grounded haiku generation, Open-Meteo weather fetch, GitHub App auth
 - **Web Interface**: Per-site templates in `public_templates/<template>/` deployed to the site's configured host (GitHub Pages or Vercel-via-GitHub)
 - **Web Deployment**: Two git strategies selected by `SiteConfig.deploy_subdir` — see Deployment Strategies below
-- **Scheduling**: Google Cloud Run Jobs with Cloud Scheduler (jredding's sites) OR a self-hosted Temporal worker (Ballard site). Both paths invoke the same CLI
-- **Tests**: 499 tests covering all scenarios including generic parsers, error handling, vision analysis, haiku generation, weather fetching, and multi-site deploy configuration
+- **Scheduling**: Google Cloud Run Jobs with Cloud Scheduler (jredding's sites) OR a self-hosted Temporal worker (Ballard site). Both paths read the same `SiteConfig` and call the same `main.py:_deploy_with_github_auth` for git operations
+- **Tests**: 490 tests covering all scenarios including generic parsers, error handling, vision analysis, haiku generation, weather fetching, multi-site deploy configuration, and the Temporal `load_site` / `generate_web_data` / `deploy_to_git` activity contracts
 
 ## Deployment Strategies
 

@@ -1,26 +1,20 @@
 """Activity implementations for Temporal workflows."""
 
-import json
+import asyncio
 import os
-import shutil
-import subprocess
 
 # Import functions we need (these are safe to import in activities)
 import sys
 from datetime import datetime
-from pathlib import Path
-from subprocess import CalledProcessError
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from temporalio import activity
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from around_the_grounds.main import (
-    generate_web_data,
-    load_brewery_config,
-)
-from around_the_grounds.models import Venue, Event
+from around_the_grounds.config.loader import load_site_config
+from around_the_grounds.main import generate_web_data
+from around_the_grounds.models import Event, SiteConfig, Venue
 from around_the_grounds.scrapers import ScraperCoordinator
 from around_the_grounds.scrapers.coordinator import ScrapingError
 
@@ -58,53 +52,33 @@ class ScrapeActivities:
         return "Activity connectivity test successful"
 
     @activity.defn
-    async def load_brewery_config(
-        self, config_path: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
-        """Load venue configuration and return as serializable data."""
-        venues = load_brewery_config(config_path)
-        return [
-            {
-                "key": v.key,
-                "name": v.name,
-                "url": v.url,
-                "source_type": v.source_type,
-                "parser_config": v.parser_config,
-            }
-            for v in venues
-        ]
+    async def load_site(self, site_key: str) -> Dict[str, Any]:
+        """Load a site config and return a JSON-serializable dict.
 
-    @activity.defn
-    async def scrape_food_trucks(
-        self, venue_configs: List[Dict[str, Any]]
-    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, str]]]:
-        """Scrape event data from all venues."""
-        # Convert dicts back to Venue objects
-        venues = [
-            Venue(
-                key=config["key"],
-                name=config["name"],
-                url=config["url"],
-                source_type=config.get("source_type", "html"),
-                parser_config=config.get("parser_config", {}),
-            )
-            for config in venue_configs
-        ]
-
-        coordinator = ScraperCoordinator()
-        events = await coordinator.scrape_all(venues)
-        errors = coordinator.get_errors()
-
-        serialized_events = [self._serialize_event(event) for event in events]
-        serialized_errors = [
-            serialized_error
-            for serialized_error in (
-                self._serialize_error(error) for error in errors
-            )
-            if serialized_error
-        ]
-
-        return serialized_events, serialized_errors
+        Sent across the activity boundary as plain dict to keep the existing
+        payload pattern (every other activity uses dict payloads). Reconstructed
+        into a SiteConfig inside the deploy/generate activities.
+        """
+        site = load_site_config(site_key)
+        return {
+            "key": site.key,
+            "name": site.name,
+            "template": site.template,
+            "timezone": site.timezone,
+            "target_repo": site.target_repo,
+            "generate_description": site.generate_description,
+            "deploy_subdir": site.deploy_subdir,
+            "venues": [
+                {
+                    "key": v.key,
+                    "name": v.name,
+                    "url": v.url,
+                    "source_type": v.source_type,
+                    "parser_config": v.parser_config,
+                }
+                for v in site.venues
+            ],
+        }
 
     @activity.defn
     async def scrape_single_venue(
@@ -128,14 +102,43 @@ class ScrapeActivities:
         }
 
 
+def _site_from_dict(site_dict: Dict[str, Any]) -> SiteConfig:
+    """Reconstruct a SiteConfig from the dict produced by load_site."""
+    return SiteConfig(
+        key=site_dict["key"],
+        name=site_dict["name"],
+        template=site_dict["template"],
+        timezone=site_dict["timezone"],
+        venues=[
+            Venue(
+                key=v["key"],
+                name=v["name"],
+                url=v["url"],
+                source_type=v.get("source_type", "html"),
+                parser_config=v.get("parser_config", {}),
+            )
+            for v in site_dict.get("venues", [])
+        ],
+        target_repo=site_dict.get("target_repo", ""),
+        generate_description=site_dict.get("generate_description", True),
+        deploy_subdir=site_dict.get("deploy_subdir", ""),
+    )
+
+
 class DeploymentActivities:
     """Activities for web deployment and git operations."""
 
     @activity.defn
     async def generate_web_data(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate web-friendly JSON data from events and errors."""
+        """Generate web-friendly JSON data from events and errors.
+
+        Delegates to the CLI's generate_web_data so the site-aware code paths
+        (haiku gating by SiteConfig.generate_description, real site_name /
+        site_key / timezone, ai-vision shim) light up identically to the CLI.
+        """
         events_data = payload.get("events", [])
         errors = payload.get("errors")
+        site_dict = payload.get("site")
 
         # Reconstruct events and use existing generate_web_data function
         reconstructed_events = []
@@ -175,122 +178,71 @@ class DeploymentActivities:
 
         error_messages = list(dict.fromkeys(error_messages))
 
-        return await generate_web_data(reconstructed_events, error_messages)
+        site = _site_from_dict(site_dict) if site_dict else None
+        return await generate_web_data(
+            reconstructed_events, error_messages, site=site
+        )
 
     @activity.defn
     async def deploy_to_git(self, params: Dict[str, Any]) -> bool:
-        """Deploy web data to git repository."""
-        import tempfile
+        """Deploy web data to git repository.
 
-        from around_the_grounds.utils.github_auth import GitHubAppAuth
+        Delegates to main.py:_deploy_with_github_auth — the single source of
+        truth for deploy git logic. That function already handles both
+        deploy_subdir modes (root-mode init+force-push and subdir-mode
+        clone+scoped-add+push), the no-op short-circuit, the bot identity, and
+        the authenticated clone URL.
+        """
+        # Local import to avoid any chance of a module-load circular import
+        # when the worker boots and registers activities.
+        from around_the_grounds.main import _deploy_with_github_auth
 
-        # Extract parameters
         web_data = params["web_data"]
-        repository_url = params["repository_url"]
-        template_dir_name = params.get("template", "food-trucks")
+        site_dict = params.get("site")
 
-        try:
-            activity.logger.info(
-                f"Starting deployment with {web_data.get('total_events', 0)} events"
+        if not site_dict:
+            raise ValueError(
+                "deploy_to_git requires a 'site' payload field. The workflow "
+                "should have loaded it via the load_site activity."
             )
 
-            with tempfile.TemporaryDirectory() as temp_dir:
-                repo_dir = Path(temp_dir) / "repo"
+        site = _site_from_dict(site_dict)
 
+        activity.logger.info(
+            f"Starting deployment for site '{site.key}' "
+            f"({web_data.get('total_events', 0)} events) "
+            f"to {site.target_repo} (deploy_subdir={site.deploy_subdir!r})"
+        )
+
+        try:
+            # _deploy_with_github_auth is sync and uses blocking subprocess.run.
+            # Hand it to the executor so the asyncio loop in this activity stays
+            # responsive (the activity itself is registered against the worker's
+            # ThreadPoolExecutor; this is belt-and-braces).
+            loop = asyncio.get_event_loop()
+            success = await loop.run_in_executor(
+                None,
+                _deploy_with_github_auth,
+                web_data,
+                site.target_repo,
+                site.template,
+                site.deploy_subdir,
+            )
+
+            if success:
                 activity.logger.info(
-                    f"Cloning repository {repository_url} to {repo_dir}"
+                    f"Deployed site '{site.key}' to {site.target_repo}"
                 )
-                subprocess.run(
-                    ["git", "clone", repository_url, str(repo_dir)],
-                    check=True,
-                    capture_output=True,
+            else:
+                activity.logger.error(
+                    f"Deployment of site '{site.key}' returned False"
                 )
-
-                subprocess.run(
-                    ["git", "config", "user.email", "steve.androulakis@gmail.com"],
-                    cwd=repo_dir,
-                    check=True,
-                    capture_output=True,
-                )
-                subprocess.run(
-                    ["git", "config", "user.name", "Steve Androulakis"],
-                    cwd=repo_dir,
-                    check=True,
-                    capture_output=True,
+                raise ValueError(
+                    f"Failed to deploy site '{site.key}' to {site.target_repo}"
                 )
 
-                # Try new multi-template path first, fall back to legacy
-                public_templates_dir = (
-                    Path.cwd() / "public_templates" / template_dir_name
-                )
-                if not public_templates_dir.exists():
-                    public_templates_dir = Path.cwd() / "public_template"
+            return success
 
-                target_public_dir = repo_dir / "public"
-
-                activity.logger.info(
-                    f"Copying template files from {public_templates_dir}"
-                )
-                shutil.copytree(
-                    public_templates_dir, target_public_dir, dirs_exist_ok=True
-                )
-
-                json_path = target_public_dir / "data.json"
-                with open(json_path, "w") as f:
-                    json.dump(web_data, f, indent=2)
-
-                activity.logger.info(f"Generated web data file: {json_path}")
-
-                subprocess.run(
-                    ["git", "add", "public/"],
-                    cwd=repo_dir,
-                    check=True,
-                    capture_output=True,
-                )
-
-                result = subprocess.run(
-                    ["git", "diff", "--staged", "--quiet"],
-                    cwd=repo_dir,
-                    capture_output=True,
-                )
-                if result.returncode == 0:
-                    activity.logger.info("No changes to deploy")
-                    return True
-
-                site_name = web_data.get("site_name", "Events")
-                commit_msg = f"📅 Update {site_name} - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-                subprocess.run(
-                    ["git", "commit", "-m", commit_msg],
-                    cwd=repo_dir,
-                    check=True,
-                    capture_output=True,
-                )
-
-                auth = GitHubAppAuth(repository_url)
-                access_token = auth.get_access_token()
-
-                authenticated_url = f"https://x-access-token:{access_token}@github.com/{auth.repo_owner}/{auth.repo_name}.git"
-                subprocess.run(
-                    ["git", "remote", "set-url", "origin", authenticated_url],
-                    cwd=repo_dir,
-                    check=True,
-                    capture_output=True,
-                )
-
-                subprocess.run(
-                    ["git", "push", "origin", "main"],
-                    cwd=repo_dir,
-                    check=True,
-                    capture_output=True,
-                )
-                activity.logger.info("Deployed to git! Changes will be live shortly.")
-
-                return True
-
-        except CalledProcessError as e:
-            error_msg = e.stderr.decode("utf-8") if e.stderr else str(e)
-            activity.logger.error(f"Git operation failed: {error_msg}")
-            raise ValueError(f"Failed to deploy to git: {error_msg}")
         except Exception as e:
             activity.logger.error(f"Error during deployment: {e}")
             raise ValueError(f"Failed to deploy to git: {e}")

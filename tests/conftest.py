@@ -108,21 +108,30 @@ def past_date() -> datetime:
 
 
 @pytest.fixture
-def test_breweries_config() -> Dict[str, Any]:
-    """Test breweries configuration."""
+def test_site_config() -> Dict[str, Any]:
+    """Test SiteConfig-shaped configuration loaded by load_site_from_path."""
     return {
-        "breweries": [
+        "key": "test-site",
+        "name": "Test Site",
+        "template": "food-trucks",
+        "timezone": "America/Los_Angeles",
+        "target_repo": "",
+        "generate_description": False,
+        "deploy_subdir": "",
+        "venues": [
             {
                 "key": "test-brewery-1",
                 "name": "Test Brewery 1",
                 "url": "https://example1.com/food-trucks",
+                "source_type": "html",
                 "parser_config": {"test": "config1"},
             },
             {
                 "key": "test-brewery-2",
                 "name": "Test Brewery 2",
                 "url": "https://example2.com/food-trucks",
+                "source_type": "html",
                 "parser_config": {"test": "config2"},
             },
-        ]
+        ],
     }

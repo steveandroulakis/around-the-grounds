@@ -32,33 +32,6 @@ from .utils.timezone_utils import (
     now_in_site_timezone_naive,
 )
 
-def load_brewery_config(config_path: Optional[str] = None) -> List[Venue]:
-    """Load venue configuration from JSON file (reads breweries.json)."""
-    if config_path is None:
-        config_path_obj = Path(__file__).parent / "config" / "breweries.json"
-    else:
-        config_path_obj = Path(config_path)
-
-    if not config_path_obj.exists():
-        raise FileNotFoundError(f"Config file not found: {config_path_obj}")
-
-    with open(config_path_obj, "r") as f:
-        config = json.load(f)
-
-    venues = []
-    for venue_data in config.get("breweries", []):
-        venue = Venue(
-            key=venue_data["key"],
-            name=venue_data["name"],
-            url=venue_data["url"],
-            source_type=venue_data.get("source_type", "html"),
-            parser_config=venue_data.get("parser_config", {}),
-        )
-        venues.append(venue)
-
-    return venues
-
-
 def format_events_output(
     events: List[Event], errors: Optional[List[ScrapingError]] = None
 ) -> str:
@@ -520,21 +493,6 @@ async def scrape_site(site: SiteConfig) -> tuple:
     return events, errors
 
 
-async def scrape_food_trucks(config_path: Optional[str] = None) -> tuple:
-    """Backward-compat wrapper: scrape using breweries.json or a given path."""
-    venues = load_brewery_config(config_path)
-
-    if not venues:
-        print("No venues configured.")
-        return [], []
-
-    coordinator = ScraperCoordinator()
-    events = await coordinator.scrape_all(venues)
-    errors = coordinator.get_errors()
-
-    return events, errors
-
-
 async def async_main(args: argparse.Namespace) -> int:
     """Async main entry point."""
     site_key: Optional[str] = getattr(args, "site", None)
@@ -544,21 +502,12 @@ async def async_main(args: argparse.Namespace) -> int:
     sites: List[SiteConfig] = []
 
     if config_path:
-        # Legacy --config path: load a single site or fall back to old breweries.json
-        config_p = Path(config_path)
+        # --config path: load a SiteConfig from the given path
         try:
-            site = load_site_from_path(config_p)
-            sites = [site]
-        except (FileNotFoundError, KeyError):
-            # It's a breweries.json style config — wrap it
-            events, errors = await scrape_food_trucks(config_path)
-            output = format_events_output(events, errors)
-            print(output)
-            if args.deploy and events:
-                await deploy_to_web(events, errors, getattr(args, "git_repo", None))
-            if args.preview and events:
-                await preview_locally(events, errors)
-            return 0 if not errors else (1 if not events else 2)
+            sites = [load_site_from_path(Path(config_path))]
+        except (FileNotFoundError, KeyError) as e:
+            print(f"❌ Config file invalid or not found: {e}")
+            return 1
     elif site_key == "all":
         sites = load_all_sites()
         if not sites:
@@ -571,19 +520,12 @@ async def async_main(args: argparse.Namespace) -> int:
             print(f"❌ Site '{site_key}' not found in config/sites/")
             return 1
     else:
-        # Default: ballard-food-trucks (backward compat)
+        # Default: ballard-food-trucks
         try:
             sites = [load_site_config("ballard-food-trucks")]
         except FileNotFoundError:
-            # Fall back to old breweries.json
-            events, errors = await scrape_food_trucks()
-            output = format_events_output(events, errors)
-            print(output)
-            if args.deploy and events:
-                await deploy_to_web(events, errors, getattr(args, "git_repo", None))
-            if args.preview and events:
-                await preview_locally(events, errors)
-            return 0 if not errors else (1 if not events else 2)
+            print("❌ Default site 'ballard-food-trucks' not found")
+            return 1
 
     overall_exit = 0
     for site in sites:
