@@ -3,6 +3,7 @@
 import base64
 import logging
 import os
+import re
 import time
 from typing import Tuple
 
@@ -10,6 +11,11 @@ import jwt
 import requests  # type: ignore
 
 logger = logging.getLogger(__name__)
+
+
+def _sanitize_url(url: str) -> str:
+    """Replace token in authenticated git URL with '***' for safe logging."""
+    return re.sub(r"x-access-token:[^@]+@", "x-access-token:***@", url)
 
 
 class GitHubAppAuth:
@@ -135,8 +141,9 @@ class GitHubAppAuth:
             logger.info("Git authentication configured successfully")
 
         except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to configure git authentication: {e}")
-            raise ValueError(f"Failed to configure git authentication: {e}")
+            msg = _sanitize_url(str(e))
+            logger.error("Failed to configure git authentication: %s", msg)
+            raise ValueError(f"Failed to configure git authentication: {msg}")
 
 
 def setup_github_auth(repository_url: str) -> None:

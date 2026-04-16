@@ -24,6 +24,7 @@ from .config.loader import load_all_sites, load_site_config, load_site_from_path
 from .config.settings import get_git_repository_url
 from .models import Venue, Event, SiteConfig
 from .scrapers.coordinator import ScraperCoordinator, ScrapingError
+from .utils.github_auth import _sanitize_url
 from .utils.haiku_generator import HaikuGenerator
 from .utils.timezone_utils import (
     format_time_with_site_timezone,
@@ -422,8 +423,8 @@ def _deploy_with_github_auth(
             return True
 
     except subprocess.CalledProcessError as e:
-        error_msg = e.stderr.decode("utf-8") if e.stderr else str(e)
-        print(f"❌ Git operation failed: {error_msg}")
+        raw = e.stderr.decode("utf-8") if e.stderr else str(e)
+        print(f"❌ Git operation failed: {_sanitize_url(raw)}")
         return False
     except Exception as e:
         print(f"❌ Error during deployment: {e}")
