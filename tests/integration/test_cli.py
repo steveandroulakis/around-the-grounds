@@ -1,6 +1,8 @@
 """Integration tests for CLI functionality."""
 
+import asyncio
 import json
+import os
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -9,8 +11,14 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from around_the_grounds.main import format_events_output, main
+from around_the_grounds.main import (
+    _deploy_with_github_auth,
+    format_events_output,
+    main,
+    preview_locally,
+)
 from around_the_grounds.models import Event, Venue
+from around_the_grounds.models.site import SiteConfig
 from around_the_grounds.scrapers.coordinator import ScrapingError
 
 
@@ -302,3 +310,82 @@ class TestCLI:
             # Note: This would require actual parser implementations
             # that can handle the test URLs from the config
             # For now, this documents the integration test structure
+
+
+class TestTemplatePathTraversalGuard:
+    """Tests for the path traversal guard in _deploy_with_github_auth and preview_locally."""
+
+    def test_deploy_rejects_traversal_template(
+        self, tmp_path: Path, capsys: Any
+    ) -> None:
+        """_deploy_with_github_auth returns False and prints an error for traversal names."""
+        (tmp_path / "public_templates").mkdir()
+
+        original_cwd = Path.cwd()
+        try:
+            os.chdir(tmp_path)
+            result = _deploy_with_github_auth(
+                web_data={},
+                repository_url="https://github.com/user/repo.git",
+                template_dir_name="../escape_target",
+            )
+        finally:
+            os.chdir(original_cwd)
+
+        assert result is False
+        captured = capsys.readouterr()
+        assert "Template path escapes" in captured.out
+
+    def test_deploy_accepts_valid_template(self, tmp_path: Path, capsys: Any) -> None:
+        """_deploy_with_github_auth does not trigger the traversal guard for a valid name."""
+        (tmp_path / "public_templates" / "food-trucks").mkdir(parents=True)
+
+        original_cwd = Path.cwd()
+        try:
+            os.chdir(tmp_path)
+            # GitHub auth will fail (no credentials), but the guard must not fire.
+            _deploy_with_github_auth(
+                web_data={},
+                repository_url="https://github.com/user/repo.git",
+                template_dir_name="food-trucks",
+            )
+        finally:
+            os.chdir(original_cwd)
+
+        captured = capsys.readouterr()
+        assert "Template path escapes" not in captured.out
+
+    def test_preview_rejects_traversal_template(
+        self, tmp_path: Path, capsys: Any
+    ) -> None:
+        """preview_locally returns False when the template name escapes public_templates/."""
+        (tmp_path / "public_templates").mkdir()
+
+        site = SiteConfig(
+            key="test",
+            name="Test",
+            template="../escape_preview",
+            timezone="America/New_York",
+            venues=[],
+        )
+
+        original_cwd = Path.cwd()
+        try:
+            os.chdir(tmp_path)
+
+            async def _run() -> bool:
+                with patch(
+                    "around_the_grounds.main.generate_web_data",
+                    new_callable=AsyncMock,
+                ) as mock_gen:
+                    mock_gen.return_value = {}
+                    return await preview_locally(events=[], site=site)
+
+            result = asyncio.run(_run())
+        finally:
+            os.chdir(original_cwd)
+
+        # ValueError is caught inside preview_locally; it returns False.
+        assert result is False
+        captured = capsys.readouterr()
+        assert "Template path escapes" in captured.out
