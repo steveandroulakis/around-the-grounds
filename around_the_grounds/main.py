@@ -32,6 +32,9 @@ from .utils.timezone_utils import (
     now_in_site_timezone_naive,
 )
 
+logger = logging.getLogger(__name__)
+
+
 def format_events_output(
     events: List[Event], errors: Optional[List[ScrapingError]] = None
 ) -> str:
@@ -110,8 +113,6 @@ async def _generate_description_for_today(
     if not site.generate_description:
         return None
 
-    logger = logging.getLogger(__name__)
-
     if not os.environ.get("ANTHROPIC_API_KEY"):
         logger.warning(
             "ANTHROPIC_API_KEY not set — skipping haiku generation. "
@@ -137,9 +138,7 @@ async def _generate_description_for_today(
         return haiku
 
     except Exception as e:
-        logger.warning(
-            f"Failed to generate description, continuing without it: {e}"
-        )
+        logger.warning("Haiku generation failed: %s", e, exc_info=True)
         return None
 
 
@@ -238,8 +237,8 @@ async def generate_web_data(
                 description = await haiku_generator.generate_haiku(
                     today_local, today_events, max_retries=2
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Haiku generation failed: %s", e, exc_info=True)
 
     return {
         "events": web_events,
