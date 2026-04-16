@@ -410,29 +410,31 @@ class TestUrbanFamilyParser:
         assert event_by_date[11].title == "Good Eats"
         assert event_by_date[11].date == datetime(2025, 7, 11)
 
-    def test_extract_food_truck_name_from_title(
+    @pytest.mark.asyncio
+    async def test_extract_food_truck_name_from_title(
         self, parser: UrbanFamilyParser
     ) -> None:
         """Test food truck name extraction from event title."""
         # Test explicit name in title
         item1 = {"eventTitle": "FOOD TRUCK - Awesome Tacos"}
-        result, ai_generated = parser._extract_food_truck_name(item1)
+        result, ai_generated = await parser._extract_food_truck_name(item1)
         assert result == "Awesome Tacos"
         assert not ai_generated
 
         # Test title that's not just "FOOD TRUCK"
         item2 = {"eventTitle": "Special Event - Pizza Night"}
-        result, ai_generated = parser._extract_food_truck_name(item2)
+        result, ai_generated = await parser._extract_food_truck_name(item2)
         assert result == "Special Event - Pizza Night"
         assert not ai_generated
 
         # Test generic "FOOD TRUCK" title (should return None for this test)
         item3 = {"eventTitle": "FOOD TRUCK"}
-        result, ai_generated = parser._extract_food_truck_name(item3)
+        result, ai_generated = await parser._extract_food_truck_name(item3)
         assert result is None
         assert not ai_generated
 
-    def test_extract_food_truck_name_from_image_url(
+    @pytest.mark.asyncio
+    async def test_extract_food_truck_name_from_image_url(
         self, parser: UrbanFamilyParser
     ) -> None:
         """Test food truck name extraction from image URL."""
@@ -440,11 +442,12 @@ class TestUrbanFamilyParser:
             "eventTitle": "FOOD TRUCK",
             "eventImage": "https://hivey-1.s3.us-east-1.amazonaws.com/uploads/awesome_tacos_logo.jpg",
         }
-        result, ai_generated = parser._extract_food_truck_name(item)
+        result, ai_generated = await parser._extract_food_truck_name(item)
         assert result == "Awesome Tacos"  # Improved logic removes "Logo" suffix
         assert not ai_generated
 
-    def test_extract_food_truck_name_no_valid_name(
+    @pytest.mark.asyncio
+    async def test_extract_food_truck_name_no_valid_name(
         self, parser: UrbanFamilyParser
     ) -> None:
         """Test when no valid food truck name can be extracted."""
@@ -452,7 +455,7 @@ class TestUrbanFamilyParser:
             "eventTitle": "FOOD TRUCK",
             "eventImage": "https://example.com/logo.png",
         }
-        result, ai_generated = parser._extract_food_truck_name(item)
+        result, ai_generated = await parser._extract_food_truck_name(item)
         assert result is None
         assert not ai_generated
 
@@ -561,7 +564,8 @@ class TestUrbanFamilyParser:
         assert start_time is None
         assert end_time is None
 
-    def test_parse_json_data_dict_format(self, parser: UrbanFamilyParser) -> None:
+    @pytest.mark.asyncio
+    async def test_parse_json_data_dict_format(self, parser: UrbanFamilyParser) -> None:
         """Test parsing JSON data in dict format with 'events' key."""
         data = {
             "events": [
@@ -579,18 +583,21 @@ class TestUrbanFamilyParser:
             ]
         }
 
-        events = parser._parse_json_data(data)
+        events = await parser._parse_json_data(data)
         assert len(events) == 1
         assert events[0].title == "Test Truck"
 
-    def test_parse_json_data_invalid_structure(self, parser: UrbanFamilyParser) -> None:
+    @pytest.mark.asyncio
+    async def test_parse_json_data_invalid_structure(
+        self, parser: UrbanFamilyParser
+    ) -> None:
         """Test parsing invalid JSON data structure."""
         # String data should be handled gracefully (returns empty list)
-        events = parser._parse_json_data("invalid data")
+        events = await parser._parse_json_data("invalid data")
         assert events == []
 
         # Number data should be handled gracefully (returns empty list)
-        events = parser._parse_json_data(123)
+        events = await parser._parse_json_data(123)
         assert events == []
 
     @pytest.mark.asyncio
