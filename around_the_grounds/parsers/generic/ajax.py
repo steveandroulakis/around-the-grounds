@@ -7,7 +7,7 @@ api_url is not provided.
 
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import aiohttp
@@ -166,9 +166,7 @@ class AjaxParser(BaseParser):
         self, params: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Replace {{today_iso}} and {{end_date_iso}} with actual UTC dates."""
-        from datetime import timedelta
-
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         end = now + timedelta(days=7)
         today_iso = now.strftime("%Y-%m-%dT00:00:00.000Z")
         end_iso = end.strftime("%Y-%m-%dT23:59:59.999Z")
