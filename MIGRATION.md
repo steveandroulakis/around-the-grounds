@@ -114,8 +114,6 @@ F-B. **`scrape_single_venue` does not pass timezone.** The CLI's `scrape_site` c
 
 4. **The GCP Artifact Registry GitHub Actions workflow is unchanged.** His Docker build/push pipeline continues to work.
 
-5. **`.kittify/` and `kitty-specs/` are unchanged.** His spec-driven workflow is fully preserved.
-
 ### What changes that's worth knowing about
 
 1. **`config/sites/ballard-food-trucks.json` gets overwritten by Steve's version.** It now points at `steveandroulakis/ballard-food-trucks`, uses `deploy_subdir: "public"`, and includes Steve's full 9-venue list (adds `channel-marker`, `lucky-envelope`, and updates `urban-family`'s URL to the WordPress Sugar Calendar primary source). If jredding uses `ballard-food-trucks` as a "control" site to verify his changes don't break Ballard's scrape, he has three options:
