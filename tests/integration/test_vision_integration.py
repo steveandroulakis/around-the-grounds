@@ -31,7 +31,7 @@ class TestVisionIntegration:
             "applicantVendors": [],
         }
 
-        result, ai_generated = parser._extract_food_truck_name(test_item)
+        result, ai_generated = await parser._extract_food_truck_name(test_item)
         assert result == "Georgia's"
         assert ai_generated
         mock_vision.assert_called_once_with("https://example.com/logo_main_updated.jpg")
@@ -53,7 +53,7 @@ class TestVisionIntegration:
             "applicantVendors": [],
         }
 
-        result, ai_generated = parser._extract_food_truck_name(test_item)
+        result, ai_generated = await parser._extract_food_truck_name(test_item)
         assert result == "Marination"
         assert not ai_generated
         # Vision analysis should not be called when text extraction succeeds
@@ -75,7 +75,7 @@ class TestVisionIntegration:
             "applicantVendors": [],
         }
 
-        result, ai_generated = parser._extract_food_truck_name(test_item)
+        result, ai_generated = await parser._extract_food_truck_name(test_item)
         assert result is None
         assert not ai_generated
         mock_vision.assert_called_once_with("https://example.com/logo_main_updated.jpg")
@@ -90,7 +90,7 @@ class TestVisionIntegration:
         # Test item with no image - should not call vision analysis
         test_item = {"eventTitle": "FOOD TRUCK", "applicantVendors": []}
 
-        result, ai_generated = parser._extract_food_truck_name(test_item)
+        result, ai_generated = await parser._extract_food_truck_name(test_item)
         assert result is None
         assert not ai_generated
         # Vision analysis should not be called when no image is available
@@ -113,7 +113,7 @@ class TestVisionIntegration:
         }
 
         # Should handle exception gracefully and fall back to TBD
-        result, ai_generated = parser._extract_food_truck_name(test_item)
+        result, ai_generated = await parser._extract_food_truck_name(test_item)
         assert result is None
         assert not ai_generated
         mock_vision.assert_called_once_with("https://example.com/logo_main_updated.jpg")
@@ -135,7 +135,7 @@ class TestVisionIntegration:
             "applicantVendors": [],
         }
 
-        result, ai_generated = parser._extract_food_truck_name(test_item)
+        result, ai_generated = await parser._extract_food_truck_name(test_item)
         assert result == "Vision Extracted Name"
         assert ai_generated
         mock_vision.assert_called_once_with("https://example.com/logo_updated_main.jpg")
@@ -157,7 +157,7 @@ class TestVisionIntegration:
             "applicantVendors": [],
         }
 
-        result, ai_generated = parser._extract_food_truck_name(test_item)
+        result, ai_generated = await parser._extract_food_truck_name(test_item)
         # Should extract from filename, not use vision
         assert result == "Georgias Greek Food"
         assert not ai_generated

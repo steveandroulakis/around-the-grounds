@@ -397,7 +397,7 @@ class UrbanFamilyParser(BaseParser):
                     "Received JSON data with "
                     f"{len(data) if isinstance(data, list) else 'unknown'} items"
                 )
-                events = self._parse_json_data(data)
+                events = await self._parse_json_data(data)
                 valid_events = self.filter_valid_events(events)
                 self.logger.info(
                     f"Parsed {len(valid_events)} valid events from {len(events)} total"
@@ -411,53 +411,41 @@ class UrbanFamilyParser(BaseParser):
                 raise
             raise ValueError(f"Failed to parse Urban Family API: {str(e)}")
 
-    def _parse_json_data(self, data: Any) -> List[Event]:
+    async def _parse_json_data(self, data: Any) -> List[Event]:
         """
         Parse JSON data from the Urban Family API into Event objects.
         """
-        events = []
-
         try:
-            # Handle different possible JSON structures
+            # Collect items from the various possible JSON shapes
             if isinstance(data, list):
-                # If data is a list of events
-                for item in data:
-                    event = self._parse_event_item(item)
-                    if event:
-                        events.append(event)
+                items: List[Any] = data
             elif isinstance(data, dict):
-                # If data is a dict, look for events in common keys
                 if "events" in data:
-                    for item in data["events"]:
-                        event = self._parse_event_item(item)
-                        if event:
-                            events.append(event)
+                    items = data["events"]
                 elif "data" in data:
-                    for item in data["data"]:
-                        event = self._parse_event_item(item)
-                        if event:
-                            events.append(event)
+                    items = data["data"]
                 else:
-                    # Try to parse the entire dict as a single event
-                    event = self._parse_event_item(data)
-                    if event:
-                        events.append(event)
+                    items = [data]
             else:
                 self.logger.warning(f"Unexpected data type: {type(data)}")
+                return []
+
+            results = await asyncio.gather(
+                *[self._parse_event_item(item) for item in items]
+            )
+            return [e for e in results if e is not None]
 
         except Exception as e:
             self.logger.error(f"Error parsing JSON data: {str(e)}")
             raise ValueError(f"Failed to parse event data: {str(e)}")
 
-        return events
-
-    def _parse_event_item(self, item: Dict[str, Any]) -> Optional[Event]:
+    async def _parse_event_item(self, item: Dict[str, Any]) -> Optional[Event]:
         """
         Parse a single event item from the JSON data.
         """
         try:
             # Extract food truck name from various possible fields
-            food_truck_name, ai_generated = self._extract_food_truck_name(item)
+            food_truck_name, ai_generated = await self._extract_food_truck_name(item)
             if not food_truck_name:
                 # For Urban Family, many events don't have specific vendor names yet
                 # Return "TBD" instead of skipping to show the time slot is reserved
@@ -491,7 +479,7 @@ class UrbanFamilyParser(BaseParser):
             self.logger.debug(f"Error parsing event item: {str(e)}, item: {item}")
             return None
 
-    def _extract_food_truck_name(
+    async def _extract_food_truck_name(
         self, item: Dict[str, Any]
     ) -> Tuple[Optional[str], bool]:
         """
@@ -522,29 +510,13 @@ class UrbanFamilyParser(BaseParser):
                         f"Cached vision result for {image_url} was None, retrying vision analysis"
                     )
                     # Don't return early - retry vision analysis for failed cache entries
-                    # This helps recover from temporary failures
 
             self.logger.debug(f"Attempting vision analysis for image: {image_url}")
 
-            # Use asyncio to run the async vision analysis
             try:
-                # Try to get the running event loop first
-                try:
-                    asyncio.get_running_loop()
-                    # If there's already a running loop, we need to use a different approach
-                    import concurrent.futures
-
-                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                        future = executor.submit(
-                            asyncio.run,
-                            self.vision_analyzer.analyze_food_truck_image(image_url),
-                        )
-                        vision_name = future.result(timeout=30)
-                except RuntimeError:
-                    # No running event loop, safe to create a new one
-                    vision_name = asyncio.run(
-                        self.vision_analyzer.analyze_food_truck_image(image_url)
-                    )
+                vision_name = await self.vision_analyzer.analyze_food_truck_image(
+                    image_url
+                )
 
                 # Cache the result (even if None)
                 self._vision_cache[image_url] = vision_name
@@ -560,8 +532,6 @@ class UrbanFamilyParser(BaseParser):
                     )
             except Exception as e:
                 self.logger.warning(f"Vision analysis failed for {image_url}: {str(e)}")
-                # Don't cache failures permanently - allow retries on subsequent runs
-                # Only cache successful results or after multiple failures
 
         # Return None if no valid name found
         return None, False
