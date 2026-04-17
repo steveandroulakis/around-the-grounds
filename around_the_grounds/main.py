@@ -297,6 +297,26 @@ async def deploy_to_web(
         return False
 
 
+def _resolve_template_dir(template_dir_name: str) -> Path:
+    """Return the template directory path for *template_dir_name*.
+
+    Raises ValueError if the name would escape ``public_templates/`` via path
+    traversal (e.g. ``../../etc``).  Falls back to the legacy ``public_template``
+    directory when the per-template subdirectory does not exist.
+    """
+    cwd = Path.cwd()
+    multi = cwd / "public_templates" / template_dir_name
+    # Validate before the exists() check so a crafted name is rejected even
+    # when the traversal target does not exist on disk.
+    templates_root = (cwd / "public_templates").resolve()
+    resolved = multi.resolve()
+    if not str(resolved).startswith(str(templates_root) + os.sep) and resolved != templates_root:
+        raise ValueError(
+            f"Template path escapes public_templates/: {template_dir_name!r}"
+        )
+    return multi if multi.exists() else cwd / "public_template"
+
+
 def _deploy_with_github_auth(
     web_data: dict,
     repository_url: str,
@@ -322,10 +342,7 @@ def _deploy_with_github_auth(
     try:
         print("🔐 Using GitHub App authentication for deployment...")
 
-        # Resolve template directory — try multi-template path first, fall back to legacy.
-        public_templates_dir = Path.cwd() / "public_templates" / template_dir_name
-        if not public_templates_dir.exists():
-            public_templates_dir = Path.cwd() / "public_template"
+        public_templates_dir = _resolve_template_dir(template_dir_name)
 
         # Mint GitHub App access token once and build the authenticated URL upfront
         # so it can be used for both clone (subdir mode) and push (both modes).
@@ -450,9 +467,7 @@ async def preview_locally(
         else:
             template_dir_name = "food-trucks"
 
-        public_templates_dir = Path.cwd() / "public_templates" / template_dir_name
-        if not public_templates_dir.exists():
-            public_templates_dir = Path.cwd() / "public_template"
+        public_templates_dir = _resolve_template_dir(template_dir_name)
 
         local_public_dir = Path.cwd() / "public"
 
