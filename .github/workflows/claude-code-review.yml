@@ -12,6 +12,9 @@ on:
 
 jobs:
   claude-review:
+    # Guard against forks/mirrors (e.g. jredding's around-the-grounds-brooklyn)
+    # where CLAUDE_CODE_OAUTH_TOKEN is not configured.
+    if: github.repository == 'steveandroulakis/around-the-grounds'
     # Optional: Filter by PR author
     # if: |
     #   github.event.pull_request.user.login == 'external-contributor' ||
