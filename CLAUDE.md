@@ -22,7 +22,6 @@ Key features:
 - **Temporal workflow integration** with cloud deployment support (local, Temporal Cloud, custom servers)
 - **Extensive test suite** with 499 tests covering unit, integration, vision analysis, haiku generation, weather, and error scenarios
 - **Modern Python tooling** with uv for dependency management and packaging
-- **Spec-driven development tooling** via `.kittify/` and `kitty-specs/` (jredding's workflow) — these affect how features are designed and tracked, not runtime behavior
 
 ## Development Commands
 
@@ -249,9 +248,6 @@ tests/                             # Comprehensive test suite (499 tests)
 ├── integration/                   # End-to-end integration tests
 ├── temporal/                      # Temporal workflow tests
 └── test_error_handling.py         # Comprehensive error scenario tests
-
-.kittify/                          # Spec-driven development workflow tooling (jredding's)
-kitty-specs/                       # Executed specifications (dev-time only, no runtime impact)
 ```
 
 ### Key Components
@@ -288,15 +284,6 @@ kitty-specs/                       # Executed specifications (dev-time only, no 
 | `"public"` (or any non-empty string) | **Subdir mode** | `git clone` target → copy template into `repo/<subdir>/` → `git add <subdir>/` → no-op short-circuit → normal `push` `HEAD:main` | Target repo has files at root that must be preserved (e.g. a Vercel project whose build output is scoped to `public/`). Used by `ballard-food-trucks`. Preserves history. |
 
 **Ballard-specific:** `config/sites/ballard-food-trucks.json` has `deploy_subdir: "public"` and `target_repo: "https://github.com/steveandroulakis/ballard-food-trucks.git"`. A Vercel project watches that repo's `public/` folder and redeploys on every push. The merge must preserve this behavior — changing `deploy_subdir` to `""` would destroy the target repo's structure on first deploy.
-
-## Spec-Driven Tooling (`.kittify/` + `kitty-specs/`)
-
-These directories are jredding's spec-driven development workflow — they drive how features are designed, specified, and tracked at development time, not at runtime.
-
-- **`.kittify/`**: Mission templates, command templates, constitution, and task scripts for feature planning/implementation workflows. Includes generators for docs, research, and software-dev missions.
-- **`kitty-specs/`**: The actual numbered specs (001, 004, 005, 006, 008, 009, 010) that produced the multi-site refactor. Each spec has a `spec.md`, `plan.md`, `tasks.md`, and tracked work-package files.
-
-**Runtime impact: none.** No file in these directories is imported by `around_the_grounds/` code, loaded by tests, or referenced by any CLI, workflow, or parser. They are safe to ignore if you don't use the spec-kit workflow; they are not safe to delete if you (or jredding) actively use spec-kit, because future features may reference them. Treat them as jredding's engineering-process artifacts.
 
 ### Core Dependencies
 
