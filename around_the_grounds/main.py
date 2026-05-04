@@ -394,6 +394,25 @@ def _deploy_with_github_auth(
             shutil.copytree(public_templates_dir, target_public_dir, dirs_exist_ok=True)
 
             json_path = target_public_dir / "data.json"
+
+            # If the prior data.json has the same events, carry its volatile
+            # fields (`updated`, `haiku`) forward so the file stays
+            # byte-identical and the no-op short-circuit below skips the
+            # commit. Without this, `updated=datetime.now()` and the
+            # AI-generated haiku change every run and force a commit even
+            # when nothing meaningful changed.
+            if json_path.exists():
+                try:
+                    with open(json_path) as f:
+                        prior = json.load(f)
+                    if prior.get("events") == web_data.get("events"):
+                        if "updated" in prior:
+                            web_data["updated"] = prior["updated"]
+                        if "haiku" in prior:
+                            web_data["haiku"] = prior["haiku"]
+                except (json.JSONDecodeError, OSError):
+                    pass
+
             with open(json_path, "w") as f:
                 json.dump(web_data, f, indent=2)
 
