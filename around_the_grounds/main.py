@@ -223,27 +223,48 @@ async def generate_web_data(
 
     unique_error_messages = list(dict.fromkeys(error_messages or []))
 
-    # Generate description if site opts in
-    description = None
-    if site:
-        description = await _generate_description_for_today(events, site)
-    else:
-        # Legacy path: try to generate haiku without site context
+    # Reuse the prior run's haiku/timestamp when the event set is unchanged.
+    # Skips an Anthropic API call on stable days and keeps data.json byte-
+    # identical so the deploy's no-op short-circuit can skip the commit.
+    # Only the site-aware path caches; the legacy no-site path stays pure
+    # so unit tests don't accumulate hidden state.
+    cache_path: Optional[Path] = (
+        Path.cwd() / ".cache" / "around-the-grounds" / f"{site_key}.json"
+        if site is not None
+        else None
+    )
+    description: Optional[str] = None
+    updated: Optional[str] = None
+    if cache_path is not None and cache_path.exists():
         try:
-            today_local = now_in_site_timezone_naive(site_tz)
-            today = today_local.date()
-            today_events = [e for e in events if e.date.date() == today]
-            if today_events:
-                haiku_generator = HaikuGenerator()
-                description = await haiku_generator.generate_haiku(
-                    today_local, today_events, max_retries=2
-                )
-        except Exception as e:
-            logger.warning("Haiku generation failed: %s", e, exc_info=True)
+            prior = json.loads(cache_path.read_text())
+            if prior.get("events") == web_events:
+                description = prior.get("haiku")
+                updated = prior.get("updated")
+        except (json.JSONDecodeError, OSError):
+            pass
 
-    return {
+    if updated is None:
+        if site:
+            description = await _generate_description_for_today(events, site)
+        else:
+            # Legacy path: try to generate haiku without site context
+            try:
+                today_local = now_in_site_timezone_naive(site_tz)
+                today = today_local.date()
+                today_events = [e for e in events if e.date.date() == today]
+                if today_events:
+                    haiku_generator = HaikuGenerator()
+                    description = await haiku_generator.generate_haiku(
+                        today_local, today_events, max_retries=2
+                    )
+            except Exception as e:
+                logger.warning("Haiku generation failed: %s", e, exc_info=True)
+        updated = datetime.now(timezone.utc).isoformat()
+
+    web_data = {
         "events": web_events,
-        "updated": datetime.now(timezone.utc).isoformat(),
+        "updated": updated,
         "total_events": len(web_events),
         "site_name": site_name,
         "site_key": site_key,
@@ -253,6 +274,15 @@ async def generate_web_data(
         "errors": unique_error_messages,
         "haiku": description,
     }
+
+    if cache_path is not None:
+        try:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            cache_path.write_text(json.dumps(web_data))
+        except OSError:
+            pass
+
+    return web_data
 
 
 async def deploy_to_web(
