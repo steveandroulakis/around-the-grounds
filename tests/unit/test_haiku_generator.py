@@ -316,4 +316,4 @@ class TestHaikuGenerator:
 
         call_args = mock_create.call_args
         assert call_args.kwargs["model"] == "claude-sonnet-4-6"
-        assert call_args.kwargs["temperature"] == 0.85
+        assert call_args.kwargs["temperature"] == 0.7

@@ -207,7 +207,12 @@ class HaikuGenerator:
             message = await self.client.messages.create(
                 model="claude-sonnet-4-6",
                 max_tokens=150,
-                temperature=0.85,
+                # 0.7 (was 0.85): the prompt now carries detailed grounding rules and
+                # eight weather-labeled exemplars, so a slightly lower temperature tightens
+                # adherence (fewer 5-7-5 overruns and flat comma-list closes) at a small cost
+                # to surprise. Production emits one haiku/day, so per-haiku reliability matters
+                # more than cross-sample variety. See HAIKU-IMPROVEMENTS.md (Round 9).
+                temperature=0.7,
                 messages=[
                     {
                         "role": "user",

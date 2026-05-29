@@ -16,61 +16,84 @@ Create a haiku (5-7-5 syllable structure) that captures the essence of today's f
 3. Evoke the atmosphere of gathering at local breweries and food spots
 4. Balance concrete sensory details with weather-driven imagery
 
-Stay faithful to what's described — do not invent or embellish sensory details beyond what the data supports. If it's not raining, don't say "damp." If there's no fog, don't say "misty." If humidity is moderate, don't exaggerate it. Only describe conditions that are clearly present in the weather provided. Don't invent what people are wearing or other details not in the data.
+Read the temperature and let it set the mood correctly. Calibrate to the Pacific Northwest, where evenings run cool and locals feel warmth keenly. Convey each band through the air, the food, the surfaces, and how people gather — NOT through clothing — and get the degree right in both directions: don't overstate (a cool day is not cold, a mild day is not warm) and don't understate (a 71°F evening is warm, not merely "mild").
+- below ~45°F → cold (biting air, breath fogging, steam rising off the plates)
+- ~45–55°F → chilly / crisp (a warm glass welcome in the hands) — reserve "needing/seeking heat" imagery for this band and colder
+- ~55–63°F → cool / mild (comfortable, easy air — neither warmth-seeking nor sweating)
+- ~63–72°F → warm and pleasant (no chill to drive anyone indoors; people stay out late, the air easy) — a 65°F+ Seattle evening reads as a genuinely warm night, NOT cool
+- above ~72°F → hot (sun-warmed pavement, seeking shade — only here is a cold glass hot enough to bead or sweat)
 
-When precipitation is described as a "chance" with a percentage, treat it as a possibility — not a certainty. Capture the anticipation or threat of weather rather than stating it as fact (e.g. "skies threaten rain" or "clouds may break" rather than "rain soaks the line").
+Stay faithful to what's described — do not invent or embellish sensory details beyond what the data supports. If it's not raining, don't say "damp." If there's no fog, don't say "misty" or "mist" (drizzle and humidity are not fog). If humidity is moderate, don't exaggerate it. Match the temperature: don't call a warm evening "cool" or "cold," and don't call a cold one "balmy" — use the feel-anchor above. Only describe conditions that are clearly present in the weather provided. Don't invent what people are wearing — no coats, sweaters, or "shirtsleeves"; convey temperature through the air, the food, the surfaces, and how people gather instead. Don't invent condensation — no "sweating," "beading," or "fogged" glasses — unless it is genuinely hot (a cold drink in warm air); at cool, mild, or dry conditions, glasses do not sweat. Respect the wind reading: when winds are calm, nothing "curls," "drifts," or "lifts sharp" on a breeze (steam can still rise straight up); when it is windy or breezy, let that motion into the scene. Don't invent colors, smoke, or motion the data doesn't support.
 
-Use the food truck's actual name — don't riff on or pun on the name.
+When precipitation is described as a "chance" with a percentage, treat it as a possibility — not a certainty. Capture the anticipation or threat of weather rather than stating it as fact (e.g. "skies threaten rain" or "clouds may break" rather than "rain soaks the line"). But when rain or drizzle IS present (not a chance), it is actually falling — don't imply it is "held at bay," "held out," or kept off; the scene is out in the wet.
+
+Use the food truck's full actual name exactly as given — don't shorten it ("Matt" for "Where Ya At Matt", "BBQ" for "Woodshop BBQ"), don't omit it, and don't riff or pun on it. Name the venue too; its common short name (e.g. "Stoup" for "Stoup Brewing") is fine.
 
 Avoid starting with the most obvious weather description (e.g. don't just say "gray skies" for overcast). Find unexpected angles — how the weather affects sounds, smells, textures, people's behavior, or the food itself.
+
+Open on ONE specific, concrete detail — a single sound, smell, texture, gesture, dish, or play of light — not a stock scene-setting phrase. Avoid formulaic openers like "Warm dusk, doors propped wide."
+
+The THIRD line especially must be a single flowing image or action with a verb — NOT two stacked weather descriptors joined by a comma. "the pint pours, still warm" or "warm bowls cut the cold" (good, verb-driven) beat "cool air, easy night" or "breezy pints, inside" (flat lists). When the weather is calm and low-drama, find the closing image in the food, a gesture, or the crowd — not in more weather adjectives.
+
+Keep any proper name (the truck or the venue) intact on a single line — never split a name across two lines (e.g. don't break "Lucky Envelope" into "Lucky" / "Envelope"). But don't cram the truck and the venue onto the SAME line either: if "[Truck] at [Venue]" would overrun that line's syllable count, place the truck and the venue on different lines, so at least one line stays free for a concrete weather image that carries the temperature feel. And honor the stated time of day: an Afternoon scene is in daylight — don't call it "dusk" or "night"; reserve those for Evening.
 
 The haiku should feel authentic to the Pacific Northwest experience and celebrate the diversity of street food culture. Avoid being overly literal - aim for evocative, poetic language that honors the traditional haiku form.
 
 CRITICAL FORMATTING REQUIREMENTS:
+- Hold the 5-7-5 syllable shape; count the syllables in the truck and venue names too (a long name like "Now Make Me A Sandwich" can fill most of a line on its own). If a name is long, give it a line of its own rather than padding another line past its count, and read each line's syllables before finalizing. When the truck's name is long, lead the FIRST line with it (as several examples do) so the weather image isn't crammed beside it — don't stack the long name AND a full weather phrase on the same line
 - The haiku MUST be exactly 3 lines of text
+- The third (final) line must be ONE uninterrupted image or action — NO comma in it. Good closes: "warms hands at Obec", "Bale Breaker pints glow", "Wheelie Pop stays late", "warm bowls cut the cold". Never close on two descriptors joined by a comma ("cold air, steam rising", "cool air, easy night")
 - Each line must contain actual words, not just emojis
 - The haiku MUST start with an emoji at the BEGINNING of the first line AND end with an emoji at the END of the third line (inline with the text)
 - Do NOT put emojis on their own separate lines
-- Good examples:
+- Good examples (each is shown with the weather it was written for — study how the temperature
+  feel, sky, wind, and time of day all land correctly, how names stay whole, and how each line
+  carries a distinct concrete image):
 
-🌧️ Spring rain has moods low—
-Plaza Garcia's warmth glows
-at Obec's wood door 🍺
+[39°F, foggy, calm winds — afternoon]
+🌫️ Fog holds Reuben's still—
+Kaosamai Thai steam lifts straight,
+warm bowls cut the cold 🍜
 
-☀️ Tacos sizzle bright
-at Stoup beneath golden rays,
-summer haze and hops 🍺
+[44°F, moderate rain, windy — afternoon]
+🌧️ Rain lashes the lot—
+Now Make Me A Sandwich waits,
+Stoup's pint cuts the cold 🍺
 
-🍖 Brisket smoke and hops—
-Johnson's plates at Stoup's long pour,
-IPAs run cold 🍺
+[47°F, chance of rain showers, breezy — afternoon]
+🌂 Breezy skies threaten—
+Where Ya At Matt's roux warms hands
+at Stoup's afternoon 🍺
 
-☁️ Where Ya At Matt's spice
-cuts the soft gray afternoon—
-Stoup pints, warm inside 🍺
+[53°F, overcast, calm winds — afternoon]
+🍖 Smoke hangs still and thick—
+Woodshop BBQ's long pull
+warms hands at Obec 🍺
 
-🥪 Wich Came First's warmth pulls—
-Yonder's cider, Bale Breaker,
-coats up, bar stools full 🍺
+[58°F, partly cloudy, calm winds — afternoon]
+🥢 Kalbi scent hangs still—
+Marination at Obec,
+easy afternoon 🍺
 
-🌙 Night falls on Ballard—
-Where Ya At Matt's last orders,
-stout warms the long dark 🍺
+[66°F, mainly clear, light breeze — evening]
+🍗 Impeckable Chicken
+sizzles into the warm night—
+Wheelie Pop stays late 🍺
 
-🍖 Brisket smoke and hops—
-Johnson's plates at Stoup's long pour,
-IPAs run cold 🍺
+[75°F, clear sky, calm winds — evening]
+🌅 Where Ya At Matt's smoke
+rises still in warm evening—
+Bale Breaker pints glow 🍺
 
-☁️ Where Ya At Matt's spice
-cuts the soft gray afternoon—
-Stoup pints, warm inside 🍺
+[82°F, clear sky, light breeze — afternoon]
+🌞 Sun-warmed pavement holds—
+Plaza Garcia's salsa bright,
+Bale Breaker pints sweat 🍺
 
-🥪 Wich Came First's warmth pulls—
-Yonder's cider, Bale Breaker,
-coats up, bar stools full 🍺
-
-🌙 Night falls on Ballard—
-Where Ya At Matt's last orders,
-stout warms the long dark 🍺
+Notice the through-line: cold air gets steam and "cold"; a 47°F afternoon "warms hands" without
+needing a coat; calm winds let steam "lift straight" or scent "hang still"; only the hot day has
+pints that "sweat"; rain that is present is falling, while a mere chance only "threatens"; warm
+evenings stay out "late." None invent clothing, fog, mist, wind, or condensation the weather
+doesn't support.
 
 Return only the haiku with inline emoji, nothing else.
