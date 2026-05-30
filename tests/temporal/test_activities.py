@@ -9,6 +9,7 @@ import pytest
 from around_the_grounds.temporal.activities import (
     DeploymentActivities,
     ScrapeActivities,
+    _site_from_dict,
 )
 
 
@@ -85,6 +86,7 @@ class TestScrapeActivities:
             target_repo="https://github.com/test/repo.git",
             generate_description=True,
             deploy_subdir="public",
+            skip_unchanged_deploys=True,
         )
 
         with patch(
@@ -102,6 +104,7 @@ class TestScrapeActivities:
         assert result["target_repo"] == "https://github.com/test/repo.git"
         assert result["generate_description"] is True
         assert result["deploy_subdir"] == "public"
+        assert result["skip_unchanged_deploys"] is True
         assert isinstance(result["venues"], list)
         assert result["venues"][0]["key"] == "stoup-ballard"
         assert result["venues"][0]["source_type"] == "html"
@@ -295,7 +298,25 @@ class TestDeploymentActivities:
             "https://github.com/steveandroulakis/ballard-food-trucks.git",
             "food-trucks",
             "public",
+            False,
         )
+
+    def test_site_from_dict_defaults_skip_unchanged_when_absent(self) -> None:
+        """Back-compat: an older payload without the flag defaults to False.
+
+        The persisted hourly schedule may send a site dict minted before this
+        field existed; it must not blow up or accidentally enable skipping.
+        """
+        legacy = {
+            "key": "ballard-food-trucks",
+            "name": "Food Trucks in Ballard",
+            "template": "food-trucks",
+            "timezone": "America/Los_Angeles",
+            "target_repo": "https://github.com/test/repo.git",
+            "deploy_subdir": "public",
+            "venues": [],
+        }
+        assert _site_from_dict(legacy).skip_unchanged_deploys is False
 
     @pytest.mark.asyncio
     async def test_deploy_to_git_raises_when_site_missing(self) -> None:

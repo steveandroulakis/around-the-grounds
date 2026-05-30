@@ -5,6 +5,7 @@
   "timezone": "America/New_York",
   "target_repo": "https://github.com/jredding/atg-park-slope-music.git",
   "generate_description": false,
+  "skip_unchanged_deploys": true,
   "venues": [
     {
       "key": "union-hall",

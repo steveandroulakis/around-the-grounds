@@ -283,9 +283,14 @@ async def deploy_to_web(
             template_dir_name = "food-trucks"
 
         deploy_subdir = site.deploy_subdir if site else ""
+        skip_unchanged_deploys = site.skip_unchanged_deploys if site else False
 
         return _deploy_with_github_auth(
-            web_data, repository_url, template_dir_name, deploy_subdir
+            web_data,
+            repository_url,
+            template_dir_name,
+            deploy_subdir,
+            skip_unchanged_deploys,
         )
 
     except subprocess.CalledProcessError as e:
@@ -321,6 +326,7 @@ def _deploy_with_github_auth(
     repository_url: str,
     template_dir_name: str = "food-trucks",
     deploy_subdir: str = "",
+    skip_unchanged_deploys: bool = False,
 ) -> bool:
     """Deploy web data to git repository using GitHub App authentication.
 
@@ -332,6 +338,17 @@ def _deploy_with_github_auth(
       ``git add <subdir>/``, and a normal (non-force) push. Used when the
       target repo has other files at root that must be preserved (e.g. a
       Vercel project consuming ``public/``).
+
+    ``skip_unchanged_deploys`` (per-site opt-in) makes the deploy a no-op when
+    the new ``events`` array matches what is already deployed: the prior
+    data.json's volatile fields (``updated``, ``haiku``) are carried forward so
+    the file stays byte-identical and the staged-diff short-circuit skips the
+    commit/push. Because this needs the prior data.json to diff against, it
+    forces a clone even in root mode (with a fresh-init fallback for empty/new
+    target repos). Sites that want a fresh description every run (e.g. Ballard's
+    hourly weather haiku) leave this False so data.json always differs.
+
+    Invariant: ``cloned`` repos push normally; fresh-init repos force-push.
     """
     import shutil
     import tempfile
@@ -355,19 +372,15 @@ def _deploy_with_github_auth(
         with tempfile.TemporaryDirectory() as temp_dir:
             repo_dir = Path(temp_dir) / "repo"
 
-            if deploy_subdir:
-                # Subdir mode: clone the existing repo so files outside the
-                # subdir (e.g. vercel.json, README.md) survive the update.
-                print(f"📥 Cloning {repository_url}...")
-                subprocess.run(
-                    ["git", "clone", authenticated_url, str(repo_dir)],
-                    check=True,
-                    capture_output=True,
-                )
-            else:
-                # Root mode: fresh init. Avoids clone failures on empty/new
-                # target repos; history gets rewritten by the force-push below.
-                repo_dir.mkdir()
+            # Clone when we need the existing repo contents: subdir mode (to
+            # preserve files outside the subdir) or skip_unchanged_deploys (to
+            # read the prior data.json and diff against it). Root mode without
+            # the skip flag uses a fresh init + force-push as before.
+            should_clone = bool(deploy_subdir) or skip_unchanged_deploys
+            cloned = False
+
+            def _init_repo() -> None:
+                repo_dir.mkdir(exist_ok=True)
                 subprocess.run(
                     ["git", "init"], cwd=repo_dir, check=True, capture_output=True
                 )
@@ -377,6 +390,30 @@ def _deploy_with_github_auth(
                     check=True,
                     capture_output=True,
                 )
+
+            if should_clone:
+                print(f"📥 Cloning {repository_url}...")
+                try:
+                    subprocess.run(
+                        ["git", "clone", authenticated_url, str(repo_dir)],
+                        check=True,
+                        capture_output=True,
+                    )
+                    cloned = True
+                except subprocess.CalledProcessError:
+                    if deploy_subdir:
+                        # Subdir mode requires an existing repo to preserve the
+                        # files at root; a clone failure is a real error.
+                        raise
+                    # Root mode + skip flag: the target repo is likely empty or
+                    # brand new. Fall back to a fresh init + force-push; there is
+                    # no prior data.json, so the first deploy proceeds normally.
+                    print("ℹ️  Clone failed; initializing fresh repo (first deploy)")
+                    _init_repo()
+            else:
+                # Root mode: fresh init. Avoids clone failures on empty/new
+                # target repos; history gets rewritten by the force-push below.
+                _init_repo()
 
             subprocess.run(
                 ["git", "config", "user.email", "bot@around-the-grounds.app"],
@@ -394,6 +431,29 @@ def _deploy_with_github_auth(
             shutil.copytree(public_templates_dir, target_public_dir, dirs_exist_ok=True)
 
             json_path = target_public_dir / "data.json"
+
+            # Work on a shallow copy so carrying volatile fields forward never
+            # mutates the dict the caller passed in (the CLI and Temporal both
+            # hand us a dict they may inspect after this call).
+            web_data = dict(web_data)
+
+            # Opt-in no-op skip: when the new events match what is already
+            # deployed, carry the prior data.json's volatile fields (`updated`,
+            # `haiku`) forward so the file stays byte-identical and the
+            # staged-diff short-circuit below skips the deploy. Only sites that
+            # set skip_unchanged_deploys reach this; sites wanting a fresh
+            # description every run (Ballard's hourly haiku) leave it off.
+            if skip_unchanged_deploys and cloned and json_path.exists():
+                try:
+                    with open(json_path) as f:
+                        prior = json.load(f)
+                    if prior.get("events") == web_data.get("events"):
+                        for volatile in ("updated", "haiku"):
+                            if volatile in prior:
+                                web_data[volatile] = prior[volatile]
+                except (json.JSONDecodeError, OSError):
+                    pass
+
             with open(json_path, "w") as f:
                 json.dump(web_data, f, indent=2)
 
@@ -405,8 +465,18 @@ def _deploy_with_github_auth(
                     ["git", "add", f"{deploy_subdir}/"],
                     cwd=repo_dir, check=True, capture_output=True,
                 )
-                # In subdir mode (clone), short-circuit no-op updates so the
-                # bot doesn't create empty commits when events haven't changed.
+            else:
+                subprocess.run(
+                    ["git", "add", "."],
+                    cwd=repo_dir, check=True, capture_output=True,
+                )
+
+            # Short-circuit no-op deploys when there is a prior commit to diff
+            # against. Cloned repos carry the existing data.json (subdir mode
+            # always clones; root mode clones only when skip_unchanged_deploys
+            # is set), so a byte-identical staged tree means nothing changed.
+            # Fresh-init root deploys have no baseline and always push.
+            if cloned:
                 diff_check = subprocess.run(
                     ["git", "diff", "--staged", "--quiet"],
                     cwd=repo_dir, capture_output=True,
@@ -414,11 +484,6 @@ def _deploy_with_github_auth(
                 if diff_check.returncode == 0:
                     print("ℹ️  No changes to deploy")
                     return True
-            else:
-                subprocess.run(
-                    ["git", "add", "."],
-                    cwd=repo_dir, check=True, capture_output=True,
-                )
 
             site_name = web_data.get("site_name", "Events")
             commit_msg = f"📅 Update {site_name} - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
@@ -428,9 +493,11 @@ def _deploy_with_github_auth(
             )
 
             print(f"🚀 Pushing to {repository_url}...")
+            # Cloned repos push normally (on top of existing history); fresh-init
+            # root deploys force-push to (re)write the repo root.
             push_cmd = (
                 ["git", "push", "origin", "HEAD:main"]
-                if deploy_subdir
+                if cloned
                 else ["git", "push", "--force", "origin", "HEAD:main"]
             )
             subprocess.run(push_cmd, cwd=repo_dir, check=True, capture_output=True)

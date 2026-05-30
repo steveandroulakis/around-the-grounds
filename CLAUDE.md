@@ -285,6 +285,19 @@ tests/                             # Comprehensive test suite (499 tests)
 
 **Ballard-specific:** `config/sites/ballard-food-trucks.json` has `deploy_subdir: "public"` and `target_repo: "https://github.com/steveandroulakis/ballard-food-trucks.git"`. A Vercel project watches that repo's `public/` folder and redeploys on every push. The merge must preserve this behavior — changing `deploy_subdir` to `""` would destroy the target repo's structure on first deploy.
 
+### `skip_unchanged_deploys` (per-site no-op skip)
+
+`SiteConfig.skip_unchanged_deploys` (default `false`) makes a deploy a no-op when the new `events` array matches what is already deployed. The deploy carries the prior `data.json`'s volatile fields (`updated`, `haiku`) forward so the file stays byte-identical and the staged-diff short-circuit skips the commit/push. A real change to events — or to the template/CSS — still deploys.
+
+| Flag | Effect on deploy |
+|---|---|
+| `false` (default) | Every run deploys. `data.json` always differs because `updated` is regenerated (and, for sites that opt in, the haiku). Used by `ballard-food-trucks` so its **hourly weather haiku deploys every run** — see Haiku Generator below. |
+| `true` | No-op runs (events unchanged) skip the commit/push entirely. Used by `park-slope-music`, `childrens-events`. |
+
+**Root-mode interaction:** because the skip needs the prior `data.json` to diff against, enabling `skip_unchanged_deploys` on a **root-mode** site forces a `git clone` (with a fresh-`init` fallback for empty/new target repos) instead of the plain `git init`. Such sites therefore push **normally** (`git push HEAD:main`) and **accumulate history** rather than force-pushing a rewritten single commit each run. The `cloned ? normal-push : force-push` invariant in `_deploy_with_github_auth` keeps plain root mode (flag off) on the original force-push path.
+
+**Do not set `skip_unchanged_deploys: true` together with `generate_description: true`** unless you want the haiku frozen until the event set changes — the carry-forward would freeze it. Ballard deliberately keeps the flag off for this reason.
+
 ### Core Dependencies
 
 **Production:**

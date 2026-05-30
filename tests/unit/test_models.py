@@ -140,6 +140,7 @@ class TestSiteConfig:
         assert site.deploy_subdir == ""
         assert site.target_repo == ""
         assert site.generate_description is True
+        assert site.skip_unchanged_deploys is False
 
     def test_site_config_deploy_subdir(self) -> None:
         """deploy_subdir can be set explicitly for Vercel-style subfolder deploys."""
@@ -187,3 +188,20 @@ class TestSiteConfig:
         )
         site = load_site_from_path(config_path)
         assert site.deploy_subdir == ""
+
+    def test_loader_reads_skip_unchanged_deploys(self, tmp_path: Path) -> None:
+        """Loader pulls skip_unchanged_deploys out of JSON; defaults to False."""
+        base = {
+            "key": "loader-test",
+            "name": "Loader Test",
+            "template": "food-trucks",
+            "timezone": "America/Los_Angeles",
+            "venues": [],
+        }
+        on_path = tmp_path / "on.json"
+        on_path.write_text(json.dumps({**base, "skip_unchanged_deploys": True}))
+        assert load_site_from_path(on_path).skip_unchanged_deploys is True
+
+        off_path = tmp_path / "off.json"
+        off_path.write_text(json.dumps(base))
+        assert load_site_from_path(off_path).skip_unchanged_deploys is False
