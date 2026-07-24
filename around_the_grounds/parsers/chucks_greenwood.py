@@ -24,6 +24,23 @@ from .base import BaseParser
 class ChucksGreenwoodParser(BaseParser):
     """Parser for Chuck's Hop Shop Greenwood food truck schedule."""
 
+    # Google Sheets formula error tokens that can appear in the source
+    # spreadsheet's cells (e.g. when a lookup formula fails). These must never
+    # be treated as vendor names. Compared case-insensitively.
+    SPREADSHEET_ERROR_VALUES = frozenset(
+        {
+            "#value!",
+            "#ref!",
+            "#n/a",
+            "#name?",
+            "#div/0!",
+            "#null!",
+            "#num!",
+            "#error!",
+            "#getting_data",
+        }
+    )
+
     # Month abbreviation to number mapping
     MONTH_MAP = {
         "Jan": 1,
@@ -175,9 +192,18 @@ class ChucksGreenwoodParser(BaseParser):
             extraction_method="html",
         )
 
+    def _is_spreadsheet_error(self, value: str) -> bool:
+        """Return True if a value is a Google Sheets formula error token."""
+        return value.strip().lower() in self.SPREADSHEET_ERROR_VALUES
+
     def _extract_vendor_name(self, event_name: str) -> Optional[str]:
         """Extract vendor name from event name, handling meal type prefixes."""
         if not event_name or not event_name.strip():
+            return None
+
+        # Reject spreadsheet formula errors (e.g. "#VALUE!") that leak in from
+        # the source Google Sheet — these are not real vendor names.
+        if self._is_spreadsheet_error(event_name):
             return None
 
         # Handle format like "Dinner: T'Juana" or "Brunch: Good Morning Tacos"
@@ -189,7 +215,9 @@ class ChucksGreenwoodParser(BaseParser):
 
                 # Validate meal type
                 if meal_type.lower() in ["brunch", "dinner"]:
-                    return vendor_name if vendor_name else None
+                    if not vendor_name or self._is_spreadsheet_error(vendor_name):
+                        return None
+                    return vendor_name
                 else:
                     # If not a recognized meal type, treat whole string as vendor name
                     cleaned_name = event_name.strip()

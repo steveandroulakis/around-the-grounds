@@ -63,8 +63,7 @@ class TestChucksGreenwoodParser:
                 assert len(events) > 0
                 assert all(event.venue_key == "chucks-greenwood" for event in events)
                 assert all(
-                    event.venue_name == "Chuck's Hop Shop Greenwood"
-                    for event in events
+                    event.venue_name == "Chuck's Hop Shop Greenwood" for event in events
                 )
                 assert all(event.title.strip() != "" for event in events)
                 assert all(event.date is not None for event in events)
@@ -226,6 +225,22 @@ Another,incomplete"""
         result = parser._extract_vendor_name("   ")
         assert result is None
 
+    def test_extract_vendor_name_spreadsheet_error_value(
+        self, parser: ChucksGreenwoodParser
+    ) -> None:
+        """Spreadsheet formula errors must not be treated as vendor names."""
+        assert parser._extract_vendor_name("#VALUE!") is None
+        assert parser._extract_vendor_name("#REF!") is None
+        assert parser._extract_vendor_name("#N/A") is None
+        # Case-insensitive and whitespace-tolerant
+        assert parser._extract_vendor_name("  #value!  ") is None
+
+    def test_extract_vendor_name_error_value_after_prefix(
+        self, parser: ChucksGreenwoodParser
+    ) -> None:
+        """A meal prefix followed by a spreadsheet error yields no vendor."""
+        assert parser._extract_vendor_name("Dinner: #VALUE!") is None
+
     # DATE PARSING TESTS
 
     @freeze_time("2025-08-05")
@@ -369,6 +384,27 @@ Another,incomplete"""
         result = parser._parse_csv_row(row)
         assert result is None
 
+    def test_parse_csv_row_spreadsheet_error_name(
+        self, parser: ChucksGreenwoodParser
+    ) -> None:
+        """A food truck row whose name is a spreadsheet error is skipped."""
+        row = [
+            "Fri",
+            "Aug 1",
+            "12 AM",
+            "to",
+            "Sat",
+            "Food Truck",
+            "#VALUE!",
+            "Wed",
+            "Tue",
+            "FALSE",
+            "TRUE",
+        ]
+
+        result = parser._parse_csv_row(row)
+        assert result is None
+
     def test_parse_csv_row_invalid_date(self, parser: ChucksGreenwoodParser) -> None:
         """Test parsing a row with invalid date."""
         row = [
@@ -454,6 +490,35 @@ Tue,Aug 5,12 AM,to,Tue,Food Truck,Tat's Deli,Wed,Tue,FALSE,TRUE"""
                 for event in events:
                     assert "Trivia" not in event.title
                     assert "Bingo" not in event.title
+
+    @pytest.mark.asyncio
+    @freeze_time("2025-08-05")
+    async def test_parse_skips_spreadsheet_error_rows(
+        self, parser: ChucksGreenwoodParser
+    ) -> None:
+        """Rows with #VALUE! source errors are skipped, real vendors kept.
+
+        Mirrors the real Google Sheet, where near-term food-truck rows carry a
+        #VALUE! formula error while later rows have real vendor names.
+        """
+        csv_with_errors = """Greenwood Events & Food Trucks,,,,,,,Date Created,Last Updated,All Day Event,Recurring Event
+Fri,Aug 1,12 AM,to,Sat,Food Truck,#VALUE!,Fri,Fri,FALSE,TRUE
+Sat,Aug 2,12 AM,to,Sat,Food Truck,#VALUE!,Sat,Fri,FALSE,TRUE
+Sun,Aug 16,12 AM,to,Sat,Food Truck,Dinner: Georgia's Greek,Sat,Fri,FALSE,TRUE
+Mon,Aug 17,12 AM,to,Sat,Food Truck,Dinner: Off the Rez,Sun,Wed,FALSE,TRUE"""
+
+        with aioresponses() as m:
+            m.get(parser.venue.url, status=200, body=csv_with_errors)
+
+            async with aiohttp.ClientSession() as session:
+                events = await parser.parse(session)
+
+                # Only the two real vendors survive; #VALUE! rows are dropped.
+                assert len(events) == 2
+                event_names = [event.title for event in events]
+                assert "Georgia's Greek" in event_names
+                assert "Off the Rez" in event_names
+                assert all("#VALUE!" not in name for name in event_names)
 
     @pytest.mark.asyncio
     @freeze_time("2025-12-15")  # Test year rollover scenario
