@@ -98,9 +98,7 @@ class TestCLI:
         assert "✅ 2 events found successfully" in output
         assert "❌ 2 venues failed" in output
         assert "❌ Errors:" in output
-        assert (
-            "Failed to fetch information for: Failed Venue" in output
-        )
+        assert "Failed to fetch information for: Failed Venue" in output
 
     def test_format_events_output_only_errors(self) -> None:
         """Test formatting when only errors occur."""
@@ -111,9 +109,7 @@ class TestCLI:
 
         assert "❌ No events found - all venues failed" in output
         assert "❌ Errors:" in output
-        assert (
-            "Failed to fetch information for: Failed Venue" in output
-        )
+        assert "Failed to fetch information for: Failed Venue" in output
 
     def test_format_events_output_instagram_fallback(self) -> None:
         """Test formatting Instagram fallback events."""
@@ -270,9 +266,7 @@ class TestCLI:
         assert exit_code == 1
         captured = capsys.readouterr()
         # Either Critical Error: ... or our explicit Config file invalid message
-        assert (
-            "not found" in captured.out or "Config file invalid" in captured.out
-        )
+        assert "not found" in captured.out or "Config file invalid" in captured.out
 
     def test_main_default_site_missing(self, capsys: Any) -> None:
         """Test main function when the default site config is missing."""
@@ -389,3 +383,103 @@ class TestTemplatePathTraversalGuard:
         assert result is False
         captured = capsys.readouterr()
         assert "Template path escapes" in captured.out
+
+
+class TestCalendarFeedOutput:
+    """The .ics feed is written alongside data.json by every output path."""
+
+    @staticmethod
+    def _web_data() -> Dict[str, Any]:
+        return {
+            "site_key": "test-site",
+            "site_name": "Test Site",
+            "timezone": "America/Los_Angeles",
+            "total_events": 1,
+            "events": [
+                {
+                    "date": "2026-08-13T00:00:00",
+                    "title": "Woodshop BBQ",
+                    "venue": "Stoup Brewing",
+                    "venue_key": "stoup-ballard",
+                    "venue_url": "https://stoupbrewing.com",
+                    "start_iso": "2026-08-13T17:00:00",
+                    "end_iso": "2026-08-13T21:00:00",
+                    "extraction_method": "html",
+                }
+            ],
+            "errors": [],
+            "haiku": None,
+        }
+
+    def _run_preview(self, tmp_path: Path, web_data: Dict[str, Any]) -> bool:
+        (tmp_path / "public_templates" / "food-trucks").mkdir(
+            parents=True, exist_ok=True
+        )
+        (tmp_path / "public_templates" / "food-trucks" / "index.html").write_text(
+            "<h1>hi</h1>"
+        )
+
+        site = SiteConfig(
+            key="test-site",
+            name="Test Site",
+            template="food-trucks",
+            timezone="America/Los_Angeles",
+            venues=[],
+        )
+
+        original_cwd = Path.cwd()
+        try:
+            os.chdir(tmp_path)
+
+            async def _run() -> bool:
+                with patch(
+                    "around_the_grounds.main.generate_web_data",
+                    new_callable=AsyncMock,
+                ) as mock_gen:
+                    mock_gen.return_value = web_data
+                    return await preview_locally(events=[], site=site)
+
+            return asyncio.run(_run())
+        finally:
+            os.chdir(original_cwd)
+
+    def test_preview_writes_events_ics_next_to_data_json(self, tmp_path: Path) -> None:
+        result = self._run_preview(tmp_path, self._web_data())
+
+        assert result is True
+        assert (tmp_path / "public" / "data.json").exists()
+
+        ics_path = tmp_path / "public" / "events.ics"
+        assert ics_path.exists()
+
+        raw = ics_path.read_bytes()
+        assert raw.startswith(b"BEGIN:VCALENDAR")
+        assert b"SUMMARY:Woodshop BBQ @ Stoup Brewing" in raw
+
+    def test_preview_feed_is_byte_stable_across_runs(self, tmp_path: Path) -> None:
+        """Unchanged data must produce an identical feed, or every deploy commits."""
+        web_data = self._web_data()
+
+        self._run_preview(tmp_path, web_data)
+        first = (tmp_path / "public" / "events.ics").read_bytes()
+
+        self._run_preview(tmp_path, web_data)
+        second = (tmp_path / "public" / "events.ics").read_bytes()
+
+        assert first == second
+
+    def test_preview_survives_calendar_generation_failure(
+        self, tmp_path: Path, capsys: Any
+    ) -> None:
+        """A broken feed must degrade gracefully, not fail the preview."""
+        with patch(
+            "around_the_grounds.main.build_ics", side_effect=RuntimeError("boom")
+        ):
+            result = self._run_preview(tmp_path, self._web_data())
+
+        assert result is True
+        assert (tmp_path / "public" / "data.json").exists()
+        assert not (tmp_path / "public" / "events.ics").exists()
+
+        captured = capsys.readouterr()
+        assert "Skipped calendar feed generation" in captured.out

@@ -30,6 +30,7 @@ dependencies = [
     "lxml",
     "aiohttp",
     "anthropic>=0.40.0",
+    "icalendar>=5.0.0",
     "temporalio>=1.9.0",
     "python-dotenv>=1.0.0",
     "PyJWT>=2.8.0",
@@ -48,6 +49,7 @@ dev = [
     "isort",
     "flake8",
     "mypy",
+    "types-icalendar",
 ]
 
 [project.scripts]
@@ -101,4 +103,5 @@ dev = [
     "pytest-asyncio>=0.24.0",
     "pytest-cov>=5.0.0",
     "pytest-mock>=3.14.1",
+    "types-icalendar>=6.1.0.20241128",
 ]

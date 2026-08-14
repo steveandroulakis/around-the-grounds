@@ -175,7 +175,9 @@ class TestHaikuIntegration:
         mock_haiku_generator_class.return_value = mock_generator
 
         # Generate web data
-        web_data = await generate_web_data(sample_events_today, error_messages=["Test error"])
+        web_data = await generate_web_data(
+            sample_events_today, error_messages=["Test error"]
+        )
 
         # Verify all expected fields are present
         assert "events" in web_data
@@ -192,6 +194,62 @@ class TestHaikuIntegration:
         assert web_data["timezone"] == "America/Los_Angeles"
         assert "Test error" in web_data["errors"]
         assert web_data["haiku"] == "Test haiku"
+
+    @pytest.mark.asyncio
+    @patch("around_the_grounds.main.HaikuGenerator")
+    async def test_generate_web_data_includes_calendar_fields(
+        self, mock_haiku_generator_class: Mock, sample_events_today: list
+    ) -> None:
+        """Lossless timestamps and venue identity feed the .ics generator."""
+        from around_the_grounds.models import SiteConfig, Venue
+
+        site = SiteConfig(
+            key="ballard-food-trucks",
+            name="Ballard Food Trucks",
+            template="food-trucks",
+            timezone="America/Los_Angeles",
+            venues=[
+                Venue(
+                    key="stoup-ballard",
+                    name="Stoup Brewing",
+                    url="https://stoupbrewing.com",
+                )
+            ],
+            generate_description=False,
+        )
+
+        web_data = await generate_web_data(sample_events_today, site=site)
+        event = web_data["events"][0]
+
+        assert event["venue_key"] == "stoup-ballard"
+        assert event["venue_url"] == "https://stoupbrewing.com"
+        assert event["start_iso"] == sample_events_today[0].start_time.isoformat()
+        assert event["end_iso"] == sample_events_today[0].end_time.isoformat()
+
+        # A venue absent from the site config yields no URL rather than raising.
+        assert web_data["events"][1]["venue_key"] == "urban-family"
+        assert web_data["events"][1]["venue_url"] is None
+
+    @pytest.mark.asyncio
+    @patch("around_the_grounds.main.HaikuGenerator")
+    async def test_calendar_fields_are_none_without_times(
+        self, mock_haiku_generator_class: Mock
+    ) -> None:
+        """All-day events carry null ISO timestamps."""
+        events = [
+            Event(
+                venue_key="obec-brewing",
+                venue_name="Obec Brewing",
+                title="Mystery Truck",
+                date=datetime(2026, 8, 13),
+            )
+        ]
+
+        web_data = await generate_web_data(events)
+
+        assert web_data["events"][0]["start_iso"] is None
+        assert web_data["events"][0]["end_iso"] is None
+        assert web_data["events"][0]["venue_url"] is None
 
     @pytest.mark.asyncio
     @patch("around_the_grounds.main.HaikuGenerator")
