@@ -12,6 +12,7 @@ Key features:
 - **Multi-site support** with independent site configs for different event domains (food trucks, music, kids events), independent target repositories, and configurable per-site deploy strategies
 - **Generic parser system** with platform-based parsers (WordPress, HTML selector, AJAX/JSON API) plus venue-specific parsers
 - **Web interface** with per-site templates and automatic deployment to the configured target host (GitHub Pages or Vercel-via-GitHub)
+- **Subscribable calendar feed** — every deploy also emits an `events.ics` (RFC 5545) file next to `data.json`, so users can subscribe in Google/Apple/Outlook Calendar. Output is deterministic so unchanged schedules don't create empty commits
 - **Async web scraping** with concurrent processing of multiple venue websites
 - **AI vision analysis** using Claude Vision API to extract vendor names from food truck logos/images
 - **AI haiku generation** using Claude Sonnet 4.6 with real-time weather grounding (Ballard-specific; other sites opt out via `generate_description: false`)
@@ -20,7 +21,7 @@ Key features:
 - **Self-hosted Temporal worker** alternative scheduling path (Ballard production setup)
 - **Comprehensive error handling** with retry logic, isolation, and graceful degradation
 - **Temporal workflow integration** with cloud deployment support (local, Temporal Cloud, custom servers)
-- **Extensive test suite** with 499 tests covering unit, integration, vision analysis, haiku generation, weather, and error scenarios
+- **Extensive test suite** with 538 tests covering unit, integration, vision analysis, haiku generation, weather, and error scenarios
 - **Modern Python tooling** with uv for dependency management and packaging
 
 ## Development Commands
@@ -139,7 +140,7 @@ See [SCHEDULES.md](./SCHEDULES.md)
 
 ### Testing
 ```bash
-# Full test suite (499 tests)
+# Full test suite (538 tests)
 uv run python -m pytest                    # Run all tests
 uv run python -m pytest tests/unit/        # Unit tests only
 uv run python -m pytest tests/parsers/     # Parser-specific tests
@@ -221,6 +222,7 @@ around_the_grounds/
 │   ├── github_auth.py             # GitHub App JWT authentication
 │   ├── vision_analyzer.py         # AI vision analysis for vendor identification
 │   ├── haiku_generator.py         # AI haiku generation (weather-grounded, claude-sonnet-4-6)
+│   ├── ics_generator.py           # RFC 5545 .ics calendar feed (deterministic output)
 │   └── weather.py                 # Open-Meteo weather fetch (free, no API key)
 └── main.py                        # CLI entry point with multi-site, deploy, preview
 
@@ -234,9 +236,10 @@ public_templates/                  # Per-site web interface templates
 
 public/                            # Generated files (git-ignored)
 ├── data.json                      # Generated web data
+├── events.ics                     # Subscribable calendar feed (all sites)
 └── index.html                     # Copied from the active template
 
-tests/                             # Comprehensive test suite (499 tests)
+tests/                             # Comprehensive test suite (538 tests)
 ├── conftest.py                    # Shared test fixtures
 ├── fixtures/
 │   ├── csv/                       # CSV samples (channel_marker)
@@ -266,13 +269,14 @@ tests/                             # Comprehensive test suite (499 tests)
   - **Venue-specific parsers** (9 for Ballard food trucks): StoupBallard, BaleBreaker, Obec, UrbanFamily, WheeliePop, ChucksGreenwood, SalehsCorner, ChannelMarker, LuckyEnvelope
 - **Registry**: Two-tier lookup — by `venue.key` (specific) then by `venue.source_type` (generic)
 - **Scrapers**: Async coordinator with concurrent processing, retry logic, and error isolation
-- **Temporal**: Workflow orchestration for reliable execution and scheduling. The `FoodTruckWorkflow` resolves a `site_key` (default `"ballard-food-trucks"` when omitted, for back-compat with the persisted hourly schedule), calls a `load_site` activity to fetch the `SiteConfig` from `config/sites/<key>.json`, scrapes per-venue in parallel batches, and delegates `generate_web_data` and `deploy_to_git` to the same `main.py` functions the CLI uses — so both Temporal and CLI runs share one implementation
+- **Temporal**: Workflow orchestration for reliable execution and scheduling. The `FoodTruckWorkflow` resolves a `site_key` (default `"ballard-food-trucks"` when omitted, for back-compat with the persisted hourly schedule), calls a `load_site` activity to fetch the `SiteConfig` from `config/sites/<key>.json`, scrapes per-venue in parallel batches, and delegates `generate_web_data` and `deploy_to_git` to the same `main.py` functions the CLI uses — so both Temporal and CLI runs share one implementation (including optional public_url calendar attribution)
 - **Config**: Per-site JSON configs in `config/sites/`, loaded by `config/loader.py`
-- **Utils**: Date/time utilities, AI vision analysis, weather-grounded haiku generation, Open-Meteo weather fetch, GitHub App auth
+- **Utils**: Date/time utilities, AI vision analysis, weather-grounded haiku generation, Open-Meteo weather fetch, GitHub App auth, `.ics` calendar feed generation
+- **Calendar Feed**: `utils/ics_generator.py:build_ics(web_data)` renders the same `web_data` dict the templates consume into an RFC 5545 feed at `events.ics`. It reads `web_data` rather than `List[Event]` because the Temporal `deploy_to_git` activity only receives the dict. Times are emitted in UTC (no VTIMEZONE needed); events with no published hours become all-day entries; UIDs are derived (sha1 of site/venue/date/title) since `Event` has no ID. **`DTSTAMP` is intentionally derived from the event, not `datetime.now()`** — a "now" value would make the file differ on every run and defeat the no-op deploy short-circuit
 - **Web Interface**: Per-site templates in `public_templates/<template>/` deployed to the site's configured host (GitHub Pages or Vercel-via-GitHub)
 - **Web Deployment**: Two git strategies selected by `SiteConfig.deploy_subdir` — see Deployment Strategies below
 - **Scheduling**: Google Cloud Run Jobs with Cloud Scheduler (jredding's sites) OR a self-hosted Temporal worker (Ballard site). Both paths read the same `SiteConfig` and call the same `main.py:_deploy_with_github_auth` for git operations
-- **Tests**: 490 tests covering all scenarios including generic parsers, error handling, vision analysis, haiku generation, weather fetching, multi-site deploy configuration, and the Temporal `load_site` / `generate_web_data` / `deploy_to_git` activity contracts
+- **Tests**: 538 tests covering all scenarios including generic parsers, error handling, vision analysis, haiku generation, weather fetching, multi-site deploy configuration, and the Temporal `load_site` / `generate_web_data` / `deploy_to_git` activity contracts
 
 ## Deployment Strategies
 
@@ -344,7 +348,7 @@ See [ERROR-HANDLING.md](./ERROR-HANDLING.md) for the complete error handling str
 
 ## Testing Strategy
 
-The project includes a comprehensive test suite with 499 tests covering unit, integration, generic parsers, vision analysis, haiku generation, weather fetching, and error scenarios.
+The project includes a comprehensive test suite with 538 tests covering unit, integration, generic parsers, vision analysis, haiku generation, weather fetching, and error scenarios.
 
 See [TESTING.md](./TESTING.md) for the complete testing strategy and guide.
 

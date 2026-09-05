@@ -5,7 +5,7 @@ This guide covers comprehensive testing strategies for the Around the Grounds pr
 ## Testing Commands
 
 ```bash
-# Full test suite (499 tests)
+# Full test suite (538 tests)
 uv run python -m pytest                    # Run all tests
 uv run python -m pytest tests/unit/        # Unit tests only
 uv run python -m pytest tests/parsers/     # Parser-specific tests
@@ -92,7 +92,7 @@ This approach catches issues that raw API testing misses and ensures users see t
 
 ## Testing Strategy
 
-The project includes a comprehensive test suite with 499 tests:
+The project includes a comprehensive test suite with 538 tests:
 
 ### Test Organization
 
@@ -113,6 +113,7 @@ tests/
 - **Parser Functionality**: HTML parsing, data extraction, validation logic (venue-specific + generic)
 - **Generic Parsers**: WordPress REST API, HTML selector, AJAX/JSON API parsers
 - **Vision Analysis**: AI image analysis, vendor name extraction, error handling, retry logic
+- **Calendar Feed**: `.ics` generation (`tests/unit/test_ics_generator.py`) — UTC/DST conversion, all-day events, stable UIDs, RFC 5545 escaping, malformed input, and **byte-for-byte determinism** (a `datetime.now()` DTSTAMP would cause an empty commit on every scheduled deploy)
 - **Error Scenarios**: Network failures, malformed data, timeout handling, API failures
 - **Integration Workflows**: CLI functionality, coordinator behavior, error reporting, vision integration
 - **Temporal Workflows**: Activity serialization, workflow execution, schedule management

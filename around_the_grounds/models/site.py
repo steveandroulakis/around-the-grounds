@@ -20,3 +20,5 @@ class SiteConfig:
     # whose build output is scoped to a subfolder. The value also selects the
     # deploy strategy: empty → init + force-push, non-empty → clone + scoped add.
     deploy_subdir: str = ""
+    # Public homepage for calendar attribution; never infer from the git remote.
+    public_url: str = ""

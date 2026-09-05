@@ -169,6 +169,13 @@
             margin-top: 12px;
         }
 
+        .stats-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
         .stats {
             background: none;
             padding: 0;
@@ -177,6 +184,16 @@
             text-align: left;
             border-top: none;
             padding-top: 0;
+        }
+
+        .stats-row .stats {
+            margin-bottom: 0;
+        }
+
+        /* auto margin rather than justify-content: space-between so the button
+           stays right-aligned before the stats element is unhidden on load */
+        .stats-row .subscribe {
+            margin: 0 0 0 auto;
         }
 
         .stats-number {
@@ -211,6 +228,58 @@
             display: block;
             margin: 2px 0;
         }
+
+        .subscribe {
+            position: relative;
+            font-size: 0.85rem;
+        }
+
+        .subscribe summary {
+            cursor: pointer;
+            padding: 8px 0;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            list-style: none;
+        }
+
+        .subscribe summary::-webkit-details-marker { display: none; }
+        .subscribe summary::after { content: ' ▾'; }
+        .subscribe[open] summary::after { content: ' ▴'; }
+
+        .subscribe-panel {
+            position: absolute;
+            right: 0;
+            top: 100%;
+            z-index: 10;
+            width: 300px;
+            max-width: calc(100vw - 48px);
+            box-sizing: border-box;
+            padding: 16px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            box-shadow: 0 6px 20px rgb(0 0 0 / 8%);
+            line-height: 1.5;
+            text-align: left;
+        }
+
+        .subscribe-panel p { margin: 0 0 12px; }
+        .subscribe-panel .subscribe-help { color: #4b5563; font-size: 0.8rem; }
+        .subscribe-panel button {
+            display: block;
+            width: 100%;
+            font: inherit;
+            text-align: left;
+            color: #111827;
+            background: white;
+            border: 0;
+            border-radius: 3px;
+            padding: 10px 8px;
+            cursor: pointer;
+        }
+        .subscribe-panel button:hover { background: #f1f5f9; }
+        .subscribe :focus-visible { outline: 2px solid #111827; outline-offset: 3px; }
+        .subscribe-status { display: block; font-size: 0.8rem; min-height: 1.5em; }
 
         .ai-info {
             color: #4b5563;
@@ -272,6 +341,22 @@
             .truck-item {
                 padding: 6px 0 6px 12px;
             }
+
+            /* Stack the count above the subscribe options on narrow screens;
+               they only share a line on desktop. */
+            .stats-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .subscribe-panel { left: 0; right: auto; }
+
+            .stats-row .subscribe {
+                margin: 0;
+                text-align: left;
+                line-height: 2;
+            }
         }
 
         .error {
@@ -295,9 +380,25 @@
             <div class="author-info curator-info">By Ballard&nbsp;🇺🇸 resident <a href="https://www.linkedin.com/in/steveandroulakis/" style="text-decoration: underline;">Steve Androulakis</a> 🇦🇺</div>
         </div>
 
-            <div id="stats" class="stats" style="display: none;">
-                <span class="stats-number" id="totalEvents">0</span>
-                <span class="stats-label">trucks total</span>
+            <div class="stats-row">
+                <div id="stats" class="stats" style="display: none;">
+                    <span class="stats-number" id="totalEvents">0</span>
+                    <span class="stats-label">trucks total</span>
+                </div>
+
+                <details id="subscribe" class="subscribe">
+                    <summary>Subscribe to calendar</summary>
+                    <div class="subscribe-panel">
+                        <p><strong>All trucks, in your calendar.</strong></p>
+                        <p class="subscribe-help">This week's schedule in a separate calendar you can hide or unsubscribe from. Updates automatically; refresh times vary by app.</p>
+                        <button type="button" data-calendar="google">Google Calendar</button>
+                        <button type="button" data-calendar="apple">Apple Calendar</button>
+                        <button type="button" data-calendar="outlook">Outlook</button>
+                        <button type="button" data-calendar="copy">Copy calendar link</button>
+                        <span id="subStatus" class="subscribe-status" role="status"></span>
+                        <p class="subscribe-help">For the latest changes, check back here before heading out.</p>
+                    </div>
+                </details>
             </div>
 
             <div id="haiku" class="haiku" style="display: none;"></div>
@@ -503,8 +604,88 @@ Unable to load food truck data. Please try again later.
             window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
         }
 
+        // Explicit provider choices also support calendars with an add-by-URL field.
+        // Google and Outlook fetch the feed server-side and need a public URL.
+        function setupSubscribe() {
+            const menu = document.getElementById('subscribe');
+            const status = document.getElementById('subStatus');
+            if (!menu || !location.protocol.startsWith('http')) return;
+
+            const feedUrl = new URL('events.ics', location.href).href;
+            const path = location.pathname.replace(/[^/]*$/, '');
+            const webcalUrl = `webcal://${location.host}${path}events.ics`;
+
+            const flash = (message) => {
+                if (!status) return;
+                status.textContent = message;
+                setTimeout(() => { status.textContent = ''; }, 2500);
+            };
+
+            document.addEventListener('click', (event) => {
+                if (!menu.contains(event.target)) menu.open = false;
+            });
+            menu.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    menu.open = false;
+                    menu.querySelector('summary').focus();
+                }
+            });
+            menu.addEventListener('click', async (event) => {
+                const button = event.target.closest('button[data-calendar]');
+                if (!button) return;
+                const choice = button.dataset.calendar;
+
+                if (choice === 'google') {
+                    window.open(
+                        'https://calendar.google.com/calendar/r?cid='
+                            + encodeURIComponent(feedUrl),
+                        '_blank',
+                        'noopener'
+                    );
+                } else if (choice === 'outlook') {
+                    // Microsoft documents the url= value as a webcal:// URL.
+                    window.open(
+                        'https://outlook.live.com/calendar/0/addfromweb?url='
+                            + encodeURIComponent(webcalUrl),
+                        '_blank',
+                        'noopener'
+                    );
+                } else if (choice === 'apple') {
+                    location.href = webcalUrl;
+                } else if (choice === 'copy') {
+                    flash(await copyText(feedUrl) ? 'Link copied' : 'Copy failed');
+                }
+            });
+        }
+
+        // navigator.clipboard is undefined outside secure contexts, which
+        // includes plain-http LAN testing, so fall back to execCommand.
+        async function copyText(text) {
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                    return true;
+                }
+            } catch (e) { /* fall through */ }
+
+            const scratch = document.createElement('textarea');
+            scratch.value = text;
+            scratch.setAttribute('readonly', '');
+            scratch.style.position = 'fixed';
+            scratch.style.opacity = '0';
+            document.body.appendChild(scratch);
+            scratch.select();
+            let ok = false;
+            try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+            document.body.removeChild(scratch);
+            return ok;
+        }
+
         // Load data when page loads
-        window.addEventListener('DOMContentLoaded', loadFoodTruckData);
+        window.addEventListener('DOMContentLoaded', () => {
+            setupSubscribe();
+            loadFoodTruckData();
+        });
     </script>
 </body>
 </html>

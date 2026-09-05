@@ -26,6 +26,7 @@ from .models import Venue, Event, SiteConfig
 from .scrapers.coordinator import ScraperCoordinator, ScrapingError
 from .utils.github_auth import _sanitize_url
 from .utils.haiku_generator import HaikuGenerator
+from .utils.ics_generator import build_ics
 from .utils.timezone_utils import (
     format_time_with_site_timezone,
     get_timezone_full_name,
@@ -172,11 +173,15 @@ async def generate_web_data(
     tz_full = get_timezone_full_name(site_tz)
     tz_note = f"All event times are in {tz_full} ({tz_label})."
 
+    venue_urls = {venue.key: venue.url for venue in site.venues} if site else {}
+
     for event in events:
         web_event = {
             "date": event.date.isoformat(),
             "title": event.title,
             "venue": event.venue_name,
+            "venue_key": event.venue_key,
+            "venue_url": venue_urls.get(event.venue_key),
             "start_time": (
                 format_time_with_site_timezone(
                     event.start_time, site_tz, include_timezone=True
@@ -201,6 +206,11 @@ async def generate_web_data(
                 if event.end_time
                 else None
             ),
+            # Lossless site-local timestamps. The display fields above are
+            # formatted strings; the calendar feed needs the real values, and
+            # the Temporal deploy activity only ever sees this dict.
+            "start_iso": event.start_time.isoformat() if event.start_time else None,
+            "end_iso": event.end_time.isoformat() if event.end_time else None,
             "description": event.description,
             # Emit "vision" (not "ai-vision") in the public JSON so downstream
             # templates that key off extraction_method === "vision" keep working.
@@ -246,6 +256,7 @@ async def generate_web_data(
         "updated": datetime.now(timezone.utc).isoformat(),
         "total_events": len(web_events),
         "site_name": site_name,
+        "public_url": site.public_url if site else "",
         "site_key": site_key,
         "timezone": site_tz,
         "timezone_label": tz_label,
@@ -293,6 +304,25 @@ async def deploy_to_web(
         return False
     except Exception as e:
         print(f"❌ Error during deployment: {e}")
+        return False
+
+
+def _write_calendar_file(target_dir: Path, web_data: dict) -> bool:
+    """Write the subscribable ``events.ics`` feed next to ``data.json``.
+
+    Failures are logged and swallowed: a broken calendar feed must never take
+    down a deploy, matching the graceful-degradation policy used for the
+    vision and haiku features.
+    """
+    try:
+        ics_bytes = build_ics(web_data)
+        with open(target_dir / "events.ics", "wb") as f:
+            f.write(ics_bytes)
+        print(f"📅 Generated events.ics with {web_data.get('total_events', 0)} events")
+        return True
+    except Exception as e:
+        logger.warning("Calendar feed generation failed: %s", e, exc_info=True)
+        print(f"⚠️  Skipped calendar feed generation: {e}")
         return False
 
 
@@ -399,6 +429,10 @@ def _deploy_with_github_auth(
 
             print(f"📝 Updated data.json with {web_data.get('total_events', 0)} events")
 
+            # Written before `git add` so the feed participates in the no-op
+            # short-circuit below.
+            _write_calendar_file(target_public_dir, web_data)
+
             if deploy_subdir:
                 # Scoped add: only touch the subdir we own.
                 subprocess.run(
@@ -483,6 +517,8 @@ async def preview_locally(
         json_path = local_public_dir / "data.json"
         with open(json_path, "w") as f:
             json.dump(web_data, f, indent=2)
+
+        _write_calendar_file(local_public_dir, web_data)
 
         print(f"✅ Generated local preview: {len(events)} events")
         print(f"📁 Preview files in: {local_public_dir}")

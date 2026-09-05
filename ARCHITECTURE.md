@@ -95,7 +95,13 @@ Around the Grounds is a **multi-site event aggregator platform** that scrapes ve
 │  CLI   ││ Preview  ││   Deploy     │
 │ Output ││ public/  ││ GitHub Pages │
 │ stdout ││data.json ││ (force push) │
+│        ││events.ics││ data.json    │
+│        ││index.html││ events.ics   │
 └────────┘└──────────┘└──────────────┘
+
+   data.json  → consumed by the site template (index.html)
+   events.ics → RFC 5545 feed for calendar subscribers
+                (utils/ics_generator.py, deterministic output)
 ```
 
 ---
@@ -247,6 +253,27 @@ Template contract:
   • Displays timezone in header
   • Shows haiku/description if present
   • Responsive single-page design
+
+Alongside every template, the deploy also writes events.ics.
+Only food-trucks/index.html currently surfaces a subscribe
+button; music/ and kids/ get the file but no link yet.
+
+A "Subscribe to calendar" disclosure sits beside the truck count.
+Options are named, not inferred from the user agent —
+UA sniffing strands whoever it guesses wrong about
+(e.g. a Proton user on Android). All give a live,
+self-updating subscription:
+  Google         → calendar.google.com/r?cid=<feed>
+  Apple          → webcal:// (also desktop Outlook/Thunderbird)
+  Outlook        → outlook.live.com/.../addfromweb?url=<feed>
+  Copy feed link → clipboard, for "add by URL" fields
+Outlook is separate from Apple because webcal:// does not
+reach Outlook on the WEB — it would fail silently.
+No .ics download option: it's a dead snapshot, confusing
+to sit beside four live ones.
+The google/outlook links need a PUBLIC https feed URL —
+both fetch it server-side, so neither can be tested on
+localhost or a LAN IP.
 ```
 
 ---
@@ -255,16 +282,20 @@ Template contract:
 
 ```
 ┌─────────────────────────────────────────────────┐
-│              Around the Grounds                  │
-│                                                  │
-│   ┌──────────┐  ┌──────────┐  ┌──────────────┐ │
-│   │ aiohttp  │  │  bs4 +   │  │  anthropic   │ │
-│   │ (async   │  │  lxml    │  │  (Claude API │ │
-│   │  HTTP)   │  │ (parsing)│  │  vision +    │ │
-│   │          │  │          │  │  text gen)   │ │
-│   └─────┬────┘  └────┬─────┘  └──────┬───────┘ │
-│         │             │               │          │
-└─────────┼─────────────┼───────────────┼──────────┘
+│              Around the Grounds                 │
+│                                                 │
+│   ┌──────────┐  ┌──────────┐  ┌──────────────┐  │
+│   │ aiohttp  │  │  bs4 +   │  │  anthropic   │  │
+│   │ (async   │  │  lxml    │  │  (Claude API │  │
+│   │  HTTP)   │  │ (parsing)│  │  vision +    │  │
+│   │          │  │          │  │  text gen)   │  │
+│   └─────┬────┘  └────┬─────┘  └──────┬───────┘  │
+│         │             │               │         │
+│   ┌──────────────┐                              │
+│   │  icalendar   │  (RFC 5545 .ics rendering)   │
+│   │  (offline)   │                              │
+│   └──────────────┘                              │
+└─────────┼─────────────┼───────────────┼─────────┘
           │             │               │
           ▼             ▼               ▼
    ┌────────────┐  ┌────────┐   ┌────────────────┐
@@ -274,10 +305,10 @@ Template contract:
    └────────────┘  └────────┘   └────────────────┘
 
    ┌─────────────┐  ┌──────────────┐  ┌─────────────────┐
-   │  GitHub API │  │ Temporal     │  │  Google Cloud    │
-   │  (App Auth) │  │ Cloud (opt.) │  │  Run (opt.)      │
-   │  (Pages     │  │ (workflow    │  │  (scheduled      │
-   │   deploy)   │  │  orchestr.)  │  │   execution)     │
+   │  GitHub API │  │ Temporal     │  │  Google Cloud   │
+   │  (App Auth) │  │ Cloud (opt.) │  │  Run (opt.)     │
+   │  (Pages     │  │ (workflow    │  │  (scheduled     │
+   │   deploy)   │  │  orchestr.)  │  │   execution)    │
    └─────────────┘  └──────────────┘  └─────────────────┘
 ```
 
@@ -341,6 +372,7 @@ Adding a **new parser platform** requires:
 | Per-site deploy strategy   | main.py _deploy_with_github_auth | Force-push root (GH Pages) OR clone+scoped subdir (Vercel), selected by `SiteConfig.deploy_subdir` |
 | Site-level timezone        | SiteConfig.timezone           | Correct filtering/display across regions          |
 | Weather-grounded AI        | utils/haiku_generator.py + weather.py | Haiku prompts use real-time weather; required when `generate_description: true` |
+| Deterministic output       | utils/ics_generator.py        | `.ics` derives DTSTAMP/UID from event content, never `now()`, so unchanged data produces byte-identical files and no empty commits |
 
 ---
 
@@ -351,7 +383,7 @@ These are the natural extension points for new feature sets:
 1. **New parser platforms** — Add to `parsers/generic/` (e.g., Eventbrite API, iCal feed, RSS)
 2. **New site templates** — Add to `public_templates/` (theme per event domain)
 3. **New AI enrichments** — Add to `utils/` (categorization, recommendations, summaries)
-4. **New output targets** — Beyond GitHub Pages (S3, Netlify, email digest, RSS feed)
+4. **New output targets** — Beyond GitHub Pages (S3, Netlify, email digest, RSS feed). *An `.ics` calendar feed is already built — see `utils/ics_generator.py`; per-venue feeds remain unbuilt.*
 5. **New data models** — Extend Event/Venue with pricing, location/geo, categories, images
 6. **Real-time features** — WebSocket/SSE for live updates vs. static deploy
 7. **User-facing API** — REST/GraphQL layer over scraped data
