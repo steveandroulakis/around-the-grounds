@@ -265,7 +265,7 @@ UA sniffing strands whoever it guesses wrong about
 self-updating subscription:
   Google         → calendar.google.com/r?cid=<feed>
   Apple          → webcal:// (also desktop Outlook/Thunderbird)
-  Outlook        → outlook.live.com/.../addfromweb?url=<feed>
+  Outlook        → outlook.live.com/.../addfromweb?url=<https feed>&name=<name>
   Copy feed link → clipboard, for "add by URL" fields
 Outlook is separate from Apple because webcal:// does not
 reach Outlook on the WEB — it would fail silently.

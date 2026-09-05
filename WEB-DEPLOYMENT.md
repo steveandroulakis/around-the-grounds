@@ -321,10 +321,10 @@ subscription** that keeps updating:
 |---|---|---|
 | Google | `calendar.google.com/calendar/r?cid=<webcal feed>` | Subscribe in a computer browser; Google then syncs to its mobile app |
 | Apple | `webcal://.../events.ics` | OS protocol handler — Apple Calendar, and desktop Outlook/Thunderbird/Evolution where they claim the scheme. Does nothing on Android |
-| Outlook | `outlook.live.com/calendar/0/addfromweb?url=<webcal feed>` | `webcal://` does **not** reach Outlook *on the web*, which would fail silently. Subscribing here syncs down to desktop Outlook on the same account |
+| Outlook | `outlook.live.com/calendar/0/addfromweb?url=<https feed>&name=<calendar name>` | `webcal://` does **not** reach Outlook *on the web*, which would fail silently. Subscribing here syncs down to desktop Outlook on the same account |
 | Copy feed link | clipboard | For any client with an "add calendar from URL" field — Proton, Fastmail, Zoho, ICSx⁵. Proton has no deep link of any kind |
 
-Microsoft documents the `addfromweb` `url=` value as a `webcal://` URL, not `https://`. The
+Live testing confirmed Outlook web accepts HTTPS with a prefilled `name`; webcal failed. The
 `outlook.office.com` host is the work/Microsoft-365 equivalent; only the consumer
 `outlook.live.com` variant is wired up, since this is a consumer-facing site.
 
@@ -418,7 +418,9 @@ After deploying:
 
 Google subscription links must pass the `webcal://` feed URL to `cid`; the HTTPS
 variant failed on the live site despite a valid feed. Copy calendar link keeps HTTPS
-for manual add-by-URL. Apple and Outlook already use webcal and are unchanged.
+for manual add-by-URL. Apple uses webcal; Outlook web uses HTTPS with the calendar name.
+The Apple option advises turning off Event Alerts. The feed contains no alarms, but
+subscription alert preferences are controlled by the calendar app, not the feed.
 
 Obec food-truck hours without AM/PM default to afternoon/evening (1–11 means PM;
 12 means noon). Explicit AM/PM and zero-padded/24-hour times are preserved. This

@@ -394,6 +394,7 @@
                         <button type="button" data-calendar="google">Google Calendar</button>
                         <p class="subscribe-help">For Google, subscribe in a computer browser; the calendar then syncs to the mobile app.</p>
                         <button type="button" data-calendar="apple">Apple Calendar</button>
+                        <p class="subscribe-help">For a quiet calendar, turn off Event Alerts when subscribing in Apple Calendar.</p>
                         <button type="button" data-calendar="outlook">Outlook</button>
                         <button type="button" data-calendar="copy">Copy calendar link</button>
                         <span id="subStatus" class="subscribe-status" role="status"></span>
@@ -644,10 +645,11 @@ Unable to load food truck data. Please try again later.
                         'noopener'
                     );
                 } else if (choice === 'outlook') {
-                    // Microsoft documents the url= value as a webcal:// URL.
+                    // Outlook web accepts HTTPS; pass the name to prefill its dialog.
                     window.open(
                         'https://outlook.live.com/calendar/0/addfromweb?url='
-                            + encodeURIComponent(webcalUrl),
+                            + encodeURIComponent(feedUrl)
+                            + '&name=' + encodeURIComponent('Ballard Food Trucks'),
                         '_blank',
                         'noopener'
                     );
