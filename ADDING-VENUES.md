@@ -20,7 +20,7 @@ If none of those apply, use a generic parser and set `source_type` accordingly.
 | `bale_breaker.py` | Squarespace calendar API with quirks |
 | `obec_brewing.py` | Custom regex for "Food truck: \<name\> \<time\>" prose |
 | `wheelie_pop.py` | Simple text search with custom day-of-week handling |
-| `chucks_greenwood.py` | Google Sheets CSV export |
+| `chucks_greenwood.py` | Google Sheets CSV export (desktop tab; the mobile tab drops times) |
 | `salehs_corner.py` | Seattle Food Truck API |
 | `channel_marker.py` | Google Sheets CSV export, M/D/YY date format |
 | `lucky_envelope.py` | Squarespace `data-current-context` embedded JSON |

@@ -3,16 +3,23 @@ Chuck's Hop Shop Greenwood parser.
 
 Parses food truck schedule from Google Sheets CSV export.
 Handles redirects, filters events, and processes meal categories.
+
+Reads the published spreadsheet's "Greenwood" tab (gid=1258996532), whose
+columns C and E carry real start/end hours. The sibling "GW Mobile" tab
+(gid=1143085558) renders those same columns as "12 AM" and a day-of-week,
+so it cannot supply times.
 """
 
 import csv
 import io
-from datetime import datetime
-from typing import List, Optional
+import re
+from datetime import date, datetime
+from typing import List, Optional, Tuple
 
 import aiohttp
 
 from ..models import Event
+from ..utils.date_utils import MONTH_ABBREVIATIONS, WEEKDAY_ABBREVIATIONS
 from ..utils.timezone_utils import (
     get_pacific_month,
     get_pacific_year,
@@ -40,22 +47,6 @@ class ChucksGreenwoodParser(BaseParser):
             "#getting_data",
         }
     )
-
-    # Month abbreviation to number mapping
-    MONTH_MAP = {
-        "Jan": 1,
-        "Feb": 2,
-        "Mar": 3,
-        "Apr": 4,
-        "May": 5,
-        "Jun": 6,
-        "Jul": 7,
-        "Aug": 8,
-        "Sep": 9,
-        "Oct": 10,
-        "Nov": 11,
-        "Dec": 12,
-    }
 
     async def parse(self, session: aiohttp.ClientSession) -> List[Event]:
         """Parse food truck events from Google Sheets CSV."""
@@ -135,12 +126,13 @@ class ChucksGreenwoodParser(BaseParser):
 
     def _parse_csv_row(self, row: List[str]) -> Optional[Event]:
         """Parse a single CSV row into an Event."""
-        # Actual CSV structure (from real data):
-        # Column A (0): Day of Week ("Fri", "Sat", "Sun")
-        # Column B (1): Month+Date ("Aug 1", "Sep 15", "Oct 31")
-        # Column C (2): Time ("12 AM")
+        # Actual CSV structure of the "Greenwood" tab (from real data):
+        # Column A (0): Date ("9/4/2026") or, past ~2 months out, a day of
+        #               week ("Fri", "Sat", "Sun")
+        # Column B (1): Month+Date ("Aug 1", "Sep 15", "Nov 01")
+        # Column C (2): Start hour ("17", "9")
         # Column D (3): "to"
-        # Column E (4): End Day
+        # Column E (4): End hour ("21", "12")
         # Column F (5): Event Type ("Food Truck", "Event")
         # Column G (6): Event Name ("Dinner: T'Juana", "Brunch: Good Morning Tacos")
         # ... additional columns
@@ -173,21 +165,27 @@ class ChucksGreenwoodParser(BaseParser):
             self.logger.debug(f"Could not extract vendor name from: {event_name}")
             return None
 
-        # Parse date from columns A and B (day of week and "Month Date")
-        event_date = self._parse_date_from_month_date_column(row[0], row[1])
+        # Parse date: prefer column A's explicit "M/D/YYYY", which needs no
+        # year inference. Rows beyond ~2 months out hold a day of week there
+        # instead, so fall back to column B's "Month Date".
+        event_date = self._parse_full_date_column(row[0])
+        if not event_date:
+            event_date = self._parse_date_from_month_date_column(row[0], row[1])
         if not event_date:
             self.logger.debug(
                 f"Could not parse date from: {row[0]}, {row[1]}, {row[2]}"
             )
             return None
 
+        start_time, end_time = self._parse_hour_columns(row[2], row[4], event_date)
+
         return Event(
             venue_key=self.venue.key,
             venue_name=self.venue.name,
             title=food_truck_name,
             date=event_date,
-            start_time=None,
-            end_time=None,
+            start_time=start_time,
+            end_time=end_time,
             description=f"Original event: {event_name}",
             extraction_method="html",
         )
@@ -250,11 +248,12 @@ class ChucksGreenwoodParser(BaseParser):
             month_abbr, date_str = parts
 
             # Convert month abbreviation to number
-            if month_abbr not in self.MONTH_MAP:
+            month_key = month_abbr.lower()[:3]
+            if month_key not in MONTH_ABBREVIATIONS:
                 self.logger.debug(f"Unknown month abbreviation: {month_abbr}")
                 return None
 
-            month_num = self.MONTH_MAP[month_abbr]
+            month_num = MONTH_ABBREVIATIONS[month_key]
 
             # Parse day number
             try:
@@ -278,6 +277,12 @@ class ChucksGreenwoodParser(BaseParser):
             else:
                 year = current_year
 
+            # The sheet keeps a stale block of prior-year rows below the
+            # current schedule, and their month+day alone would land on
+            # today's calendar as phantom duplicates. Column A names the
+            # real weekday, so prefer the nearby year whose calendar agrees.
+            year = self._year_matching_weekday(day_col, year, month_num, day_num)
+
             # Create date using Pacific timezone context
             return parse_date_with_pacific_context(year, month_num, day_num)
 
@@ -286,3 +291,96 @@ class ChucksGreenwoodParser(BaseParser):
                 f"Error parsing date from {day_col}, {month_date_col}: {str(e)}"
             )
             return None
+
+    def _year_matching_weekday(
+        self, day_col: str, year: int, month: int, day: int
+    ) -> int:
+        """Pick the year whose calendar puts month/day on column A's weekday.
+
+        Tries the inferred year first, then the neighbouring years. Returns
+        the inferred year unchanged when column A is not a weekday we
+        recognise, or when no candidate matches — a disagreeing weekday is
+        more likely sheet sloppiness than a reason to discard the row.
+        """
+        weekday = day_col.strip().lower()[:3] if day_col else ""
+        if weekday not in WEEKDAY_ABBREVIATIONS:
+            return year
+
+        target = WEEKDAY_ABBREVIATIONS[weekday]
+        for candidate in (year, year - 1, year + 1):
+            try:
+                if date(candidate, month, day).weekday() == target:
+                    return candidate
+            except ValueError:
+                continue  # e.g. Feb 29 in a non-leap candidate year
+
+        self.logger.debug(
+            f"No nearby year puts {month}/{day} on a {weekday}; "
+            f"keeping inferred year {year}"
+        )
+        return year
+
+    def _parse_full_date_column(self, date_col: str) -> Optional[datetime]:
+        """Parse an explicit "M/D/YYYY" date from column A.
+
+        The "Greenwood" tab fills this in for roughly the next two months and
+        writes a day of week ("Sun", "Mon") beyond that; callers fall back to
+        the month+date column when this returns None.
+        """
+        date_str = date_col.strip() if date_col else ""
+        if not date_str:
+            return None
+
+        match = re.match(r"^(\d{1,2})/(\d{1,2})/(\d{4})$", date_str)
+        if not match:
+            return None
+
+        month, day, year = (int(g) for g in match.groups())
+
+        if not (1 <= month <= 12) or not (1 <= day <= 31):
+            self.logger.debug(f"Out-of-range date in column A: {date_str}")
+            return None
+
+        try:
+            return parse_date_with_pacific_context(year, month, day)
+        except ValueError:
+            # e.g. 2/30 — a real calendar violation, not a format problem
+            self.logger.debug(f"Invalid calendar date in column A: {date_str}")
+            return None
+
+    def _parse_hour_columns(
+        self, start_col: str, end_col: str, event_date: datetime
+    ) -> Tuple[Optional[datetime], Optional[datetime]]:
+        """Parse the start/end hour columns into datetimes on the event date."""
+        return (
+            self._parse_hour_column(start_col, event_date),
+            self._parse_hour_column(end_col, event_date),
+        )
+
+    def _parse_hour_column(
+        self, value: str, event_date: datetime
+    ) -> Optional[datetime]:
+        """Parse a single hour-of-day cell ("17", "9", "17:30") onto a date.
+
+        The sheet writes bare 24-hour integers today, but it is not our
+        spreadsheet — accept "H:MM" too, and return None for anything else
+        (including the "12 AM" the mobile tab emits) so the event still
+        surfaces without a time rather than with a wrong one.
+        """
+        time_str = value.strip() if value else ""
+        if not time_str:
+            return None
+
+        match = re.match(r"^(\d{1,2})(?::([0-5]\d))?$", time_str)
+        if not match:
+            self.logger.debug(f"Unrecognized hour column value: {value!r}")
+            return None
+
+        hour = int(match.group(1))
+        minute = int(match.group(2) or 0)
+
+        if not (0 <= hour <= 23):
+            self.logger.debug(f"Out-of-range hour: {value!r}")
+            return None
+
+        return event_date.replace(hour=hour, minute=minute, second=0, microsecond=0)

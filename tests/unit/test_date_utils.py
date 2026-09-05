@@ -5,7 +5,30 @@ from datetime import datetime
 import pytest
 from freezegun import freeze_time
 
-from around_the_grounds.utils.date_utils import DateUtils
+from around_the_grounds.utils.date_utils import (
+    MONTH_ABBREVIATIONS,
+    WEEKDAY_ABBREVIATIONS,
+    DateUtils,
+)
+
+# Hand-written on purpose: this is the oracle the shared table is checked
+# against, so it must not be derived from MONTH_ABBREVIATIONS. Deriving it
+# would let a transposed value (e.g. "jun": 7, "jul": 6) satisfy both the
+# implementation and its own test.
+EXPECTED_MONTHS = [
+    ("Jan", 1),
+    ("Feb", 2),
+    ("Mar", 3),
+    ("Apr", 4),
+    ("May", 5),
+    ("Jun", 6),
+    ("Jul", 7),
+    ("Aug", 8),
+    ("Sep", 9),
+    ("Oct", 10),
+    ("Nov", 11),
+    ("Dec", 12),
+]
 
 
 class TestDateUtils:
@@ -150,23 +173,12 @@ class TestDateUtils:
         assert result.day == 15
 
     def test_parse_month_name_day_all_months(self) -> None:
-        """Test parsing all month name abbreviations."""
-        months = [
-            ("Jan", 1),
-            ("Feb", 2),
-            ("Mar", 3),
-            ("Apr", 4),
-            ("May", 5),
-            ("Jun", 6),
-            ("Jul", 7),
-            ("Aug", 8),
-            ("Sep", 9),
-            ("Oct", 10),
-            ("Nov", 11),
-            ("Dec", 12),
-        ]
+        """Test parsing all month name abbreviations.
 
-        for month_name, expected_month in months:
+        Names are title-case here, unlike the lower-cased keys of
+        MONTH_ABBREVIATIONS, so this also covers case normalisation.
+        """
+        for month_name, expected_month in EXPECTED_MONTHS:
             result = DateUtils._parse_month_name_day(month_name, 15)
             assert result is not None
             assert result.month == expected_month
@@ -181,3 +193,28 @@ class TestDateUtils:
         """Test parsing invalid day."""
         with pytest.raises(ValueError):
             DateUtils._parse_month_day(2, 30)  # February 30th doesn't exist
+
+
+class TestCalendarAbbreviations:
+    """The shared month/weekday tables parsers look names up in."""
+
+    def test_month_table_matches_expected_mapping(self) -> None:
+        """Checked against the hand-written oracle, not against itself."""
+        assert MONTH_ABBREVIATIONS == {
+            name.lower(): number for name, number in EXPECTED_MONTHS
+        }
+
+    def test_weekday_table_matches_datetime_convention(self) -> None:
+        """Values are datetime.date.weekday() indices, so Monday is 0."""
+        assert len(WEEKDAY_ABBREVIATIONS) == 7
+        assert sorted(WEEKDAY_ABBREVIATIONS.values()) == list(range(7))
+        # 2026-09-07 is a Monday, 2026-09-13 a Sunday
+        assert WEEKDAY_ABBREVIATIONS["mon"] == datetime(2026, 9, 7).weekday()
+        assert WEEKDAY_ABBREVIATIONS["sun"] == datetime(2026, 9, 13).weekday()
+
+    def test_keys_are_lowercase_three_letters(self) -> None:
+        """Callers normalise with name.strip().lower()[:3] before lookup."""
+        for table in (MONTH_ABBREVIATIONS, WEEKDAY_ABBREVIATIONS):
+            for key in table:
+                assert key == key.lower()
+                assert len(key) == 3

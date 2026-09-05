@@ -21,7 +21,7 @@ Key features:
 - **Self-hosted Temporal worker** alternative scheduling path (Ballard production setup)
 - **Comprehensive error handling** with retry logic, isolation, and graceful degradation
 - **Temporal workflow integration** with cloud deployment support (local, Temporal Cloud, custom servers)
-- **Extensive test suite** with 538 tests covering unit, integration, vision analysis, haiku generation, weather, and error scenarios
+- **Extensive test suite** with 604 tests covering unit, integration, vision analysis, haiku generation, weather, and error scenarios
 - **Modern Python tooling** with uv for dependency management and packaging
 
 ## Development Commands
@@ -140,7 +140,7 @@ See [SCHEDULES.md](./SCHEDULES.md)
 
 ### Testing
 ```bash
-# Full test suite (538 tests)
+# Full test suite (604 tests)
 uv run python -m pytest                    # Run all tests
 uv run python -m pytest tests/unit/        # Unit tests only
 uv run python -m pytest tests/parsers/     # Parser-specific tests
@@ -200,7 +200,9 @@ around_the_grounds/
 │   ├── obec_brewing.py            # Obec Brewing parser (venue-specific)
 │   ├── urban_family.py            # Urban Family parser — WordPress Sugar Calendar primary + Hivey fallback + vision
 │   ├── wheelie_pop.py             # Wheelie Pop Brewing parser (venue-specific)
-│   ├── chucks_greenwood.py        # Chuck's Hop Shop Greenwood parser (Google Sheets CSV)
+│   ├── chucks_greenwood.py        # Chuck's Hop Shop Greenwood parser (Google Sheets CSV,
+│   │                              #   "Greenwood" tab gid=1258996532 — the "GW Mobile"
+│   │                              #   tab renders its time columns as "12 AM")
 │   ├── salehs_corner.py           # Saleh's Corner parser (Seattle Food Truck API)
 │   ├── channel_marker.py          # Channel Marker Cider parser (Google Sheets CSV)
 │   ├── lucky_envelope.py          # Lucky Envelope Brewing parser (Squarespace embedded JSON)
@@ -218,7 +220,8 @@ around_the_grounds/
 │   ├── starter.py                 # CLI workflow execution client
 │   └── README.md                  # Temporal-specific documentation
 ├── utils/
-│   ├── date_utils.py              # Date/time utilities with validation
+│   ├── date_utils.py              # Date/time utilities with validation; also hosts the
+│   │                              #   shared MONTH_ABBREVIATIONS / WEEKDAY_ABBREVIATIONS tables
 │   ├── github_auth.py             # GitHub App JWT authentication
 │   ├── vision_analyzer.py         # AI vision analysis for vendor identification
 │   ├── haiku_generator.py         # AI haiku generation (weather-grounded, claude-sonnet-4-6)
@@ -239,7 +242,7 @@ public/                            # Generated files (git-ignored)
 ├── events.ics                     # Subscribable calendar feed (all sites)
 └── index.html                     # Copied from the active template
 
-tests/                             # Comprehensive test suite (538 tests)
+tests/                             # Comprehensive test suite (604 tests)
 ├── conftest.py                    # Shared test fixtures
 ├── fixtures/
 │   ├── csv/                       # CSV samples (channel_marker)
@@ -276,7 +279,7 @@ tests/                             # Comprehensive test suite (538 tests)
 - **Web Interface**: Per-site templates in `public_templates/<template>/` deployed to the site's configured host (GitHub Pages or Vercel-via-GitHub)
 - **Web Deployment**: Two git strategies selected by `SiteConfig.deploy_subdir` — see Deployment Strategies below
 - **Scheduling**: Google Cloud Run Jobs with Cloud Scheduler (jredding's sites) OR a self-hosted Temporal worker (Ballard site). Both paths read the same `SiteConfig` and call the same `main.py:_deploy_with_github_auth` for git operations
-- **Tests**: 538 tests covering all scenarios including generic parsers, error handling, vision analysis, haiku generation, weather fetching, multi-site deploy configuration, and the Temporal `load_site` / `generate_web_data` / `deploy_to_git` activity contracts
+- **Tests**: 604 tests covering all scenarios including generic parsers, error handling, vision analysis, haiku generation, weather fetching, multi-site deploy configuration, and the Temporal `load_site` / `generate_web_data` / `deploy_to_git` activity contracts
 
 ## Deployment Strategies
 
@@ -348,7 +351,7 @@ See [ERROR-HANDLING.md](./ERROR-HANDLING.md) for the complete error handling str
 
 ## Testing Strategy
 
-The project includes a comprehensive test suite with 538 tests covering unit, integration, generic parsers, vision analysis, haiku generation, weather fetching, and error scenarios.
+The project includes a comprehensive test suite with 604 tests covering unit, integration, generic parsers, vision analysis, haiku generation, weather fetching, and error scenarios.
 
 See [TESTING.md](./TESTING.md) for the complete testing strategy and guide.
 

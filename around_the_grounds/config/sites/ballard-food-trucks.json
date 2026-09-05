@@ -82,10 +82,10 @@
     {
       "key": "chucks-greenwood",
       "name": "Chuck's Hop Shop Greenwood",
-      "url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS8BmXLSrsUVJ1x_x8FslWooOXRLeEJV-Jq5NzhfUCI9TtO-qXr0ey2BzY8KI-GflT7ekl5015XX3uj/pub?gid=1143085558&single=true&output=csv",
+      "url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS8BmXLSrsUVJ1x_x8FslWooOXRLeEJV-Jq5NzhfUCI9TtO-qXr0ey2BzY8KI-GflT7ekl5015XX3uj/pub?gid=1258996532&single=true&output=csv",
       "source_type": "html",
       "parser_config": {
-        "note": "Google Sheets CSV export with automatic monthly updates",
+        "note": "Google Sheets CSV export (published tab gid=1258996532, \"Greenwood\"). Do not use the \"GW Mobile\" tab (gid=1143085558): its time columns render as \"12 AM\".",
         "csv_direct": true,
         "event_type_filter": "Food Truck"
       }
