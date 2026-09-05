@@ -136,7 +136,7 @@ async def test_public_url_survives_temporal_and_web_data():
     site = load_site_config("ballard-food-trucks")
     assert site.public_url == "https://ballardfoodtrucks.com"
     assert site.name == "Ballard Food Trucks"
-    assert site.calendar_max_timed_hours == 8
+    assert site.calendar_max_timed_hours == 10
     with patch(
         "around_the_grounds.temporal.activities.load_site_config", return_value=site
     ):
@@ -145,7 +145,7 @@ async def test_public_url_survives_temporal_and_web_data():
     restored.generate_description = False
     data = await generate_web_data([], [], site=restored)
     assert data["public_url"] == site.public_url
-    assert data["calendar_max_timed_hours"] == 8
+    assert data["calendar_max_timed_hours"] == 10
     assert parse(data)["X-WR-CALNAME"] == "Ballard Food Trucks"
     payload.pop("public_url")
     payload.pop("calendar_max_timed_hours")

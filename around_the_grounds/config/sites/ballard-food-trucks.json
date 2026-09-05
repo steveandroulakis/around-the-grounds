@@ -2,7 +2,7 @@
   "key": "ballard-food-trucks",
   "name": "Ballard Food Trucks",
   "public_url": "https://ballardfoodtrucks.com",
-  "calendar_max_timed_hours": 8,
+  "calendar_max_timed_hours": 10,
   "template": "food-trucks",
   "timezone": "America/Los_Angeles",
   "target_repo": "https://github.com/steveandroulakis/ballard-food-trucks.git",
