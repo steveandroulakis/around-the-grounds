@@ -25,7 +25,9 @@ class ObecBrewingParser(BaseParser):
             # Pattern: "Food truck:\s*([^0-9]+)\s*([0-9:]+\s*-\s*[0-9:]+)"
             parser_config = self.venue.parser_config or {}
             pattern = parser_config.get(
-                "pattern", r"Food truck:\s*([^0-9]+)\s*([0-9:]+\s*-\s*[0-9:]+)"
+                "pattern",
+                r"Food truck:\s*([^0-9]+)\s*(\d{1,2}(?::\d{2})?\s*(?:[ap]m)?"
+                r"\s*[-–—]\s*\d{1,2}(?::\d{2})?\s*(?:[ap]m)?)",
             )
 
             match = re.search(pattern, page_text, re.IGNORECASE)
@@ -97,21 +99,23 @@ class ObecBrewingParser(BaseParser):
         """Parse a single time like '4:00' or '16:00' into (hour, minute)."""
         try:
             # Handle formats like "4:00", "16:00", "4", etc.
-            time_match = re.match(r"(\d{1,2})(?::(\d{2}))?", time_str)
+            time_match = re.fullmatch(
+                r"(\d{1,2})(?::(\d{2}))?\s*([ap]m)?", time_str, re.IGNORECASE
+            )
             if time_match:
                 hour = int(time_match.group(1))
                 minute = int(time_match.group(2)) if time_match.group(2) else 0
 
-                # For food truck hours, assume PM for reasonable hours (4-11)
-                # Only treat as 24-hour format if hour > 12
-                if hour > 12:
-                    # Already in 24-hour format, use as-is
-                    pass
-                elif hour >= 4 and hour <= 11:
-                    hour += 12  # Convert 4-11 to PM (16-23)
-                elif hour == 12:
-                    hour = 12  # Keep 12 as noon
-                # Hours 1-3 stay as AM (1-3)
+                meridiem = time_match.group(3)
+                if meridiem:
+                    if not 1 <= hour <= 12:
+                        return None
+                    hour = hour % 12 + (12 if meridiem.lower() == "pm" else 0)
+                elif 1 <= hour <= 11 and not time_match.group(1).startswith("0"):
+                    # Obec publishes afternoon/evening food-truck service with
+                    # omitted AM/PM. Treat unqualified 1-11 as PM; explicit
+                    # AM/PM, noon, and zero-padded/24-hour times take precedence.
+                    hour += 12
 
                 # Validate hour range
                 if 0 <= hour <= 23 and 0 <= minute <= 59:

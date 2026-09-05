@@ -40,7 +40,7 @@
       "source_type": "html",
       "parser_config": {
         "note": "Simple text format: 'Food truck: <name> <time>'",
-        "pattern": "Food truck:\\s*([^0-9]+)\\s*([0-9:]+\\s*-\\s*[0-9:]+)"
+        "pattern": "Food truck:\\s*([^0-9]+)\\s*(\\d{1,2}(?::\\d{2})?\\s*(?:[ap]m)?\\s*[-\u2013\u2014]\\s*\\d{1,2}(?::\\d{2})?\\s*(?:[ap]m)?)"
       }
     },
     {

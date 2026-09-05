@@ -14,6 +14,50 @@ from around_the_grounds.parsers.obec_brewing import ObecBrewingParser
 class TestObecBrewingParser:
     """Test the ObecBrewingParser class."""
 
+    @pytest.mark.parametrize(
+        "text,hours",
+        [
+            ("3:00 - 8:00", (15, 20)),
+            ("1 - 5", (13, 17)),
+            ("12:00 - 5:00", (12, 17)),
+            ("3 am - 8 am", (3, 8)),
+            ("12 am - 3 am", (0, 3)),
+            ("15:00 - 20:00", (15, 20)),
+            ("03:00 - 08:00", (3, 8)),
+        ],
+    )
+    def test_service_hour_interpretation(self, parser, text, hours):
+        start, end = parser._parse_time_range(text)
+        assert start is not None and end is not None
+        assert (start.hour, end.hour) == hours
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "hours,expected",
+        [
+            ("3:00 - 8:00", (15, 20)),
+            ("3:00 am - 8:00 am", (3, 8)),
+            ("3:00 – 8:00 PM", (15, 20)),
+        ],
+    )
+    async def test_production_config_service_hours(self, hours, expected):
+        from around_the_grounds.config.loader import load_site_config
+
+        venue = next(
+            v
+            for v in load_site_config("ballard-food-trucks").venues
+            if v.key == "obec-brewing"
+        )
+        parser = ObecBrewingParser(venue)
+        with aioresponses() as responses:
+            responses.get(
+                venue.url,
+                body=f'<html><head><meta charset="utf-8"></head><body><p>Food truck: Kaosamai Thai {hours}</p></body></html>',
+            )
+            async with aiohttp.ClientSession() as session:
+                event = (await parser.parse(session))[0]
+        assert (event.start_time.hour, event.end_time.hour) == expected
+
     @pytest.fixture
     def brewery(self) -> Venue:
         """Create a test brewery for Obec Brewing."""
@@ -238,9 +282,9 @@ class TestObecBrewingParser:
         result = parser._parse_single_time("12")
         assert result == (12, 0)  # 12 PM (noon)
 
-        # Test early hours (treated as AM)
+        # Test ambiguous afternoon hours
         result = parser._parse_single_time("2")
-        assert result == (2, 0)  # 2 AM
+        assert result == (14, 0)  # 2 PM
 
         # Test 24-hour format
         result = parser._parse_single_time("15")

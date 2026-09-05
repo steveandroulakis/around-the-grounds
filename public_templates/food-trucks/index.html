@@ -392,6 +392,7 @@
                         <p><strong>All trucks, in your calendar.</strong></p>
                         <p class="subscribe-help">This week's schedule in a separate calendar you can hide or unsubscribe from. Updates automatically; refresh times vary by app.</p>
                         <button type="button" data-calendar="google">Google Calendar</button>
+                        <p class="subscribe-help">For Google, subscribe in a computer browser; the calendar then syncs to the mobile app.</p>
                         <button type="button" data-calendar="apple">Apple Calendar</button>
                         <button type="button" data-calendar="outlook">Outlook</button>
                         <button type="button" data-calendar="copy">Copy calendar link</button>
@@ -638,7 +639,7 @@ Unable to load food truck data. Please try again later.
                 if (choice === 'google') {
                     window.open(
                         'https://calendar.google.com/calendar/r?cid='
-                            + encodeURIComponent(feedUrl),
+                            + encodeURIComponent(webcalUrl),
                         '_blank',
                         'noopener'
                     );

@@ -319,7 +319,7 @@ subscription** that keeps updating:
 
 | Option | Target | Notes |
 |---|---|---|
-| Google | `calendar.google.com/calendar/r?cid=<feed>` | On Android, App Links opens the Calendar app; else the web UI |
+| Google | `calendar.google.com/calendar/r?cid=<webcal feed>` | Subscribe in a computer browser; Google then syncs to its mobile app |
 | Apple | `webcal://.../events.ics` | OS protocol handler — Apple Calendar, and desktop Outlook/Thunderbird/Evolution where they claim the scheme. Does nothing on Android |
 | Outlook | `outlook.live.com/calendar/0/addfromweb?url=<webcal feed>` | `webcal://` does **not** reach Outlook *on the web*, which would fail silently. Subscribing here syncs down to desktop Outlook on the same account |
 | Copy feed link | clipboard | For any client with an "add calendar from URL" field — Proton, Fastmail, Zoho, ICSx⁵. Proton has no deep link of any kind |
@@ -415,3 +415,11 @@ After deploying:
 - [ ] No JavaScript errors in browser console
 - [ ] Mobile view works correctly
 - [ ] All venue data is present
+
+Google subscription links must pass the `webcal://` feed URL to `cid`; the HTTPS
+variant failed on the live site despite a valid feed. Copy calendar link keeps HTTPS
+for manual add-by-URL. Apple and Outlook already use webcal and are unchanged.
+
+Obec food-truck hours without AM/PM default to afternoon/evening (1–11 means PM;
+12 means noon). Explicit AM/PM and zero-padded/24-hour times are preserved. This
+assumption is confined to the Obec parser, not shared with other sites.
