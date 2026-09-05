@@ -258,7 +258,7 @@ Alongside every template, the deploy also writes events.ics.
 Only food-trucks/index.html currently surfaces a subscribe
 button; music/ and kids/ get the file but no link yet.
 
-A "📅 Subscribe" <select> sits beside the truck count.
+A "Subscribe to calendar" disclosure sits beside the truck count.
 Options are named, not inferred from the user agent —
 UA sniffing strands whoever it guesses wrong about
 (e.g. a Proton user on Android). All give a live,

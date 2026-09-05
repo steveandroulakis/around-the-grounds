@@ -68,6 +68,7 @@ class ScrapeActivities:
             "target_repo": site.target_repo,
             "generate_description": site.generate_description,
             "deploy_subdir": site.deploy_subdir,
+            "public_url": site.public_url,
             "venues": [
                 {
                     "key": v.key,
@@ -122,6 +123,7 @@ def _site_from_dict(site_dict: Dict[str, Any]) -> SiteConfig:
         target_repo=site_dict.get("target_repo", ""),
         generate_description=site_dict.get("generate_description", True),
         deploy_subdir=site_dict.get("deploy_subdir", ""),
+        public_url=site_dict.get("public_url", ""),
     )
 
 

@@ -37,6 +37,7 @@ def load_site_from_path(path: Path) -> SiteConfig:
         target_repo=data.get("target_repo", ""),
         generate_description=data.get("generate_description", True),
         deploy_subdir=data.get("deploy_subdir", ""),
+        public_url=data.get("public_url", ""),
     )
 
 

@@ -256,6 +256,7 @@ async def generate_web_data(
         "updated": datetime.now(timezone.utc).isoformat(),
         "total_events": len(web_events),
         "site_name": site_name,
+        "public_url": site.public_url if site else "",
         "site_key": site_key,
         "timezone": site_tz,
         "timezone_label": tz_label,

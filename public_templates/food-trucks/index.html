@@ -230,38 +230,56 @@
         }
 
         .subscribe {
-            text-align: center;
-            margin: 0 0 20px 0;
-            font-size: 0.9rem;
+            position: relative;
+            font-size: 0.85rem;
         }
 
-        .subscribe-select {
-            font-family: inherit;
-            font-size: 0.85rem;
-            color: #111827;
+        .subscribe summary {
+            cursor: pointer;
+            padding: 8px 0;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            list-style: none;
+        }
+
+        .subscribe summary::-webkit-details-marker { display: none; }
+        .subscribe summary::after { content: ' ▾'; }
+        .subscribe[open] summary::after { content: ' ▴'; }
+
+        .subscribe-panel {
+            position: absolute;
+            right: 0;
+            top: 100%;
+            z-index: 10;
+            width: 300px;
+            max-width: calc(100vw - 48px);
+            box-sizing: border-box;
+            padding: 16px;
             background: white;
             border: 1px solid #e5e7eb;
-            padding: 6px 8px;
-            cursor: pointer;
-            max-width: 100%;
-            /* Without a width a <select> sizes to its widest OPTION, leaving the
-               closed box much wider than the short placeholder. ch units are
-               exact here because the face is monospace. */
-            width: 17ch;
+            border-radius: 6px;
+            box-shadow: 0 6px 20px rgb(0 0 0 / 8%);
+            line-height: 1.5;
+            text-align: left;
         }
 
-        .subscribe-select:hover {
-            background: #f1f5f9;
-        }
-
-        .subscribe-status {
+        .subscribe-panel p { margin: 0 0 12px; }
+        .subscribe-panel .subscribe-help { color: #4b5563; font-size: 0.8rem; }
+        .subscribe-panel button {
             display: block;
-            color: #6b7280;
-            font-size: 0.8rem;
-            margin-top: 4px;
-            /* Reserved so the row doesn't jump when the message appears. */
-            min-height: 1.2em;
+            width: 100%;
+            font: inherit;
+            text-align: left;
+            color: #111827;
+            background: white;
+            border: 0;
+            border-radius: 3px;
+            padding: 10px 8px;
+            cursor: pointer;
         }
+        .subscribe-panel button:hover { background: #f1f5f9; }
+        .subscribe :focus-visible { outline: 2px solid #111827; outline-offset: 3px; }
+        .subscribe-status { display: block; font-size: 0.8rem; min-height: 1.5em; }
 
         .ai-info {
             color: #4b5563;
@@ -332,6 +350,8 @@
                 gap: 8px;
             }
 
+            .subscribe-panel { left: 0; right: auto; }
+
             .stats-row .subscribe {
                 margin: 0;
                 text-align: left;
@@ -366,16 +386,19 @@
                     <span class="stats-label">trucks total</span>
                 </div>
 
-                <div class="subscribe">
-                    <select id="subSelect" class="subscribe-select">
-                        <option value="">📅 Subscribe</option>
-                        <option value="google">Google</option>
-                        <option value="apple">Apple</option>
-                        <option value="outlook">Outlook</option>
-                        <option value="copy">Copy feed link</option>
-                    </select>
-                    <span id="subStatus" class="subscribe-status" role="status"></span>
-                </div>
+                <details id="subscribe" class="subscribe">
+                    <summary>Subscribe to calendar</summary>
+                    <div class="subscribe-panel">
+                        <p><strong>All trucks, in your calendar.</strong></p>
+                        <p class="subscribe-help">This week's schedule in a separate calendar you can hide or unsubscribe from. Updates automatically; refresh times vary by app.</p>
+                        <button type="button" data-calendar="google">Google Calendar</button>
+                        <button type="button" data-calendar="apple">Apple Calendar</button>
+                        <button type="button" data-calendar="outlook">Outlook</button>
+                        <button type="button" data-calendar="copy">Copy calendar link</button>
+                        <span id="subStatus" class="subscribe-status" role="status"></span>
+                        <p class="subscribe-help">For the latest changes, check back here before heading out.</p>
+                    </div>
+                </details>
             </div>
 
             <div id="haiku" class="haiku" style="display: none;"></div>
@@ -581,33 +604,12 @@ Unable to load food truck data. Please try again later.
             window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
         }
 
-        // Subscribe options, named explicitly rather than guessed from the user
-        // agent. No one mechanism reaches every calendar, and UA sniffing would
-        // silently strand anyone it guessed wrong about -- e.g. a Proton or
-        // Fastmail user on Android, who wants the feed URL, not Google.
-        //
-        //   google   calendar.google.com add-by-URL deep link. On Android, App
-        //            Links hands this to the Calendar app.
-        //   apple    webcal://, the OS protocol handler. Opens Apple Calendar,
-        //            and also desktop Outlook/Thunderbird/Evolution where those
-        //            claim the scheme. Does nothing on Android.
-        //   outlook  outlook.live.com add-from-web deep link. Needed because
-        //            webcal:// does not reach Outlook *on the web*, which would
-        //            otherwise fail silently. Subscribing here also syncs down
-        //            to desktop Outlook on the same Microsoft account.
-        //   copy     the plain https feed URL, for any client with an "add
-        //            calendar from URL" field (Proton, Fastmail, ICSx5...).
-        //            Proton in particular has no deep link of any kind.
-        //
-        // All four yield a live, self-updating subscription.
-        //
-        // NOTE the two web deep links (google, outlook) have the provider fetch
-        // the feed server-side, so they only work against a publicly reachable
-        // https URL -- neither can be tested on localhost or a LAN IP.
+        // Explicit provider choices also support calendars with an add-by-URL field.
+        // Google and Outlook fetch the feed server-side and need a public URL.
         function setupSubscribe() {
-            const select = document.getElementById('subSelect');
+            const menu = document.getElementById('subscribe');
             const status = document.getElementById('subStatus');
-            if (!select || !location.protocol.startsWith('http')) return;
+            if (!menu || !location.protocol.startsWith('http')) return;
 
             const feedUrl = new URL('events.ics', location.href).href;
             const path = location.pathname.replace(/[^/]*$/, '');
@@ -619,11 +621,19 @@ Unable to load food truck data. Please try again later.
                 setTimeout(() => { status.textContent = ''; }, 2500);
             };
 
-            select.addEventListener('change', async () => {
-                const choice = select.value;
-                // Reset immediately so the control reads as an action menu
-                // rather than a setting that stays applied.
-                select.value = '';
+            document.addEventListener('click', (event) => {
+                if (!menu.contains(event.target)) menu.open = false;
+            });
+            menu.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    menu.open = false;
+                    menu.querySelector('summary').focus();
+                }
+            });
+            menu.addEventListener('click', async (event) => {
+                const button = event.target.closest('button[data-calendar]');
+                if (!button) return;
+                const choice = button.dataset.calendar;
 
                 if (choice === 'google') {
                     window.open(

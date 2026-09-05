@@ -13,7 +13,6 @@ CLI and Temporal deploy paths on one implementation.
 
 import hashlib
 import logging
-from datetime import date as date_cls
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
@@ -113,7 +112,11 @@ def _build_description(web_event: Dict[str, Any]) -> Optional[str]:
 
 
 def _build_vevent(
-    web_event: Dict[str, Any], site_key: str, tz: ZoneInfo
+    web_event: Dict[str, Any],
+    site_key: str,
+    tz: ZoneInfo,
+    site_name: str,
+    public_url: str,
 ) -> Optional[CalendarEvent]:
     """Build one VEVENT, or None when the entry has no usable date."""
     event_date = _parse_iso(web_event.get("date"))
@@ -122,6 +125,9 @@ def _build_vevent(
 
     cal_event = CalendarEvent()
     cal_event.add("uid", _event_uid(site_key, web_event))
+    # A discovery calendar must not reserve the subscriber's availability.
+    # Deliberately add no VALARM; subscribers control their own reminders.
+    cal_event.add("transp", "TRANSPARENT")
 
     title = str(web_event.get("title") or "Event")
     venue = str(web_event.get("venue") or web_event.get("location") or "")
@@ -130,7 +136,9 @@ def _build_vevent(
     cal_event.add("summary", f"{title} @ {venue}" if venue else title)
 
     start = _parse_iso(web_event.get("start_iso"))
+    timing_note = ""
     if start is None:
+        timing_note = "Hours not published."
         # No published hours: emit an all-day entry (DTSTART;VALUE=DATE).
         start_date = event_date.date()
         cal_event.add("dtstart", start_date)
@@ -141,6 +149,10 @@ def _build_vevent(
     else:
         start_utc = _to_utc(start, tz)
         end = _parse_iso(web_event.get("end_iso"))
+        if end is None:
+            timing_note = (
+                "End time estimated: shown as 3 hours after the published start."
+            )
         end_utc = _to_utc(end, tz) if end else start_utc + DEFAULT_EVENT_DURATION
         if end_utc < start_utc:
             # A venue listing that closes past midnight parses as an earlier
@@ -161,11 +173,19 @@ def _build_vevent(
     if venue:
         cal_event.add("location", venue)
 
-    description = _build_description(web_event)
-    if description:
-        cal_event.add("description", description)
+    description_parts = [
+        part for part in (_build_description(web_event), timing_note) if part
+    ]
+    if public_url:
+        description_parts.append(
+            f"Curated by {site_name}.\n"
+            f"See the latest schedule and explore more events:\n{public_url}\n\n"
+            "Times may change; check before heading out."
+        )
+    if description_parts:
+        cal_event.add("description", "\n\n".join(description_parts))
 
-    venue_url = web_event.get("venue_url")
+    venue_url = public_url or web_event.get("venue_url")
     if venue_url:
         cal_event.add("url", str(venue_url))
 
@@ -186,6 +206,7 @@ def build_ics(web_data: Dict[str, Any]) -> bytes:
     """
     site_key = str(web_data.get("site_key") or "events")
     site_name = str(web_data.get("site_name") or "Events")
+    public_url = str(web_data.get("public_url") or "")
     tz_name = web_data.get("timezone") or DEFAULT_TIMEZONE
     tz = _resolve_timezone(tz_name)
 
@@ -201,7 +222,7 @@ def build_ics(web_data: Dict[str, Any]) -> bytes:
 
     # Events arrive already sorted by date/venue/time from the coordinator.
     for web_event in web_data.get("events") or []:
-        cal_event = _build_vevent(web_event, site_key, tz)
+        cal_event = _build_vevent(web_event, site_key, tz, site_name, public_url)
         if cal_event is not None:
             cal.add_component(cal_event)
 
