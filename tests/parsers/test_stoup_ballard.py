@@ -40,7 +40,8 @@ class TestStoupBallardParser:
     def structured_html(self, html_fixtures_dir: Path) -> str:
         """Load structured HTML fixture."""
         fixture_path = html_fixtures_dir / "stoup_structured.html"
-        return fixture_path.read_text()
+        # Preserve the em dash in time ranges on Windows as well as Linux.
+        return fixture_path.read_text(encoding="utf-8")
 
     @pytest.mark.asyncio
     @freeze_time("2025-07-05")
