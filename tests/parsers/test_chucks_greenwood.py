@@ -1,5 +1,6 @@
 """Tests for Chuck's Greenwood parser."""
 
+from datetime import datetime
 from pathlib import Path
 
 import aiohttp
@@ -20,9 +21,9 @@ class TestChucksGreenwoodParser:
         return Venue(
             key="chucks-greenwood",
             name="Chuck's Hop Shop Greenwood",
-            url="https://docs.google.com/spreadsheets/d/e/2PACX-1vS8BmXLSrsUVJ1x_x8FslWooOXRLeEJV-Jq5NzhfUCI9TtO-qXr0ey2BzY8KI-GflT7ekl5015XX3uj/pub?gid=1143085558&single=true&output=csv",
+            url="https://docs.google.com/spreadsheets/d/e/2PACX-1vS8BmXLSrsUVJ1x_x8FslWooOXRLeEJV-Jq5NzhfUCI9TtO-qXr0ey2BzY8KI-GflT7ekl5015XX3uj/pub?gid=1258996532&single=true&output=csv",
             parser_config={
-                "note": "Google Sheets CSV export with automatic monthly updates",
+                "note": "Google Sheets CSV export, 'Greenwood' tab",
                 "csv_direct": True,
                 "event_type_filter": "Food Truck",
             },
@@ -48,7 +49,7 @@ class TestChucksGreenwoodParser:
     # SUCCESS CASES
 
     @pytest.mark.asyncio
-    @freeze_time("2025-08-05")  # Use consistent test date
+    @freeze_time("2026-09-05")  # matches the dates in the CSV fixture
     async def test_parse_sample_csv_data(
         self, parser: ChucksGreenwoodParser, sample_csv: str
     ) -> None:
@@ -81,8 +82,22 @@ class TestChucksGreenwoodParser:
                     assert "Trivia" not in event.title
                     assert "Bingo" not in event.title
 
+                # Every row of the "Greenwood" tab carries start/end hours
+                assert all(event.start_time is not None for event in events)
+                assert all(event.end_time is not None for event in events)
+
+                by_name = {event.title: event for event in events}
+                # "9/13/2026,Sep 13,9,to,15,Food Truck,Brunch: Good Morning Tacos"
+                brunch = by_name["Good Morning Tacos"]
+                assert brunch.start_time == datetime(2026, 9, 13, 9, 0)
+                assert brunch.end_time == datetime(2026, 9, 13, 15, 0)
+                # "10/2/2026,Oct 2,17,to,21,Food Truck,Dinner: T'Juana"
+                dinner = by_name["T'Juana"]
+                assert dinner.start_time == datetime(2026, 10, 2, 17, 0)
+                assert dinner.end_time == datetime(2026, 10, 2, 21, 0)
+
     @pytest.mark.asyncio
-    @freeze_time("2025-08-05")
+    @freeze_time("2026-09-05")  # matches the dates in the CSV fixture
     async def test_parse_with_redirect(
         self, parser: ChucksGreenwoodParser, sample_csv: str
     ) -> None:
@@ -255,11 +270,62 @@ Another,incomplete"""
     @freeze_time("2025-12-25")
     def test_parse_date_next_year_rollover(self, parser: ChucksGreenwoodParser) -> None:
         """Test date parsing with year rollover."""
-        result = parser._parse_date_from_month_date_column("Wed", "Jan 15")
+        # Jan 15 2026 is a Thursday, and column A agrees
+        result = parser._parse_date_from_month_date_column("Thu", "Jan 15")
         assert result is not None
         assert result.year == 2026  # Should be next year
         assert result.month == 1
         assert result.day == 15
+
+    @freeze_time("2026-09-05")
+    def test_parse_date_uses_weekday_to_reject_stale_rows(
+        self, parser: ChucksGreenwoodParser
+    ) -> None:
+        """A prior-year row is dated to its real year, not today's calendar.
+
+        The "Greenwood" tab keeps a block of stale rows below the current
+        schedule. Sep 5 is a Saturday in 2026 but was a Friday in 2025, so
+        a row reading "Fri, Sep 05" belongs to 2025 — and once dated
+        correctly it falls outside the coordinator's window instead of
+        duplicating a real event.
+        """
+        result = parser._parse_date_from_month_date_column("Fri", "Sep 05")
+        assert result is not None
+        assert result.year == 2025
+        assert (result.month, result.day) == (9, 5)
+
+    @freeze_time("2026-09-05")
+    def test_parse_date_keeps_current_year_when_weekday_agrees(
+        self, parser: ChucksGreenwoodParser
+    ) -> None:
+        """A genuine forward row keeps the inferred year."""
+        # Nov 1 2026 is a Sunday
+        result = parser._parse_date_from_month_date_column("Sun", "Nov 01")
+        assert result is not None
+        assert result.year == 2026
+        assert (result.month, result.day) == (11, 1)
+
+    @freeze_time("2026-09-05")
+    def test_parse_date_unrecognized_weekday_keeps_inferred_year(
+        self, parser: ChucksGreenwoodParser
+    ) -> None:
+        """Column A that is not a weekday leaves the inference untouched."""
+        result = parser._parse_date_from_month_date_column("", "Nov 01")
+        assert result is not None
+        assert result.year == 2026
+
+    @freeze_time("2026-09-05")
+    def test_parse_date_impossible_weekday_keeps_inferred_year(
+        self, parser: ChucksGreenwoodParser
+    ) -> None:
+        """A weekday no nearby year satisfies is treated as sheet sloppiness.
+
+        Better to keep the event on the inferred date than to drop it.
+        """
+        # Nov 1 is Sun/Sat/Mon across 2026/2025/2027 — never a Wednesday
+        result = parser._parse_date_from_month_date_column("Wed", "Nov 01")
+        assert result is not None
+        assert result.year == 2026
 
     @freeze_time("2025-08-05")
     def test_parse_date_same_month(self, parser: ChucksGreenwoodParser) -> None:
@@ -296,16 +362,182 @@ Another,incomplete"""
         result = parser._parse_date_from_month_date_column("Fri", "Aug")
         assert result is None  # Missing day number
 
+    # HOUR COLUMN PARSING TESTS
+
+    def test_parse_hour_column_whole_hour(self, parser: ChucksGreenwoodParser) -> None:
+        """The sheet writes bare 24-hour integers."""
+        date = datetime(2026, 9, 4)
+        assert parser._parse_hour_column("17", date) == datetime(2026, 9, 4, 17, 0)
+        assert parser._parse_hour_column("21", date) == datetime(2026, 9, 4, 21, 0)
+
+    def test_parse_hour_column_single_digit(
+        self, parser: ChucksGreenwoodParser
+    ) -> None:
+        """Brunch rows use a single-digit hour."""
+        date = datetime(2026, 9, 6)
+        assert parser._parse_hour_column("9", date) == datetime(2026, 9, 6, 9, 0)
+
+    def test_parse_hour_column_midnight(self, parser: ChucksGreenwoodParser) -> None:
+        """A literal "0" is a valid hour, unlike the mobile tab's "12 AM"."""
+        date = datetime(2026, 9, 4)
+        assert parser._parse_hour_column("0", date) == datetime(2026, 9, 4, 0, 0)
+
+    def test_parse_hour_column_with_minutes(
+        self, parser: ChucksGreenwoodParser
+    ) -> None:
+        """Accept "H:MM" defensively — the sheet is not ours to control."""
+        date = datetime(2026, 9, 4)
+        assert parser._parse_hour_column("17:30", date) == datetime(2026, 9, 4, 17, 30)
+
+    def test_parse_hour_column_preserves_date_and_zeroes_seconds(
+        self, parser: ChucksGreenwoodParser
+    ) -> None:
+        """Times hang off the event date with sub-minute precision cleared."""
+        date = datetime(2026, 9, 4, 13, 45, 30, 123456)
+        result = parser._parse_hour_column("17", date)
+        assert result == datetime(2026, 9, 4, 17, 0, 0, 0)
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "",
+            "   ",
+            "12 AM",  # what the "GW Mobile" tab emits
+            "Sat",  # mobile tab's end column
+            "5PM",
+            "noon",
+            "24",  # out of range
+            "17:99",  # invalid minutes
+            "#VALUE!",
+        ],
+    )
+    def test_parse_hour_column_unparseable(
+        self, parser: ChucksGreenwoodParser, value: str
+    ) -> None:
+        """Anything that is not an hour yields None rather than a wrong time."""
+        assert parser._parse_hour_column(value, datetime(2026, 9, 4)) is None
+
+    def test_parse_hour_columns_pair(self, parser: ChucksGreenwoodParser) -> None:
+        """Both columns are parsed independently."""
+        date = datetime(2026, 9, 6)
+        start, end = parser._parse_hour_columns("9", "12", date)
+        assert start == datetime(2026, 9, 6, 9, 0)
+        assert end == datetime(2026, 9, 6, 12, 0)
+
+    def test_parse_hour_columns_partial(self, parser: ChucksGreenwoodParser) -> None:
+        """A missing end hour does not discard a usable start hour."""
+        date = datetime(2026, 9, 6)
+        start, end = parser._parse_hour_columns("17", "", date)
+        assert start == datetime(2026, 9, 6, 17, 0)
+        assert end is None
+
+    # FULL DATE COLUMN PARSING TESTS
+
+    def test_parse_full_date_column(self, parser: ChucksGreenwoodParser) -> None:
+        """Column A holds an explicit M/D/YYYY for the near-term rows."""
+        assert parser._parse_full_date_column("9/4/2026") == datetime(2026, 9, 4)
+        assert parser._parse_full_date_column("10/31/2026") == datetime(2026, 10, 31)
+
+    @freeze_time("2026-09-05")
+    def test_parse_full_date_column_needs_no_year_inference(
+        self, parser: ChucksGreenwoodParser
+    ) -> None:
+        """A January date reads as 2027 without the rollover heuristic."""
+        assert parser._parse_full_date_column("1/15/2027") == datetime(2027, 1, 15)
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "",
+            "Sun",  # the weekday form used past ~2 months out
+            "Sep 4",
+            "9/4/26",  # two-digit year
+            "13/1/2026",  # month out of range
+            "9/32/2026",  # day out of range
+            "2/30/2026",  # not a real calendar date
+        ],
+    )
+    def test_parse_full_date_column_rejects(
+        self, parser: ChucksGreenwoodParser, value: str
+    ) -> None:
+        """Non-M/D/YYYY values fall through to the month+date column."""
+        assert parser._parse_full_date_column(value) is None
+
     # CSV ROW PARSING TESTS
 
-    @freeze_time("2025-08-05")
+    @freeze_time("2026-09-05")
     def test_parse_csv_row_valid_food_truck(
         self, parser: ChucksGreenwoodParser
     ) -> None:
         """Test parsing a valid food truck CSV row."""
         row = [
+            "10/2/2026",
+            "Oct 2",
+            "17",
+            "to",
+            "21",
+            "Food Truck",
+            "Dinner: T'Juana",
+            "8/21/2024",
+            "8/21/2026",
+            "FALSE",
+            "TRUE",
+        ]
+
+        result = parser._parse_csv_row(row)
+        assert result is not None
+        assert result.venue_key == "chucks-greenwood"
+        assert result.venue_name == "Chuck's Hop Shop Greenwood"
+        assert result.title == "T'Juana"
+        assert result.date.year == 2026
+        assert result.date.month == 10
+        assert result.date.day == 2
+        assert result.start_time == datetime(2026, 10, 2, 17, 0)
+        assert result.end_time == datetime(2026, 10, 2, 21, 0)
+        assert result.description is not None
+        assert "Dinner: T'Juana" in result.description
+
+    @freeze_time("2026-09-05")
+    def test_parse_csv_row_weekday_column_a(
+        self, parser: ChucksGreenwoodParser
+    ) -> None:
+        """Rows past ~2 months out carry a weekday in column A, not a date."""
+        row = [
+            "Sun",
+            "Nov 01",
+            "9",
+            "to",
+            "14",
+            "Food Truck",
+            "Brunch: Sunny Up",
+            "9/4/2017",
+            "7/29/2026",
+            "FALSE",
+            "TRUE",
+        ]
+
+        result = parser._parse_csv_row(row)
+        assert result is not None
+        assert result.title == "Sunny Up"
+        # Falls back to column B; the zero-padded day still parses
+        assert result.date == datetime(2026, 11, 1)
+        assert result.start_time == datetime(2026, 11, 1, 9, 0)
+        assert result.end_time == datetime(2026, 11, 1, 14, 0)
+
+    @freeze_time("2026-09-05")
+    def test_parse_csv_row_mobile_tab_format_yields_no_times(
+        self, parser: ChucksGreenwoodParser
+    ) -> None:
+        """Regression: the "GW Mobile" tab's columns must not become midnight.
+
+        That tab renders column C as "12 AM" and column E as a day of week.
+        Reading it is what left this venue with no times; if it is ever
+        configured again, the event should surface untimed rather than
+        claiming a bogus midnight start.
+        """
+        row = [
             "Fri",
-            "Aug 1",
+            "Oct 2",
             "12 AM",
             "to",
             "Sat",
@@ -319,14 +551,9 @@ Another,incomplete"""
 
         result = parser._parse_csv_row(row)
         assert result is not None
-        assert result.venue_key == "chucks-greenwood"
-        assert result.venue_name == "Chuck's Hop Shop Greenwood"
         assert result.title == "T'Juana"
-        assert result.date.year == 2025
-        assert result.date.month == 8
-        assert result.date.day == 1
-        assert result.description is not None
-        assert "Dinner: T'Juana" in result.description
+        assert result.start_time is None
+        assert result.end_time is None
 
     def test_parse_csv_row_non_food_truck_event(
         self, parser: ChucksGreenwoodParser

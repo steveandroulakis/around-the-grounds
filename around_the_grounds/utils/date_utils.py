@@ -1,7 +1,40 @@
 import logging
 import re
 from datetime import datetime, timedelta
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
+
+# Month and weekday abbreviations appear in several source formats (Google
+# Sheets exports, scraped HTML), so the lookup tables live here rather than
+# being redeclared per parser. Keys are lower-cased three-letter
+# abbreviations; look up with ``name.strip().lower()[:3]`` so that "Sep",
+# "sept" and "September" all resolve.
+
+# Month abbreviation to month number (1-12).
+MONTH_ABBREVIATIONS: Dict[str, int] = {
+    "jan": 1,
+    "feb": 2,
+    "mar": 3,
+    "apr": 4,
+    "may": 5,
+    "jun": 6,
+    "jul": 7,
+    "aug": 8,
+    "sep": 9,
+    "oct": 10,
+    "nov": 11,
+    "dec": 12,
+}
+
+# Weekday abbreviation to ``datetime.date.weekday()`` index (Monday == 0).
+WEEKDAY_ABBREVIATIONS: Dict[str, int] = {
+    "mon": 0,
+    "tue": 1,
+    "wed": 2,
+    "thu": 3,
+    "fri": 4,
+    "sat": 5,
+    "sun": 6,
+}
 
 
 class DateUtils:
@@ -116,22 +149,7 @@ class DateUtils:
         """
         Parse month name and day.
         """
-        month_map = {
-            "jan": 1,
-            "feb": 2,
-            "mar": 3,
-            "apr": 4,
-            "may": 5,
-            "jun": 6,
-            "jul": 7,
-            "aug": 8,
-            "sep": 9,
-            "oct": 10,
-            "nov": 11,
-            "dec": 12,
-        }
-
-        month = month_map.get(month_name.lower()[:3])
+        month = MONTH_ABBREVIATIONS.get(month_name.lower()[:3])
         if month:
             return DateUtils._parse_month_day(month, day)
 
