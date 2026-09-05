@@ -13,6 +13,7 @@ CLI and Temporal deploy paths on one implementation.
 
 import hashlib
 import logging
+import math
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
@@ -117,6 +118,7 @@ def _build_vevent(
     tz: ZoneInfo,
     site_name: str,
     public_url: str,
+    max_timed_hours: Optional[float],
 ) -> Optional[CalendarEvent]:
     """Build one VEVENT, or None when the entry has no usable date."""
     event_date = _parse_iso(web_event.get("date"))
@@ -137,16 +139,8 @@ def _build_vevent(
 
     start = _parse_iso(web_event.get("start_iso"))
     timing_note = ""
-    if start is None:
-        timing_note = "Hours not published."
-        # No published hours: emit an all-day entry (DTSTART;VALUE=DATE).
-        start_date = event_date.date()
-        cal_event.add("dtstart", start_date)
-        cal_event.add("dtend", start_date + timedelta(days=1))
-        dtstamp = datetime(
-            start_date.year, start_date.month, start_date.day, tzinfo=timezone.utc
-        )
-    else:
+    all_day = start is None
+    if start is not None:
         start_utc = _to_utc(start, tz)
         end = _parse_iso(web_event.get("end_iso"))
         if end is None:
@@ -158,9 +152,44 @@ def _build_vevent(
             # A venue listing that closes past midnight parses as an earlier
             # clock time on the same day; roll it into the next day.
             end_utc += timedelta(days=1)
-        cal_event.add("dtstart", start_utc)
-        cal_event.add("dtend", end_utc)
+        duration_hours = (end_utc - start_utc).total_seconds() / 3600
+        if max_timed_hours is not None and duration_hours > max_timed_hours:
+            all_day = True
+            reported_start = start_utc.astimezone(tz).strftime("%Y-%m-%d %H:%M %Z")
+            reported_end = end_utc.astimezone(tz).strftime("%Y-%m-%d %H:%M %Z")
+            timing_note = (
+                "Hours uncertain - check the schedule. Shown as an all-day entry, "
+                "not all-day service.\n"
+                f"Reported hours (parsed): {reported_start} - {reported_end}."
+            )
+            if web_event.get("venue_url"):
+                timing_note += f"\nSource: {web_event['venue_url']}"
+            logger.warning(
+                "Calendar hours uncertain for %s/%s (%s): start=%s end=%s; "
+                "%.2f hours exceeds %.2f-hour threshold; using all-day entry",
+                site_key,
+                web_event.get("venue_key"),
+                title,
+                web_event.get("start_iso"),
+                web_event.get("end_iso"),
+                duration_hours,
+                max_timed_hours,
+            )
+        else:
+            cal_event.add("dtstart", start_utc)
+            cal_event.add("dtend", end_utc)
         dtstamp = start_utc
+
+    if all_day:
+        if start is None:
+            timing_note = "Hours not published."
+        # Use the booking's local date, not its potentially erroneous start date.
+        start_date = event_date.date()
+        cal_event.add("dtstart", start_date)
+        cal_event.add("dtend", start_date + timedelta(days=1))
+        dtstamp = datetime(
+            start_date.year, start_date.month, start_date.day, tzinfo=timezone.utc
+        )
 
     # DTSTAMP is deliberately derived from the event itself rather than
     # datetime.now(). RFC 5545 requires the property but its value is not
@@ -209,6 +238,18 @@ def build_ics(web_data: Dict[str, Any]) -> bytes:
     public_url = str(web_data.get("public_url") or "")
     tz_name = web_data.get("timezone") or DEFAULT_TIMEZONE
     tz = _resolve_timezone(tz_name)
+    max_timed_hours = web_data.get("calendar_max_timed_hours")
+    if max_timed_hours is not None:
+        try:
+            max_timed_hours = float(max_timed_hours)
+            if not math.isfinite(max_timed_hours) or max_timed_hours <= 0:
+                raise ValueError("Threshold must be finite and positive")
+        except (TypeError, ValueError):
+            logger.warning(
+                "Ignoring invalid calendar duration threshold: %r",
+                web_data.get("calendar_max_timed_hours"),
+            )
+            max_timed_hours = None
 
     cal = Calendar()
     cal.add("prodid", f"-//Around the Grounds//{site_key}//EN")
@@ -222,7 +263,9 @@ def build_ics(web_data: Dict[str, Any]) -> bytes:
 
     # Events arrive already sorted by date/venue/time from the coordinator.
     for web_event in web_data.get("events") or []:
-        cal_event = _build_vevent(web_event, site_key, tz, site_name, public_url)
+        cal_event = _build_vevent(
+            web_event, site_key, tz, site_name, public_url, max_timed_hours
+        )
         if cal_event is not None:
             cal.add_component(cal_event)
 

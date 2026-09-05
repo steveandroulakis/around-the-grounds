@@ -425,3 +425,19 @@ subscription alert preferences are controlled by the calendar app, not the feed.
 Obec food-truck hours without AM/PM default to afternoon/evening (1–11 means PM;
 12 means noon). Explicit AM/PM and zero-padded/24-hour times are preserved. This
 assumption is confined to the Obec parser, not shared with other sites.
+
+### Long-duration calendar safeguard
+
+`calendar_max_timed_hours` is an optional site setting, enabled at 8 hours for
+Ballard. Timed entries exceeding the threshold become single-day all-day entries
+on the booking date, labeled "Hours uncertain - check the schedule" and explicitly
+not advertised as all-day service. Parsed hours and the venue source link remain
+in the description, and a warning logs the original timestamps. No start or end
+time is invented or truncated. Exactly eight hours remains timed; the check uses
+elapsed UTC duration after existing overnight normalization. Missing-hours all-day
+entries and default three-hour entries retain their behavior. UIDs remain stable.
+
+The setting passes through CLI web data and Temporal site payloads. Omitted/null
+means no threshold, preserving other sites and older payloads. Invalid nonpositive
+or nonfinite values are logged and ignored. The safeguard only changes the calendar
+feed; parser fixes still belong in the parser and the website retains reported hours.

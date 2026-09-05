@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 from .brewery import Venue
 
@@ -22,3 +22,5 @@ class SiteConfig:
     deploy_subdir: str = ""
     # Public homepage for calendar attribution; never infer from the git remote.
     public_url: str = ""
+    # Longer calendar entries become all-day with uncertain hours, never truncated.
+    calendar_max_timed_hours: Optional[float] = None

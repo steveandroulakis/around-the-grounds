@@ -257,6 +257,7 @@ async def generate_web_data(
         "total_events": len(web_events),
         "site_name": site_name,
         "public_url": site.public_url if site else "",
+        "calendar_max_timed_hours": site.calendar_max_timed_hours if site else None,
         "site_key": site_key,
         "timezone": site_tz,
         "timezone_label": tz_label,

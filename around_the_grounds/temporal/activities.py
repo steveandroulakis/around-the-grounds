@@ -69,6 +69,7 @@ class ScrapeActivities:
             "generate_description": site.generate_description,
             "deploy_subdir": site.deploy_subdir,
             "public_url": site.public_url,
+            "calendar_max_timed_hours": site.calendar_max_timed_hours,
             "venues": [
                 {
                     "key": v.key,
@@ -124,6 +125,7 @@ def _site_from_dict(site_dict: Dict[str, Any]) -> SiteConfig:
         generate_description=site_dict.get("generate_description", True),
         deploy_subdir=site_dict.get("deploy_subdir", ""),
         public_url=site_dict.get("public_url", ""),
+        calendar_max_timed_hours=site_dict.get("calendar_max_timed_hours"),
     )
 
 
