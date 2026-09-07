@@ -15,7 +15,11 @@ from aioresponses import aioresponses
 from freezegun import freeze_time
 
 from around_the_grounds.models import Venue
-from around_the_grounds.parsers.bale_breaker import BaleBreakerParser
+from around_the_grounds.parsers.bale_breaker import (
+    BaleBreakerParser,
+    SquarespaceBlockedError,
+)
+from around_the_grounds.scrapers.coordinator import ScraperCoordinator
 
 
 class TestBaleBreakerParser:
@@ -153,6 +157,86 @@ class TestBaleBreakerParser:
                 # Should return fallback instead of raising
                 assert len(events) == 1
                 assert "Check Instagram @BaleBreaker" in events[0].title
+
+    @pytest.mark.asyncio
+    @freeze_time("2025-07-01")
+    async def test_parse_raises_when_api_is_blocked(
+        self, parser: BaleBreakerParser, sample_html_with_calendar: str
+    ) -> None:
+        """A 403 from the calendar API must not degrade to the placeholder.
+
+        Squarespace rejects some User-Agents with 403. That is our request
+        being blocked, not the venue having no events, so it has to surface
+        as an error the coordinator can report.
+        """
+        with aioresponses() as m:
+            m.get(parser.venue.url, status=200, body=sample_html_with_calendar)
+            base_api_url = "https://www.bbycballard.com/api/open/GetItemsByMonth"
+            for month in ["July-2025", "August-2025", "September-2025"]:
+                api_url = f"{base_api_url}?month={month}&collectionId=61328af17400707612fccbc6"
+                m.get(api_url, status=403)
+
+            async with aiohttp.ClientSession() as session:
+                with pytest.raises(SquarespaceBlockedError, match="403"):
+                    await parser.parse(session)
+
+    @pytest.mark.asyncio
+    @freeze_time("2025-07-01")
+    async def test_parse_page_403_recovers_via_known_collection_id(
+        self, parser: BaleBreakerParser, sample_api_response: List[Dict[str, Any]]
+    ) -> None:
+        """If only the HTML page is blocked, the known collection ID still works."""
+        with aioresponses() as m:
+            m.get(parser.venue.url, status=403)
+            base_api_url = "https://www.bbycballard.com/api/open/GetItemsByMonth"
+            for month in ["July-2025", "August-2025", "September-2025"]:
+                api_url = f"{base_api_url}?month={month}&collectionId=61328af17400707612fccbc6"
+                payload = sample_api_response if month == "July-2025" else []
+                m.get(api_url, status=200, payload=payload)
+
+            async with aiohttp.ClientSession() as session:
+                events = await parser.parse(session)
+
+        assert [e.title for e in events] == ["Georgia's Greek", "Wood Shop BBQ"]
+        assert not any("Check Instagram" in e.title for e in events)
+
+    @pytest.mark.asyncio
+    @freeze_time("2025-07-01")
+    async def test_parse_page_403_then_api_403_raises(
+        self, parser: BaleBreakerParser
+    ) -> None:
+        """Page blocked AND API blocked is the real-world 403 case: raise."""
+        with aioresponses() as m:
+            m.get(parser.venue.url, status=403)
+            base_api_url = "https://www.bbycballard.com/api/open/GetItemsByMonth"
+            for month in ["July-2025", "August-2025", "September-2025"]:
+                api_url = f"{base_api_url}?month={month}&collectionId=61328af17400707612fccbc6"
+                m.get(api_url, status=403)
+
+            async with aiohttp.ClientSession() as session:
+                with pytest.raises(SquarespaceBlockedError):
+                    await parser.parse(session)
+
+    @pytest.mark.asyncio
+    @freeze_time("2025-07-01")
+    async def test_blocked_api_is_reported_by_coordinator(self, brewery: Venue) -> None:
+        """End to end: the coordinator records a Parser Error, no placeholder."""
+        with aioresponses() as m:
+            m.get(brewery.url, status=403)
+            base_api_url = "https://www.bbycballard.com/api/open/GetItemsByMonth"
+            for month in ["July-2025", "August-2025", "September-2025"]:
+                api_url = f"{base_api_url}?month={month}&collectionId=61328af17400707612fccbc6"
+                m.get(api_url, status=403)
+
+            events, error = await ScraperCoordinator().scrape_one(brewery)
+
+        assert events == []
+        assert error is not None
+        assert error.error_type == "Parser Error"
+        assert "403" in error.message
+        assert error.to_user_message() == (
+            "Failed to fetch information for: Yonder Cider & Bale Breaker - Ballard"
+        )
 
     def test_extract_collection_id_from_calendar_block(
         self, parser: BaleBreakerParser
