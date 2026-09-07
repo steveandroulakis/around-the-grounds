@@ -94,9 +94,7 @@ class TestBaleBreakerParser:
                 events = await parser.parse(session)
 
                 assert len(events) == 2
-                assert all(
-                    event.venue_key == "yonder-balebreaker" for event in events
-                )
+                assert all(event.venue_key == "yonder-balebreaker" for event in events)
                 assert events[0].title == "Georgia's Greek"
                 assert events[1].title == "Wood Shop BBQ"
 
@@ -210,6 +208,53 @@ class TestBaleBreakerParser:
         assert event.venue_key == "yonder-balebreaker"
         assert isinstance(event.date, datetime)
         assert isinstance(event.end_time, datetime)
+
+    def test_parse_api_event_structured_content_dates(
+        self, parser: BaleBreakerParser
+    ) -> None:
+        """Squarespace nests the timestamps under 'structuredContent'."""
+        event_data = {
+            "title": "Test Food Truck",
+            "structuredContent": {
+                "startDate": 1720800000000,
+                "endDate": 1720814400000,
+            },
+        }
+
+        event = parser._parse_api_event(event_data)
+
+        assert event is not None
+        assert event.title == "Test Food Truck"
+        assert event.date == datetime(2024, 7, 12, 9, 0)
+        assert event.end_time == datetime(2024, 7, 12, 13, 0)
+
+    def test_parse_api_event_prefers_top_level_dates(
+        self, parser: BaleBreakerParser
+    ) -> None:
+        """Legacy top-level timestamps win when both shapes are present."""
+        event_data = {
+            "title": "Test Food Truck",
+            "startDate": 1720800000000,
+            "endDate": 1720814400000,
+            "structuredContent": {"startDate": 1, "endDate": 2},
+        }
+
+        event = parser._parse_api_event(event_data)
+
+        assert event is not None
+        assert event.date == datetime(2024, 7, 12, 9, 0)
+
+    def test_parse_api_event_unescapes_title(self, parser: BaleBreakerParser) -> None:
+        """The API returns HTML-escaped titles."""
+        event_data = {
+            "title": "Tacos &amp; Beer",
+            "structuredContent": {"startDate": 1720800000000},
+        }
+
+        event = parser._parse_api_event(event_data)
+
+        assert event is not None
+        assert event.title == "Tacos & Beer"
 
     def test_parse_api_event_no_title(self, parser: BaleBreakerParser) -> None:
         """Test parsing API event with no title."""
