@@ -154,9 +154,10 @@ class TestAllDayEvents:
 
 
 class TestFieldMapping:
-    def test_summary_combines_title_and_venue(self):
+    def test_summary_is_just_the_title(self):
+        """The venue is carried by LOCATION, so repeating it here is noise."""
         ve = vevents(make_web_data())[0]
-        assert ve["SUMMARY"] == "Woodshop BBQ @ Stoup Brewing"
+        assert ve["SUMMARY"] == "Woodshop BBQ"
 
     def test_summary_uses_plain_title_not_the_vendor_emoji_variant(self):
         """The 'vendor' key carries a 🖼️🤖 suffix that is a web-only affordance."""
@@ -167,12 +168,12 @@ class TestFieldMapping:
         )
         ve = vevents(make_web_data([ai]))[0]
 
-        assert ve["SUMMARY"] == "Mystery Truck @ Stoup Brewing"
+        assert ve["SUMMARY"] == "Mystery Truck"
         assert "🖼️" not in str(ve["SUMMARY"])
 
-    def test_summary_omits_separator_when_venue_is_unknown(self):
+    def test_location_omitted_when_venue_is_unknown(self):
         ve = vevents(make_web_data([make_web_event(venue=None, location=None)]))[0]
-        assert ve["SUMMARY"] == "Woodshop BBQ"
+        assert "LOCATION" not in ve
 
     def test_location_and_url(self):
         ve = vevents(make_web_data())[0]
@@ -213,7 +214,7 @@ class TestFieldMapping:
         assert b"Tacos\\, Inc\\; " in raw
         # And it must survive a round trip intact.
         ve = Calendar.from_ical(raw).walk("VEVENT")[0]
-        assert str(ve["SUMMARY"]) == 'Tacos, Inc; "Best" \\ Trucks @ Stoup Brewing'
+        assert str(ve["SUMMARY"]) == 'Tacos, Inc; "Best" \\ Trucks'
 
     def test_events_preserve_input_order(self):
         events = [
@@ -223,7 +224,7 @@ class TestFieldMapping:
         ]
         summaries = [str(ve["SUMMARY"]) for ve in vevents(make_web_data(events))]
 
-        assert [s.split(" @ ")[0] for s in summaries] == ["First", "Second", "Third"]
+        assert summaries == ["First", "Second", "Third"]
 
 
 class TestUids:
@@ -309,4 +310,4 @@ class TestMalformedInput:
 
     def test_missing_title_gets_a_placeholder(self):
         ve = vevents(make_web_data([make_web_event(title=None)]))[0]
-        assert str(ve["SUMMARY"]) == "Event @ Stoup Brewing"
+        assert str(ve["SUMMARY"]) == "Event"
