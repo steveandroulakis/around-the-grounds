@@ -55,8 +55,7 @@ class TestChannelMarkerParser:
                 assert len(events) > 0
                 assert all(event.venue_key == "channel-marker" for event in events)
                 assert all(
-                    event.venue_name == "Channel Marker Cider"
-                    for event in events
+                    event.venue_name == "Channel Marker Cider" for event in events
                 )
                 assert all(event.title.strip() != "" for event in events)
                 assert all(event.date is not None for event in events)
@@ -82,8 +81,8 @@ class TestChannelMarkerParser:
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
 
-                # Sample has 15 data rows but only 8 have food truck names
-                assert len(events) == 8
+                # Sample has 18 data rows but only 11 have food truck names
+                assert len(events) == 11
 
     @pytest.mark.asyncio
     @freeze_time("2026-03-30")
@@ -98,22 +97,66 @@ class TestChannelMarkerParser:
                 events = await parser.parse(session)
 
                 # Find the LA COSTENITA event (5PM-9PM)
-                costenita = [
-                    e for e in events if e.title == "La Costenita"
-                ][0]
+                costenita = [e for e in events if e.title == "La Costenita"][0]
                 assert costenita.start_time is not None
                 assert costenita.start_time.hour == 17
                 assert costenita.end_time is not None
                 assert costenita.end_time.hour == 21
 
                 # Find a 5PM-8PM event
-                maya = [
-                    e for e in events if e.title == "La Rivera Maya"
-                ][0]
+                maya = [e for e in events if e.title == "La Rivera Maya"][0]
                 assert maya.start_time is not None
                 assert maya.start_time.hour == 17
                 assert maya.end_time is not None
                 assert maya.end_time.hour == 20
+
+    @pytest.mark.asyncio
+    @freeze_time("2026-03-30")
+    async def test_parse_times_with_minutes(
+        self, parser: ChannelMarkerParser, sample_csv: str
+    ) -> None:
+        """Half-hour starts like '5:30PM-8PM' must not drop the whole range."""
+        with aioresponses() as m:
+            m.get(parser.venue.url, status=200, body=sample_csv)
+
+            async with aiohttp.ClientSession() as session:
+                events = await parser.parse(session)
+
+                seoul = [e for e in events if e.title == "Heart In Seoul"][0]
+                assert seoul.start_time is not None
+                assert (seoul.start_time.hour, seoul.start_time.minute) == (17, 30)
+                assert seoul.end_time is not None
+                assert (seoul.end_time.hour, seoul.end_time.minute) == (20, 0)
+
+    @pytest.mark.asyncio
+    @freeze_time("2026-03-30")
+    async def test_blank_time_column_still_yields_event(
+        self, parser: ChannelMarkerParser, sample_csv: str
+    ) -> None:
+        """A truck with no published hours is kept, just without times."""
+        with aioresponses() as m:
+            m.get(parser.venue.url, status=200, body=sample_csv)
+
+            async with aiohttp.ClientSession() as session:
+                events = await parser.parse(session)
+
+                barelas = [e for e in events if e.title == "Cocina Barelas"][0]
+                assert barelas.start_time is None
+                assert barelas.end_time is None
+
+    @pytest.mark.asyncio
+    @freeze_time("2026-03-30")
+    async def test_apostrophe_names_not_mangled(
+        self, parser: ChannelMarkerParser, sample_csv: str
+    ) -> None:
+        """str.title() would render "FINN ANTHONY'S" as "Finn Anthony'S"."""
+        with aioresponses() as m:
+            m.get(parser.venue.url, status=200, body=sample_csv)
+
+            async with aiohttp.ClientSession() as session:
+                events = await parser.parse(session)
+
+                assert "Finn Anthony's" in [e.title for e in events]
 
     @pytest.mark.asyncio
     @freeze_time("2026-03-30")
@@ -127,9 +170,7 @@ class TestChannelMarkerParser:
             async with aiohttp.ClientSession() as session:
                 events = await parser.parse(session)
 
-                matt = [
-                    e for e in events if e.title == "Where Ya At, Matt?"
-                ][0]
+                matt = [e for e in events if e.title == "Where Ya At, Matt?"][0]
                 assert matt.date.year == 2026
                 assert matt.date.month == 3
                 assert matt.date.day == 31
@@ -253,6 +294,59 @@ Another,incomplete"""
         assert end is not None
         assert start.hour == 11
         assert end.hour == 15
+
+    def test_parse_time_range_with_minutes(self, parser: ChannelMarkerParser) -> None:
+        """Minutes on either side of the range are preserved."""
+        from datetime import datetime
+
+        event_date = datetime(2026, 4, 1)
+
+        start, end = parser._parse_time_range("5:30PM-8PM", event_date)
+        assert start is not None
+        assert end is not None
+        assert (start.hour, start.minute) == (17, 30)
+        assert (end.hour, end.minute) == (20, 0)
+
+        start, end = parser._parse_time_range("11:15AM-2:45PM", event_date)
+        assert start is not None
+        assert end is not None
+        assert (start.hour, start.minute) == (11, 15)
+        assert (end.hour, end.minute) == (14, 45)
+
+    def test_parse_time_range_infers_missing_start_period(
+        self, parser: ChannelMarkerParser
+    ) -> None:
+        """A start with no AM/PM borrows the end's, flipping if that inverts."""
+        from datetime import datetime
+
+        event_date = datetime(2026, 4, 1)
+
+        # Same period works: 5PM < 8PM
+        start, end = parser._parse_time_range("5-8PM", event_date)
+        assert start is not None
+        assert start.hour == 17
+
+        # Same period would invert (11PM > 3PM), so fall back to AM
+        start, end = parser._parse_time_range("11-3PM", event_date)
+        assert start is not None
+        assert start.hour == 11
+
+    def test_parse_time_range_rejects_bad_minutes(
+        self, parser: ChannelMarkerParser
+    ) -> None:
+        """Out-of-range minutes are rejected rather than raising."""
+        from datetime import datetime
+
+        event_date = datetime(2026, 4, 1)
+        assert parser._parse_time_range("5:99PM-8PM", event_date) == (None, None)
+
+    def test_title_case_preserves_apostrophes(
+        self, parser: ChannelMarkerParser
+    ) -> None:
+        """Title-casing must not capitalize the letter after an apostrophe."""
+        assert parser._title_case("FINN ANTHONY'S") == "Finn Anthony's"
+        assert parser._title_case("WHERE YA AT, MATT?") == "Where Ya At, Matt?"
+        assert parser._title_case("  CHUCK'S HOP SHOP  ") == "Chuck's Hop Shop"
 
     def test_parse_time_range_empty(self, parser: ChannelMarkerParser) -> None:
         """Test time range parsing with empty input."""
