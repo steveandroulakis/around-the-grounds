@@ -1,3 +1,4 @@
+import html
 import json
 from datetime import datetime, timedelta, timezone
 from typing import Any, List, Optional
@@ -71,8 +72,6 @@ class BaleBreakerParser(BaseParser):
                 data_json = block.get("data-block-json")
                 if data_json:
                     # Decode HTML entities and parse JSON
-                    import html
-
                     decoded_json = html.unescape(data_json)
                     block_data = json.loads(decoded_json)
                     collection_id = block_data.get("collectionId")
@@ -163,13 +162,15 @@ class BaleBreakerParser(BaseParser):
     def _parse_api_event(self, event_data: dict) -> Optional[Event]:
         """Parse a single event from the Squarespace API response"""
         try:
-            title = event_data.get("title", "").strip()
+            title = html.unescape(event_data.get("title", "")).strip()
             if not title:
                 return None
 
-            # Convert timestamp to datetime
-            start_timestamp = event_data.get("startDate")
-            end_timestamp = event_data.get("endDate")
+            # Squarespace now nests the timestamps under "structuredContent";
+            # fall back to the legacy top-level keys for older responses.
+            structured = event_data.get("structuredContent") or {}
+            start_timestamp = event_data.get("startDate") or structured.get("startDate")
+            end_timestamp = event_data.get("endDate") or structured.get("endDate")
 
             if not start_timestamp:
                 return None
