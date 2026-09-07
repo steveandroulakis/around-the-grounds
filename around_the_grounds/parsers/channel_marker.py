@@ -146,15 +146,19 @@ class ChannelMarkerParser(BaseParser):
             extraction_method="csv",
         )
 
+    # A "word" is a run of Unicode letters, optionally joined by straight or
+    # curly apostrophes. `[^\W\d_]` is the Unicode-aware letter class, so
+    # accented names like "JALAPEÑOS" stay one word rather than splitting at
+    # the "Ñ" the way an ASCII-only `[A-Za-z]+` would.
+    TITLE_WORD_PATTERN = re.compile(r"[^\W\d_]+(?:['\u2019][^\W\d_]+)*")
+
     def _title_case(self, name: str) -> str:
         """Title-case an ALL-CAPS name without capitalizing after apostrophes.
 
         `str.title()` turns "FINN ANTHONY'S" into "Finn Anthony'S".
         """
-        return re.sub(
-            r"[A-Za-z]+(?:'[A-Za-z]+)*",
-            lambda m: m.group(0).capitalize(),
-            name.strip(),
+        return self.TITLE_WORD_PATTERN.sub(
+            lambda m: m.group(0).capitalize(), name.strip()
         )
 
     def _parse_date(self, date_str: str) -> Optional[datetime]:
