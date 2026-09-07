@@ -13,6 +13,21 @@ except ImportError:
 from ..models import Event
 from .base import BaseParser
 
+# Squarespace rejects some User-Agents (aiohttp's default among them) with a
+# 403 on both the HTML page and the calendar API.  Because the API lives on the
+# same host and is fetched with the same session headers, a 403 there means
+# the scraper itself is blocked -- not that the venue has no events -- so it
+# must surface as a scrape error rather than degrade to the placeholder.
+
+
+class SquarespaceBlockedError(ValueError):
+    """Raised when Squarespace returns 403 for the calendar API request.
+
+    Subclasses ValueError so ScraperCoordinator records it as a Parser Error
+    and the failure reaches the CLI output, data.json ``errors`` and the
+    Temporal workflow result instead of being masked by the placeholder event.
+    """
+
 
 class BaleBreakerParser(BaseParser):
     async def parse(self, session: aiohttp.ClientSession) -> List[Event]:
@@ -27,7 +42,9 @@ class BaleBreakerParser(BaseParser):
             # Handle 403 errors or other access issues gracefully
             if "403" in str(e) or "Access forbidden" in str(e):
                 self.logger.warning(
-                    "Access to main page blocked (403), using fallback collection ID"
+                    "Access to main page blocked (403); trying the known "
+                    "collection ID. If the calendar API is blocked too, this "
+                    "is reported as a scrape error rather than a placeholder."
                 )
                 # Use known collection ID as fallback
                 collection_id = "61328af17400707612fccbc6"
@@ -58,6 +75,9 @@ class BaleBreakerParser(BaseParser):
             )
             return valid_events
 
+        except SquarespaceBlockedError:
+            # Our request was rejected; the placeholder would hide that.
+            raise
         except Exception as e:
             self.logger.error(f"Error parsing Bale Breaker: {str(e)}")
             # Return fallback event instead of failing completely
@@ -144,6 +164,12 @@ class BaleBreakerParser(BaseParser):
                             event = self._parse_api_event(event_data)
                             if event:
                                 events.append(event)
+                    elif response.status == 403:
+                        raise SquarespaceBlockedError(
+                            "Squarespace returned 403 for the calendar API "
+                            f"({api_url}). The request User-Agent is probably "
+                            "being rejected; check the session headers."
+                        )
                     else:
                         self.logger.warning(
                             f"API request failed with status {response.status}"
@@ -151,6 +177,8 @@ class BaleBreakerParser(BaseParser):
 
             return events
 
+        except SquarespaceBlockedError:
+            raise
         except Exception as e:
             self.logger.error(f"Error fetching calendar events: {str(e)}")
             self.logger.error(f"Exception type: {type(e).__name__}")
