@@ -348,6 +348,20 @@ Another,incomplete"""
         assert parser._title_case("WHERE YA AT, MATT?") == "Where Ya At, Matt?"
         assert parser._title_case("  CHUCK'S HOP SHOP  ") == "Chuck's Hop Shop"
 
+    def test_title_case_handles_curly_apostrophes(
+        self, parser: ChannelMarkerParser
+    ) -> None:
+        """Google Sheets may emit a curly apostrophe (U+2019) instead of '."""
+        assert parser._title_case("FINN ANTHONY\u2019S") == "Finn Anthony\u2019s"
+
+    def test_title_case_handles_accented_letters(
+        self, parser: ChannelMarkerParser
+    ) -> None:
+        """Accented letters are part of the word, not a boundary."""
+        assert parser._title_case("JALAPEÑOS") == "Jalapeños"
+        assert parser._title_case("JOSÉ'S TACOS") == "José's Tacos"
+        assert parser._title_case("CAFÉ CRÊPE") == "Café Crêpe"
+
     def test_parse_time_range_empty(self, parser: ChannelMarkerParser) -> None:
         """Test time range parsing with empty input."""
         from datetime import datetime
