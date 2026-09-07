@@ -133,9 +133,7 @@ def _build_vevent(
 
     title = str(web_event.get("title") or "Event")
     venue = str(web_event.get("venue") or web_event.get("location") or "")
-    # Use the plain title, not the "vendor" key -- that one carries a 🖼️🤖
-    # suffix which is a web-only affordance.
-    cal_event.add("summary", f"{title} @ {venue}" if venue else title)
+    cal_event.add("summary", title)
 
     start = _parse_iso(web_event.get("start_iso"))
     timing_note = ""

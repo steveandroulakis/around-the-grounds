@@ -94,7 +94,7 @@ def test_threshold_uses_elapsed_time_across_dst():
 def test_ballard_attribution_keeps_title_clean():
     data = make_web_data(public_url="https://ballardfoodtrucks.com")
     event = vevents(data)[0]
-    assert event["SUMMARY"] == "Woodshop BBQ @ Stoup Brewing"
+    assert event["SUMMARY"] == "Woodshop BBQ"
     assert event["URL"] == "https://ballardfoodtrucks.com"
     assert "Curated by Ballard Food Trucks." in event["DESCRIPTION"]
     assert "https://ballardfoodtrucks.com" in event["DESCRIPTION"]

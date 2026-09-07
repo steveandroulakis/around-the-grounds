@@ -454,7 +454,7 @@ class TestCalendarFeedOutput:
 
         raw = ics_path.read_bytes()
         assert raw.startswith(b"BEGIN:VCALENDAR")
-        assert b"SUMMARY:Woodshop BBQ @ Stoup Brewing" in raw
+        assert b"SUMMARY:Woodshop BBQ\r\n" in raw
 
     def test_preview_feed_is_byte_stable_across_runs(self, tmp_path: Path) -> None:
         """Unchanged data must produce an identical feed, or every deploy commits."""
