@@ -24,6 +24,13 @@ from .base import BaseParser
 class ChannelMarkerParser(BaseParser):
     """Parser for Channel Marker Cider food truck schedule."""
 
+    # "5PM-8PM", "5:30PM-8PM", "11AM-3PM", "5-8PM" (start period optional).
+    TIME_RANGE_PATTERN = re.compile(
+        r"(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?\s*[-–—]\s*"
+        r"(\d{1,2})(?::(\d{2}))?\s*(AM|PM)",
+        re.IGNORECASE,
+    )
+
     async def parse(self, session: aiohttp.ClientSession) -> List[Event]:
         """Parse food truck events from Google Sheets CSV."""
         try:
@@ -113,7 +120,7 @@ class ChannelMarkerParser(BaseParser):
             return None
 
         # Extract food truck name (Column 1), converting to title case
-        food_truck_name = row[1].strip().title() if len(row) > 1 else ""
+        food_truck_name = self._title_case(row[1]) if len(row) > 1 else ""
         if not food_truck_name:
             return None
 
@@ -137,6 +144,17 @@ class ChannelMarkerParser(BaseParser):
             end_time=end_time,
             description=None,
             extraction_method="csv",
+        )
+
+    def _title_case(self, name: str) -> str:
+        """Title-case an ALL-CAPS name without capitalizing after apostrophes.
+
+        `str.title()` turns "FINN ANTHONY'S" into "Finn Anthony'S".
+        """
+        return re.sub(
+            r"[A-Za-z]+(?:'[A-Za-z]+)*",
+            lambda m: m.group(0).capitalize(),
+            name.strip(),
         )
 
     def _parse_date(self, date_str: str) -> Optional[datetime]:
@@ -171,34 +189,80 @@ class ChannelMarkerParser(BaseParser):
     def _parse_time_range(
         self, time_str: str, event_date: datetime
     ) -> Tuple[Optional[datetime], Optional[datetime]]:
-        """Parse time range like '5PM-8PM' into start/end datetimes."""
+        """Parse a range like '5PM-8PM' or '5:30PM-8PM' into start/end times.
+
+        The sheet mixes whole-hour ("6PM-9PM") and half-hour ("5:30PM-8PM")
+        entries, and sometimes omits the period on the start ("5-8PM"), so the
+        minutes and the leading AM/PM are both optional.
+        """
         if not time_str:
             return None, None
 
-        # Match patterns like "5PM-8PM", "11AM-3PM", "5pm-8pm"
-        match = re.match(
-            r"(\d{1,2})\s*(AM|PM)\s*-\s*(\d{1,2})\s*(AM|PM)",
-            time_str,
-            re.IGNORECASE,
-        )
+        match = self.TIME_RANGE_PATTERN.search(time_str)
         if not match:
             return None, None
 
         start_hour = int(match.group(1))
-        start_period = match.group(2).upper()
-        end_hour = int(match.group(3))
-        end_period = match.group(4).upper()
+        start_minute = int(match.group(2) or 0)
+        start_period = match.group(3).upper() if match.group(3) else None
+        end_hour = int(match.group(4))
+        end_minute = int(match.group(5) or 0)
+        end_period = match.group(6).upper()
 
-        start_hour_24 = self._to_24h(start_hour, start_period)
-        end_hour_24 = self._to_24h(end_hour, end_period)
-
-        if start_hour_24 is None or end_hour_24 is None:
+        if start_minute > 59 or end_minute > 59:
             return None, None
 
-        start_time = event_date.replace(hour=start_hour_24, minute=0, second=0)
-        end_time = event_date.replace(hour=end_hour_24, minute=0, second=0)
+        end_hour_24 = self._to_24h(end_hour, end_period)
+        if end_hour_24 is None:
+            return None, None
+
+        if start_period is None:
+            start_hour_24 = self._infer_start_hour(
+                start_hour, start_minute, end_hour_24, end_minute, end_period
+            )
+        else:
+            start_hour_24 = self._to_24h(start_hour, start_period)
+
+        if start_hour_24 is None:
+            return None, None
+
+        start_time = event_date.replace(
+            hour=start_hour_24, minute=start_minute, second=0, microsecond=0
+        )
+        end_time = event_date.replace(
+            hour=end_hour_24, minute=end_minute, second=0, microsecond=0
+        )
 
         return start_time, end_time
+
+    def _infer_start_hour(
+        self,
+        start_hour: int,
+        start_minute: int,
+        end_hour_24: int,
+        end_minute: int,
+        end_period: str,
+    ) -> Optional[int]:
+        """Infer the AM/PM of a start time that omits it, e.g. '11-3PM'.
+
+        Assume the start shares the end's period; if that would put the start
+        at or after the end, fall back to the other period.
+        """
+        same_period = self._to_24h(start_hour, end_period)
+        if same_period is None:
+            return None
+        if (same_period, start_minute) < (end_hour_24, end_minute):
+            return same_period
+
+        other = "AM" if end_period == "PM" else "PM"
+        other_period = self._to_24h(start_hour, other)
+        if other_period is not None and (other_period, start_minute) < (
+            end_hour_24,
+            end_minute,
+        ):
+            return other_period
+
+        return same_period
 
     def _to_24h(self, hour: int, period: str) -> Optional[int]:
         """Convert 12-hour time to 24-hour."""
