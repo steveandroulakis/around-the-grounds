@@ -10,6 +10,7 @@ import pytest
 
 from around_the_grounds.models import Venue, Event
 from around_the_grounds.scrapers.coordinator import ScraperCoordinator, ScrapingError
+from around_the_grounds.utils.timezone_utils import now_in_site_timezone_naive
 
 
 class TestScraperCoordinator:
@@ -365,7 +366,9 @@ class TestScraperCoordinator:
         self, coordinator: ScraperCoordinator, test_breweries: List[Venue]
     ) -> None:
         """Test event filtering and sorting."""
-        now = datetime.now()
+        # The coordinator filters by the site local date (Pacific by default),
+        # which differs from the container UTC date every evening Pacific time.
+        now = now_in_site_timezone_naive("America/Los_Angeles")
         past_event = Event(
             venue_key="test",
             venue_name="Test",
