@@ -5,7 +5,7 @@ This guide covers comprehensive testing strategies for the Around the Grounds pr
 ## Testing Commands
 
 ```bash
-# Full test suite (604 tests)
+# Full test suite (674 tests)
 uv run python -m pytest                    # Run all tests
 uv run python -m pytest tests/unit/        # Unit tests only
 uv run python -m pytest tests/parsers/     # Parser-specific tests
@@ -92,7 +92,7 @@ This approach catches issues that raw API testing misses and ensures users see t
 
 ## Testing Strategy
 
-The project includes a comprehensive test suite with 604 tests:
+The project includes a comprehensive test suite with 674 tests:
 
 ### Test Organization
 
@@ -106,6 +106,14 @@ tests/
 ├── temporal/                   # Temporal workflow tests
 └── test_error_handling.py      # Comprehensive error scenario tests
 ```
+
+### Real-Server and Browser Tests
+
+Two groups go beyond mocks and run automatically with the suite:
+
+- `tests/temporal/test_workflow_execution.py` starts a local Temporal dev server (`WorkflowEnvironment.start_local()`) and runs the real `FoodTruckWorkflow` against name-matched mock activities: per-venue isolation, batch ordering, total-failure and deploy-failure outcomes, timezone propagation, cancellation (must never deploy), and replay of histories recorded from the pre-isolation workflow (`tests/fixtures/temporal/*.json`). Re-record those fixtures only when the command sequence is intentionally changed.
+- `tests/integration/test_templates_browser.py` runs `tests/browser/check_templates.mjs` in Chromium via Playwright (Node). It serves each template with a hostile `data.json` (`O'Brien & "quoted" <img src=x onerror=...>`) and asserts the payload renders as text, search links and the kids location filter keep the original names, and calendar-date headings match across `America/Los_Angeles`, `Pacific/Kiritimati`, and `Pacific/Honolulu`. All non-local requests are aborted so it runs offline. Skipped when Node or Playwright is unavailable (`npm install -g playwright` plus a Chromium install).
+- `tests/integration/test_cli.py::TestDeployAgainstLocalGit` runs the real Git commands of `_deploy_with_github_auth` against a temporary bare repository in both root and subdir modes.
 
 ### Test Coverage Areas
 

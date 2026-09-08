@@ -328,3 +328,76 @@ class TestDeploymentActivities:
                 await activities.deploy_to_git(
                     {"web_data": {"total_events": 0}, "site": site_dict}
                 )
+
+
+class TestScrapeSingleVenueTimezone:
+    """The site timezone must reach the coordinator across the activity boundary."""
+
+    @pytest.mark.asyncio
+    async def test_timezone_key_is_passed_to_scrape_one(
+        self, mock_venue_configs: List[Dict[str, Any]]
+    ) -> None:
+        activities = ScrapeActivities()
+        with patch(
+            "around_the_grounds.temporal.activities.ScraperCoordinator"
+        ) as mock_cls:
+            mock_cls.return_value.scrape_one = AsyncMock(return_value=([], None))
+            payload = {**mock_venue_configs[0], "timezone": "America/New_York"}
+            await activities.scrape_single_venue(payload)
+
+        _, kwargs = mock_cls.return_value.scrape_one.await_args
+        assert kwargs["timezone"] == "America/New_York"
+
+    @pytest.mark.asyncio
+    async def test_legacy_payload_without_timezone_defaults_to_pacific(
+        self, mock_venue_configs: List[Dict[str, Any]]
+    ) -> None:
+        """Payloads scheduled by pre-upgrade workflow code omit the key."""
+        activities = ScrapeActivities()
+        with patch(
+            "around_the_grounds.temporal.activities.ScraperCoordinator"
+        ) as mock_cls:
+            mock_cls.return_value.scrape_one = AsyncMock(return_value=([], None))
+            await activities.scrape_single_venue(mock_venue_configs[0])
+
+        _, kwargs = mock_cls.return_value.scrape_one.await_args
+        assert kwargs["timezone"] == "America/Los_Angeles"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "timezone, expected_dates",
+        [
+            # 04:30Z on Sep 7 is 00:30 Sep 7 in New York: window is Sep 7-14.
+            ("America/New_York", {"2026-09-14"}),
+            # ...but 21:30 Sep 6 in Seattle: window is Sep 6-13.
+            ("America/Los_Angeles", {"2026-09-06"}),
+        ],
+    )
+    async def test_filter_window_uses_site_timezone_at_midnight_boundary(
+        self,
+        mock_venue_configs: List[Dict[str, Any]],
+        timezone: str,
+        expected_dates: set,
+    ) -> None:
+        from freezegun import freeze_time
+
+        from around_the_grounds.models import Event
+        from around_the_grounds.scrapers.coordinator import ScraperCoordinator
+
+        def _event(day: str) -> Event:
+            return Event(
+                venue_key="test-brewery-1",
+                venue_name="Test Brewery 1",
+                title=f"Truck {day}",
+                date=datetime.fromisoformat(f"{day}T00:00:00"),
+            )
+
+        scraped = [_event("2026-09-06"), _event("2026-09-14")]
+        activities = ScrapeActivities()
+        with freeze_time("2026-09-07 04:30:00"), patch.object(
+            ScraperCoordinator, "_scrape_venue", AsyncMock(return_value=(scraped, None))
+        ):
+            payload = {**mock_venue_configs[0], "timezone": timezone}
+            result = await activities.scrape_single_venue(payload)
+
+        assert {e["date"][:10] for e in result["events"]} == expected_dates

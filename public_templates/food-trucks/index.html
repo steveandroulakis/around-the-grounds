@@ -437,6 +437,14 @@ Unable to load food truck data. Please try again later.
     </div>
 
     <script>
+        // Escape text for safe insertion into innerHTML (text nodes and
+        // double-quoted attribute values). Scraped strings are data, not markup.
+        function esc(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[ch]);
+        }
+
         async function loadFoodTruckData() {
             try {
                 const response = await fetch('data.json');
@@ -470,7 +478,7 @@ Unable to load food truck data. Please try again later.
                 // Split haiku by newlines and create span elements for each line
                 const lines = data.haiku.split('\n');
                 haikuEl.innerHTML = lines.map(line =>
-                    `<span class="haiku-line">${line}</span>`
+                    `<span class="haiku-line">${esc(line)}</span>`
                 ).join('');
                 haikuEl.style.display = 'block';
             }
@@ -503,7 +511,7 @@ Unable to load food truck data. Please try again later.
                 });
                 
                 html += `<div class="day-section">`;
-                html += `<div class="day-header">${dayName}</div>`;
+                html += `<div class="day-header">${esc(dayName)}</div>`;
                 
                 eventsByDate[dateKey].forEach(event => {
                     const rawTruckName = event.vendor || event.vendor_name || 'TBD';
@@ -513,20 +521,20 @@ Unable to load food truck data. Please try again later.
                     const isVisionExtracted = event.vendor && event.extraction_method === 'vision';
                     
                     html += `<div class="truck-item">`;
-                    const escapedTruckName = truckName.replace(/'/g, "\\'");
-                    html += `<a href="#" class="truck-name" onclick="searchTruck('${escapedTruckName}'); return false;">`;
-                    html += `${truckName}`;
+                    // Names travel as data attributes; a delegated listener
+                    // below reads them back, so no JS source is generated.
+                    html += `<a href="#" class="truck-name" data-truck-name="${esc(truckName)}">`;
+                    html += `${esc(truckName)}`;
                     if (isVisionExtracted) {
                         html += ` <span class="vision-badge">AI extracted</span>`;
                     }
                     html += `</a>`;
                     html += `<div class="truck-details">`;
                     if (location) {
-                        const escapedLocation = location.replace(/'/g, "\\'");
-                        html += `<div class="location"><a href="#" class="location-link" onclick="searchBrewery('${escapedLocation}'); return false;">${location}</a></div>`;
+                        html += `<div class="location"><a href="#" class="location-link" data-brewery-name="${esc(location)}">${esc(location)}</a></div>`;
                     }
                     if (timeString) {
-                        html += `<div class="time">${timeString}</div>`;
+                        html += `<div class="time">${esc(timeString)}</div>`;
                     }
                     html += `</div>`;
                     html += `</div>`;
@@ -537,6 +545,22 @@ Unable to load food truck data. Please try again later.
             
             scheduleEl.innerHTML = html;
             scheduleEl.style.display = 'block';
+            if (!scheduleEl.dataset.searchBound) {
+                scheduleEl.dataset.searchBound = 'true';
+                scheduleEl.addEventListener('click', (ev) => {
+                    const truck = ev.target.closest('a.truck-name[data-truck-name]');
+                    if (truck) {
+                        ev.preventDefault();
+                        searchTruck(truck.dataset.truckName);
+                        return;
+                    }
+                    const brewery = ev.target.closest('a.location-link[data-brewery-name]');
+                    if (brewery) {
+                        ev.preventDefault();
+                        searchBrewery(brewery.dataset.breweryName);
+                    }
+                });
+            }
             
             // Show timezone note
             const timezoneNoteEl = document.getElementById('timezone-note');
@@ -565,7 +589,7 @@ Unable to load food truck data. Please try again later.
                 const errors = Array.isArray(data.errors) ? data.errors : [];
                 if (errors.length > 0) {
                     errorsNoteEl.innerHTML = errors
-                        .map(message => `⚠️ ${message}`)
+                        .map(message => `⚠️ ${esc(message)}`)
                         .join('<br>');
                     errorsNoteEl.style.display = 'block';
                 } else {
