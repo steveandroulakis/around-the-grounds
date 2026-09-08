@@ -147,6 +147,20 @@
 </div>
 
 <script>
+// Escape text for safe insertion into innerHTML (text nodes and
+// double-quoted attribute values). Scraped strings are data, not markup.
+function esc(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[ch]);
+}
+
+// Calendar-date headings: format the date-only value in UTC so the visitor's
+// timezone can never shift the day. (Event times are separate raw strings.)
+function formatDateHeading(dateKey, options) {
+    return new Date(dateKey + 'T12:00:00Z').toLocaleDateString('en-US', { ...options, timeZone: 'UTC' });
+}
+
 fetch('data.json')
     .then(r => r.json())
     .then(data => {
@@ -173,20 +187,19 @@ fetch('data.json')
         });
 
         container.innerHTML = Object.entries(byDate).map(([date, evts]) => {
-            const d2 = new Date(date + 'T12:00:00');
-            const tzOpts = data.timezone ? { timeZone: data.timezone } : {};
-            const month = d2.toLocaleDateString('en-US', { month: 'long', ...tzOpts }).toUpperCase();
-            const day = d2.toLocaleDateString('en-US', { day: 'numeric', ...tzOpts });
-            const weekday = d2.toLocaleDateString('en-US', { weekday: 'long', ...tzOpts }).toUpperCase();
-            const label = `<strong>${month} ${day}</strong> <span class="day-weekday">${weekday}</span>`;
+            const month = formatDateHeading(date, { month: 'long' }).toUpperCase();
+            const day = formatDateHeading(date, { day: 'numeric' });
+            const weekday = formatDateHeading(date, { weekday: 'long' }).toUpperCase();
+            const label = `<strong>${esc(month)} ${esc(day)}</strong> <span class="day-weekday">${esc(weekday)}</span>`;
             const items = evts.map(e => {
                 const timeStr = e.start_time_raw
                     ? (e.end_time_raw ? e.start_time_raw + ' – ' + e.end_time_raw : e.start_time_raw)
                     : '';
-                const desc = e.description ? `<div class="event-desc" onclick="this.classList.toggle('expanded')">${e.description}</div>` : '';
+                // Descriptions are plain text (parsers strip markup); render them as text.
+                const desc = e.description ? `<div class="event-desc">${esc(e.description)}</div>` : '';
                 return `<div class="event-item">
-                    <div class="event-title">${e.title || e.vendor}</div>
-                    <div class="event-meta">${timeStr ? '<span class="meta-item"><svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ' + timeStr + '</span>' : ''}${(e.venue || e.location) ? '<span class="meta-item"><svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> <strong>' + (e.venue || e.location) + '</strong></span>' : ''}</div>
+                    <div class="event-title">${esc(e.title || e.vendor)}</div>
+                    <div class="event-meta">${timeStr ? '<span class="meta-item"><svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ' + esc(timeStr) + '</span>' : ''}${(e.venue || e.location) ? '<span class="meta-item"><svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> <strong>' + esc(e.venue || e.location) + '</strong></span>' : ''}</div>
                     ${desc}
                 </div>`;
             }).join('');
@@ -195,6 +208,11 @@ fetch('data.json')
                 ${items}
             </div>`;
         }).join('');
+
+        container.addEventListener('click', ev => {
+            const desc = ev.target.closest('.event-desc');
+            if (desc) desc.classList.toggle('expanded');
+        });
     })
     .catch(err => {
         document.getElementById('events-container').innerHTML =

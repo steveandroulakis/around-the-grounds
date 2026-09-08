@@ -259,6 +259,25 @@ class WorkflowResult:
     deployed: bool = False             # Whether deployment succeeded
 ```
 
+Outcome contract:
+
+- **Completed** with a `WorkflowResult` when at least one venue produced events, or the
+  schedule is genuinely empty with no errors. Individual venue failures (including a
+  scrape activity that exhausted its retries or timed out) are isolated and listed in
+  `errors`; they never discard the other venues' results.
+- **Failed** with an `ApplicationError` when every venue failed (`type="ScrapeFailed"`,
+  details carry the per-venue errors), when a requested deploy returned false
+  (`type="DeployFailed"`), or on an unexpected exception (`type="UnexpectedError"`).
+  Failing the execution keeps problems visible in the Temporal UI, list filters, and
+  metrics, and guarantees a scheduled run never sticks in `Running` and causes later
+  runs to be skipped.
+- **Cancelled** when cancellation arrives. Cancellation is re-raised through the
+  per-venue isolation and never results in a deploy.
+
+Per-venue scrape activities use `start_to_close_timeout=4m` and
+`schedule_to_close_timeout=5m`, sized to contain the coordinator's own retry loop
+(3 attempts × 60s HTTP timeout plus backoff).
+
 ## Activities
 
 ### ScrapeActivities

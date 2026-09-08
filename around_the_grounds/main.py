@@ -5,10 +5,11 @@ import asyncio
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import List, Optional
 
 # Load environment variables from .env file
@@ -22,7 +23,7 @@ except ImportError:
 
 from .config.loader import load_all_sites, load_site_config, load_site_from_path
 from .config.settings import get_git_repository_url
-from .models import Venue, Event, SiteConfig
+from .models import Event, SiteConfig, Venue
 from .scrapers.coordinator import ScraperCoordinator, ScrapingError
 from .utils.github_auth import _sanitize_url
 from .utils.haiku_generator import HaikuGenerator
@@ -68,9 +69,7 @@ def format_events_output(
             if "Check Instagram" in event.title or "check Instagram" in (
                 event.description or ""
             ):
-                output.append(
-                    f"  ❌ {event.title} @ {event.venue_name}{time_str}"
-                )
+                output.append(f"  ❌ {event.title} @ {event.venue_name}{time_str}")
                 if event.description:
                     output.append(f"     {event.description}")
             else:
@@ -79,9 +78,7 @@ def format_events_output(
                         f"  🎫 {event.title} 🖼️🤖 @ {event.venue_name}{time_str}"
                     )
                 else:
-                    output.append(
-                        f"  🎫 {event.title} @ {event.venue_name}{time_str}"
-                    )
+                    output.append(f"  🎫 {event.title} @ {event.venue_name}{time_str}")
                 if event.description:
                     output.append(f"     {event.description}")
 
@@ -340,11 +337,86 @@ def _resolve_template_dir(template_dir_name: str) -> Path:
     # when the traversal target does not exist on disk.
     templates_root = (cwd / "public_templates").resolve()
     resolved = multi.resolve()
-    if not str(resolved).startswith(str(templates_root) + os.sep) and resolved != templates_root:
+    if (
+        not str(resolved).startswith(str(templates_root) + os.sep)
+        and resolved != templates_root
+    ):
         raise ValueError(
             f"Template path escapes public_templates/: {template_dir_name!r}"
         )
     return multi if multi.exists() else cwd / "public_template"
+
+
+def _write_site_output(target_dir: Path, template_dir: Path, web_data: dict) -> None:
+    """Write a complete site (template + data.json + events.ics) into target_dir.
+
+    Shared by preview and deploy so both emit byte-identical output. The
+    calendar feed is written last and its failures are swallowed by
+    _write_calendar_file, matching the graceful-degradation policy.
+    """
+    import shutil
+
+    print(f"📋 Copying template files from {template_dir}...")
+    shutil.copytree(template_dir, target_dir, dirs_exist_ok=True)
+
+    with open(target_dir / "data.json", "w") as f:
+        json.dump(web_data, f, indent=2)
+    print(f"📝 Updated data.json with {web_data.get('total_events', 0)} events")
+
+    _write_calendar_file(target_dir, web_data)
+
+
+def _validate_deploy_subdir(deploy_subdir: str) -> str:
+    """Normalize ``deploy_subdir`` and reject values that escape the repo.
+
+    Returns "" for root mode, otherwise a clean relative POSIX path such as
+    ``public`` or ``site/public``. Raises ValueError for absolute or
+    drive-qualified paths, parent traversal, root-equivalent values (``.``),
+    and anything touching Git metadata. Runs before authentication so a bad
+    config never mints a token or writes a file.
+    """
+    if not deploy_subdir:
+        return ""
+
+    raw = deploy_subdir.strip()
+    if not raw:
+        return ""
+
+    if raw.startswith(("/", "\\")) or PureWindowsPath(raw).drive:
+        raise ValueError(f"deploy_subdir must be relative: {deploy_subdir!r}")
+
+    parts = [part for part in re.split(r"[\\/]+", raw) if part not in ("", ".")]
+    if not parts:
+        raise ValueError(
+            f"deploy_subdir must name a subdirectory, not the root: {deploy_subdir!r}"
+        )
+    for part in parts:
+        if part == "..":
+            raise ValueError(
+                f"deploy_subdir must not traverse upward: {deploy_subdir!r}"
+            )
+        if part.lower() == ".git":
+            raise ValueError(
+                f"deploy_subdir must not touch Git metadata: {deploy_subdir!r}"
+            )
+
+    return "/".join(parts)
+
+
+def _authenticated_repo_url(repository_url: str) -> str:
+    """Mint a GitHub App token and return the authenticated push/clone URL.
+
+    Kept separate so deployment tests can substitute a local repository path
+    and exercise the real Git commands without network or credentials.
+    """
+    from .utils.github_auth import GitHubAppAuth
+
+    auth = GitHubAppAuth(repository_url)
+    access_token = auth.get_access_token()
+    return (
+        f"https://x-access-token:{access_token}@github.com/"
+        f"{auth.repo_owner}/{auth.repo_name}.git"
+    )
 
 
 def _deploy_with_github_auth(
@@ -364,24 +436,17 @@ def _deploy_with_github_auth(
       target repo has other files at root that must be preserved (e.g. a
       Vercel project consuming ``public/``).
     """
-    import shutil
     import tempfile
-
-    from .utils.github_auth import GitHubAppAuth
 
     try:
         print("🔐 Using GitHub App authentication for deployment...")
 
         public_templates_dir = _resolve_template_dir(template_dir_name)
+        deploy_subdir = _validate_deploy_subdir(deploy_subdir)
 
         # Mint GitHub App access token once and build the authenticated URL upfront
         # so it can be used for both clone (subdir mode) and push (both modes).
-        auth = GitHubAppAuth(repository_url)
-        access_token = auth.get_access_token()
-        authenticated_url = (
-            f"https://x-access-token:{access_token}@github.com/"
-            f"{auth.repo_owner}/{auth.repo_name}.git"
-        )
+        authenticated_url = _authenticated_repo_url(repository_url)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             repo_dir = Path(temp_dir) / "repo"
@@ -411,40 +476,59 @@ def _deploy_with_github_auth(
 
             subprocess.run(
                 ["git", "config", "user.email", "bot@around-the-grounds.app"],
-                cwd=repo_dir, check=True, capture_output=True,
+                cwd=repo_dir,
+                check=True,
+                capture_output=True,
             )
             subprocess.run(
                 ["git", "config", "user.name", "Around the Grounds Bot"],
-                cwd=repo_dir, check=True, capture_output=True,
+                cwd=repo_dir,
+                check=True,
+                capture_output=True,
             )
 
             target_public_dir = repo_dir / deploy_subdir if deploy_subdir else repo_dir
+            if deploy_subdir:
+                # A symlink committed to the target repo could redirect the
+                # subdir outside the clone; check the resolved location.
+                repo_root = repo_dir.resolve()
+                resolved_target = target_public_dir.resolve()
+                if (
+                    resolved_target != repo_root
+                    and repo_root not in resolved_target.parents
+                ):
+                    raise ValueError(
+                        f"deploy_subdir resolves outside the repository: {deploy_subdir!r}"
+                    )
+                if (
+                    resolved_target == repo_root
+                    or ".git" in resolved_target.relative_to(repo_root).parts
+                ):
+                    raise ValueError(
+                        f"deploy_subdir resolves to a protected location: {deploy_subdir!r}"
+                    )
             target_public_dir.mkdir(parents=True, exist_ok=True)
 
-            print(f"📋 Copying template files from {public_templates_dir}...")
-            shutil.copytree(public_templates_dir, target_public_dir, dirs_exist_ok=True)
-
-            json_path = target_public_dir / "data.json"
-            with open(json_path, "w") as f:
-                json.dump(web_data, f, indent=2)
-
-            print(f"📝 Updated data.json with {web_data.get('total_events', 0)} events")
-
-            # Written before `git add` so the feed participates in the no-op
-            # short-circuit below.
-            _write_calendar_file(target_public_dir, web_data)
+            # All files (including the feed) are written before `git add` so
+            # they participate in the no-op short-circuit below.
+            _write_site_output(target_public_dir, public_templates_dir, web_data)
 
             if deploy_subdir:
-                # Scoped add: only touch the subdir we own.
+                # Scoped add: only touch the subdir we own. "--" terminates
+                # options and ":(literal)" disables glob magic so a name like
+                # "site[1]" stages exactly that directory.
                 subprocess.run(
-                    ["git", "add", f"{deploy_subdir}/"],
-                    cwd=repo_dir, check=True, capture_output=True,
+                    ["git", "add", "--", f":(literal){deploy_subdir}/"],
+                    cwd=repo_dir,
+                    check=True,
+                    capture_output=True,
                 )
                 # In subdir mode (clone), short-circuit no-op updates so the
                 # bot doesn't create empty commits when events haven't changed.
                 diff_check = subprocess.run(
                     ["git", "diff", "--staged", "--quiet"],
-                    cwd=repo_dir, capture_output=True,
+                    cwd=repo_dir,
+                    capture_output=True,
                 )
                 if diff_check.returncode == 0:
                     print("ℹ️  No changes to deploy")
@@ -452,14 +536,20 @@ def _deploy_with_github_auth(
             else:
                 subprocess.run(
                     ["git", "add", "."],
-                    cwd=repo_dir, check=True, capture_output=True,
+                    cwd=repo_dir,
+                    check=True,
+                    capture_output=True,
                 )
 
             site_name = web_data.get("site_name", "Events")
-            commit_msg = f"📅 Update {site_name} - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            commit_msg = (
+                f"📅 Update {site_name} - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            )
             subprocess.run(
                 ["git", "commit", "-m", commit_msg],
-                cwd=repo_dir, check=True, capture_output=True,
+                cwd=repo_dir,
+                check=True,
+                capture_output=True,
             )
 
             print(f"🚀 Pushing to {repository_url}...")
@@ -511,15 +601,9 @@ async def preview_locally(
 
         if local_public_dir.exists():
             shutil.rmtree(local_public_dir)
+        local_public_dir.mkdir()
 
-        print(f"📋 Copying template files from {public_templates_dir}...")
-        shutil.copytree(public_templates_dir, local_public_dir)
-
-        json_path = local_public_dir / "data.json"
-        with open(json_path, "w") as f:
-            json.dump(web_data, f, indent=2)
-
-        _write_calendar_file(local_public_dir, web_data)
+        _write_site_output(local_public_dir, public_templates_dir, web_data)
 
         print(f"✅ Generated local preview: {len(events)} events")
         print(f"📁 Preview files in: {local_public_dir}")
@@ -579,7 +663,13 @@ async def async_main(args: argparse.Namespace) -> int:
             print("❌ Default site 'ballard-food-trucks' not found")
             return 1
 
-    overall_exit = 0
+    # Exit code contract (consumed by Cloud Run Jobs / Cloud Scheduler):
+    #   1 = any site scraped nothing, or a requested deploy/preview failed
+    #   2 = every site produced output but at least one venue failed
+    #   0 = clean run
+    # Every site is processed regardless of earlier failures.
+    any_failure = False
+    any_partial = False
     for site in sites:
         if len(sites) > 1:
             print(f"\n{'='*50}")
@@ -590,20 +680,30 @@ async def async_main(args: argparse.Namespace) -> int:
         output = format_events_output(events, errors)
         print(output)
 
-        if args.deploy and events:
-            await deploy_to_web(
-                events, errors, getattr(args, "git_repo", None), site=site
-            )
+        output_ok = True
+        if args.deploy:
+            if events:
+                deployed = await deploy_to_web(
+                    events, errors, getattr(args, "git_repo", None), site=site
+                )
+                output_ok = output_ok and deployed
+            else:
+                print("⏭️  Skipping deploy: no events to publish")
 
         if args.preview:
-            await preview_locally(events, errors, site=site)
+            previewed = await preview_locally(events, errors, site=site)
+            output_ok = output_ok and previewed
 
-        if errors and not events:
-            overall_exit = 1
+        if (errors and not events) or not output_ok:
+            any_failure = True
         elif errors:
-            overall_exit = max(overall_exit, 2)
+            any_partial = True
 
-    return overall_exit
+    if any_failure:
+        return 1
+    if any_partial:
+        return 2
+    return 0
 
 
 def main(argv: Optional[List[str]] = None) -> int:

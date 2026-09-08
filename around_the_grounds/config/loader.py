@@ -1,13 +1,14 @@
 """Site configuration loader for multi-site event aggregator."""
 
 import json
+from dataclasses import asdict
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List
 
 from ..models import SiteConfig, Venue
 
 
-def _parse_venue(venue_data: dict) -> Venue:
+def _parse_venue(venue_data: Dict[str, Any]) -> Venue:
     """Parse a venue dict into a Venue object."""
     return Venue(
         key=venue_data["key"],
@@ -18,14 +19,14 @@ def _parse_venue(venue_data: dict) -> Venue:
     )
 
 
-def load_site_from_path(path: Path) -> SiteConfig:
-    """Load a site config from a direct file path."""
-    if not path.exists():
-        raise FileNotFoundError(f"Site config not found: {path}")
+def site_from_dict(data: Dict[str, Any]) -> SiteConfig:
+    """Build a SiteConfig from a plain dict.
 
-    with open(path, "r") as f:
-        data = json.load(f)
-
+    Used both for ``config/sites/<key>.json`` files and for the dict that
+    crosses the Temporal activity boundary (see ``site_to_dict``). Every
+    optional field falls back to the dataclass default so older payloads that
+    predate a field still load.
+    """
     venues = [_parse_venue(v) for v in data.get("venues", [])]
 
     return SiteConfig(
@@ -40,6 +41,22 @@ def load_site_from_path(path: Path) -> SiteConfig:
         public_url=data.get("public_url", ""),
         calendar_max_timed_hours=data.get("calendar_max_timed_hours"),
     )
+
+
+def site_to_dict(site: SiteConfig) -> Dict[str, Any]:
+    """Serialize a SiteConfig to a JSON-safe dict (inverse of site_from_dict)."""
+    return asdict(site)
+
+
+def load_site_from_path(path: Path) -> SiteConfig:
+    """Load a site config from a direct file path."""
+    if not path.exists():
+        raise FileNotFoundError(f"Site config not found: {path}")
+
+    with open(path, "r") as f:
+        data = json.load(f)
+
+    return site_from_dict(data)
 
 
 def load_site_config(site_key: str) -> SiteConfig:

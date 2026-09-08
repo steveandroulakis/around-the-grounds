@@ -5,15 +5,17 @@ from datetime import datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 from around_the_grounds.main import generate_web_data, _generate_haiku_for_today
+from around_the_grounds.utils.timezone_utils import now_in_site_timezone_naive
 from around_the_grounds.models import Event
 
 
 @pytest.fixture
 def sample_events_today() -> list:
     """Create sample food truck events for today."""
-    from datetime import date
 
-    today = date.today()
+    # "Today" for haiku purposes is the site's local date (Pacific), which
+    # differs from the container's UTC date every evening Pacific time.
+    today = now_in_site_timezone_naive("America/Los_Angeles").date()
     return [
         Event(
             venue_key="stoup-ballard",

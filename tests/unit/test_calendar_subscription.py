@@ -6,8 +6,9 @@ from unittest.mock import patch
 import pytest
 
 from around_the_grounds.config.loader import load_site_config
+from around_the_grounds.config.loader import site_from_dict as _site_from_dict
 from around_the_grounds.main import generate_web_data
-from around_the_grounds.temporal.activities import ScrapeActivities, _site_from_dict
+from around_the_grounds.temporal.activities import ScrapeActivities
 from tests.unit.test_ics_generator import make_web_data, make_web_event, parse, vevents
 
 

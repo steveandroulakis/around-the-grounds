@@ -12,11 +12,17 @@ from temporalio import activity
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from around_the_grounds.config.loader import load_site_config
+from around_the_grounds.config.loader import (
+    load_site_config,
+    site_from_dict,
+    site_to_dict,
+)
 from around_the_grounds.main import generate_web_data
-from around_the_grounds.models import Event, SiteConfig, Venue
+from around_the_grounds.models import Event, Venue
 from around_the_grounds.scrapers import ScraperCoordinator
 from around_the_grounds.scrapers.coordinator import ScrapingError
+
+DEFAULT_SITE_TIMEZONE = "America/Los_Angeles"
 
 
 class ScrapeActivities:
@@ -60,33 +66,17 @@ class ScrapeActivities:
         into a SiteConfig inside the deploy/generate activities.
         """
         site = load_site_config(site_key)
-        return {
-            "key": site.key,
-            "name": site.name,
-            "template": site.template,
-            "timezone": site.timezone,
-            "target_repo": site.target_repo,
-            "generate_description": site.generate_description,
-            "deploy_subdir": site.deploy_subdir,
-            "public_url": site.public_url,
-            "calendar_max_timed_hours": site.calendar_max_timed_hours,
-            "venues": [
-                {
-                    "key": v.key,
-                    "name": v.name,
-                    "url": v.url,
-                    "source_type": v.source_type,
-                    "parser_config": v.parser_config,
-                }
-                for v in site.venues
-            ],
-        }
+        return site_to_dict(site)
 
     @activity.defn
-    async def scrape_single_venue(
-        self, venue_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Scrape one venue and return serialized events and optional error."""
+    async def scrape_single_venue(self, venue_config: Dict[str, Any]) -> Dict[str, Any]:
+        """Scrape one venue and return serialized events and optional error.
+
+        ``venue_config`` is the venue dict from ``load_site`` plus an optional
+        ``timezone`` key added by the workflow. Payloads from workflows started
+        before that key existed omit it and fall back to Pacific, matching the
+        coordinator default used by the pre-existing hourly schedule.
+        """
         venue = Venue(
             key=venue_config["key"],
             name=venue_config["name"],
@@ -95,38 +85,15 @@ class ScrapeActivities:
             parser_config=venue_config.get("parser_config", {}),
         )
 
+        timezone = venue_config.get("timezone") or DEFAULT_SITE_TIMEZONE
+
         coordinator = ScraperCoordinator(max_concurrent=1)
-        events, error = await coordinator.scrape_one(venue)
+        events, error = await coordinator.scrape_one(venue, timezone=timezone)
 
         return {
             "events": [self._serialize_event(event) for event in events],
             "error": self._serialize_error(error),
         }
-
-
-def _site_from_dict(site_dict: Dict[str, Any]) -> SiteConfig:
-    """Reconstruct a SiteConfig from the dict produced by load_site."""
-    return SiteConfig(
-        key=site_dict["key"],
-        name=site_dict["name"],
-        template=site_dict["template"],
-        timezone=site_dict["timezone"],
-        venues=[
-            Venue(
-                key=v["key"],
-                name=v["name"],
-                url=v["url"],
-                source_type=v.get("source_type", "html"),
-                parser_config=v.get("parser_config", {}),
-            )
-            for v in site_dict.get("venues", [])
-        ],
-        target_repo=site_dict.get("target_repo", ""),
-        generate_description=site_dict.get("generate_description", True),
-        deploy_subdir=site_dict.get("deploy_subdir", ""),
-        public_url=site_dict.get("public_url", ""),
-        calendar_max_timed_hours=site_dict.get("calendar_max_timed_hours"),
-    )
 
 
 class DeploymentActivities:
@@ -182,10 +149,8 @@ class DeploymentActivities:
 
         error_messages = list(dict.fromkeys(error_messages))
 
-        site = _site_from_dict(site_dict) if site_dict else None
-        return await generate_web_data(
-            reconstructed_events, error_messages, site=site
-        )
+        site = site_from_dict(site_dict) if site_dict else None
+        return await generate_web_data(reconstructed_events, error_messages, site=site)
 
     @activity.defn
     async def deploy_to_git(self, params: Dict[str, Any]) -> bool:
@@ -210,7 +175,7 @@ class DeploymentActivities:
                 "should have loaded it via the load_site activity."
             )
 
-        site = _site_from_dict(site_dict)
+        site = site_from_dict(site_dict)
 
         activity.logger.info(
             f"Starting deployment for site '{site.key}' "
@@ -238,9 +203,7 @@ class DeploymentActivities:
                     f"Deployed site '{site.key}' to {site.target_repo}"
                 )
             else:
-                activity.logger.error(
-                    f"Deployment of site '{site.key}' returned False"
-                )
+                activity.logger.error(f"Deployment of site '{site.key}' returned False")
                 raise ValueError(
                     f"Failed to deploy site '{site.key}' to {site.target_repo}"
                 )
