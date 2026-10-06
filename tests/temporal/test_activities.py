@@ -267,8 +267,11 @@ class TestDeploymentActivities:
         assert mock_generate.call_args[1]["site"] is None
 
     @pytest.mark.asyncio
-    async def test_deploy_to_git_delegates_to_cli_with_site_fields(self) -> None:
+    async def test_deploy_to_git_delegates_to_cli_with_site_fields(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """deploy_to_git reconstructs SiteConfig and delegates to CLI deploy."""
+        monkeypatch.delenv("LOCAL_DEPLOY_DIR", raising=False)
         activities = DeploymentActivities()
 
         mock_web_data = {"total_events": 1, "events": []}
@@ -306,8 +309,11 @@ class TestDeploymentActivities:
             await activities.deploy_to_git({"web_data": {"total_events": 0}})
 
     @pytest.mark.asyncio
-    async def test_deploy_to_git_propagates_failure(self) -> None:
+    async def test_deploy_to_git_propagates_failure(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """A False return from the CLI deploy raises ValueError up the activity."""
+        monkeypatch.delenv("LOCAL_DEPLOY_DIR", raising=False)
         activities = DeploymentActivities()
 
         site_dict = {
@@ -325,6 +331,64 @@ class TestDeploymentActivities:
             "around_the_grounds.main._deploy_with_github_auth", return_value=False
         ):
             with pytest.raises(ValueError, match="Failed to deploy"):
+                await activities.deploy_to_git(
+                    {"web_data": {"total_events": 0}, "site": site_dict}
+                )
+
+    @pytest.mark.asyncio
+    async def test_deploy_to_git_writes_local_dir_when_configured(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Staging workers (LOCAL_DEPLOY_DIR) never push to the target repo."""
+        monkeypatch.setenv("LOCAL_DEPLOY_DIR", "/site")
+        activities = DeploymentActivities()
+
+        mock_web_data = {"total_events": 1, "events": []}
+        site_dict = {
+            "key": "ballard-food-trucks",
+            "name": "Food Trucks in Ballard",
+            "template": "food-trucks",
+            "timezone": "America/Los_Angeles",
+            "target_repo": "https://github.com/steveandroulakis/ballard-food-trucks.git",
+            "generate_description": True,
+            "deploy_subdir": "public",
+            "venues": [],
+        }
+
+        with patch(
+            "around_the_grounds.main._deploy_to_local_dir", return_value=True
+        ) as mock_local, patch(
+            "around_the_grounds.main._deploy_with_github_auth"
+        ) as mock_github:
+            result = await activities.deploy_to_git(
+                {"web_data": mock_web_data, "site": site_dict}
+            )
+
+        assert result is True
+        mock_local.assert_called_once_with(mock_web_data, "/site", "food-trucks")
+        mock_github.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_deploy_to_git_local_dir_failure_raises(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A failed local write fails the activity like a failed push does."""
+        monkeypatch.setenv("LOCAL_DEPLOY_DIR", "/site")
+        activities = DeploymentActivities()
+
+        site_dict = {
+            "key": "test",
+            "name": "Test",
+            "template": "food-trucks",
+            "timezone": "America/Los_Angeles",
+            "target_repo": "https://github.com/test/repo.git",
+            "generate_description": False,
+            "deploy_subdir": "",
+            "venues": [],
+        }
+
+        with patch("around_the_grounds.main._deploy_to_local_dir", return_value=False):
+            with pytest.raises(ValueError, match="to /site"):
                 await activities.deploy_to_git(
                     {"web_data": {"total_events": 0}, "site": site_dict}
                 )

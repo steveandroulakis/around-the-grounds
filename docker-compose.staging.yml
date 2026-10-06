@@ -1,0 +1,59 @@
+# Staging deployment: a second worker that runs this checkout's code and writes
+# the site to staging/site/ (served on :8090) instead of pushing to GitHub.
+# See STAGING.md.
+#
+#   docker compose -f docker-compose.staging.yml up -d --build
+#
+# Connects to an existing Temporal server (the one the production worker uses).
+name: around-the-grounds-staging
+
+services:
+  staging-worker:
+    build: .
+    image: around-the-grounds-worker:staging
+    container_name: around-the-grounds-worker-staging
+    environment:
+      - TEMPORAL_ADDRESS=${STAGING_TEMPORAL_ADDRESS:-host.docker.internal:7233}
+      - TEMPORAL_NAMESPACE=${STAGING_TEMPORAL_NAMESPACE:-default}
+      # Hardcoded on purpose: a staging worker polling the production queue
+      # would take production runs and write them here instead of deploying.
+      - TEMPORAL_TASK_QUEUE=food-truck-task-queue-staging
+      # Write the site here instead of pushing to the site's target repo.
+      - LOCAL_DEPLOY_DIR=/site
+      # AI features off: no ANTHROPIC_API_KEY means no haiku, and vision
+      # analysis is disabled outright.
+      - VISION_ANALYSIS_ENABLED=false
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # Run the checkout's code, not the code baked into the image. Template
+      # edits apply on the next run; Python edits need a worker restart.
+      - ./around_the_grounds:/app/around_the_grounds:ro
+      - ./public_templates:/app/public_templates:ro
+      - ./staging/site:/site
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - /app/.venv/bin/python
+        - -c
+        - "from around_the_grounds.temporal.config import validate_configuration; validate_configuration()"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  staging-web:
+    image: nginx:alpine
+    container_name: around-the-grounds-staging-web
+    ports:
+      - "${STAGING_WEB_PORT:-8090}:80"
+    volumes:
+      - ./staging/site:/usr/share/nginx/html:ro
+      - ./staging/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped

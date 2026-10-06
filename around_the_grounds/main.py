@@ -572,6 +572,35 @@ def _deploy_with_github_auth(
         return False
 
 
+def _deploy_to_local_dir(
+    web_data: dict,
+    target_dir: str,
+    template_dir_name: str = "food-trucks",
+) -> bool:
+    """Write the site into a local directory instead of pushing to git.
+
+    Used by staging workers (``LOCAL_DEPLOY_DIR``) so a run can be viewed from
+    a local web server without touching the site's production target repo.
+    The directory is updated in place rather than recreated because it is
+    typically a bind mount that a web server is already serving.
+    """
+    try:
+        public_templates_dir = _resolve_template_dir(template_dir_name)
+        if not public_templates_dir.exists():
+            print(f"❌ Template directory not found: {public_templates_dir}")
+            return False
+
+        output_dir = Path(target_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        _write_site_output(output_dir, public_templates_dir, web_data)
+        print(f"✅ Wrote site to local directory {output_dir}")
+        return True
+
+    except Exception as e:
+        print(f"❌ Error during local deployment: {e}")
+        return False
+
+
 async def preview_locally(
     events: List[Event],
     errors: Optional[List[ScrapingError]] = None,

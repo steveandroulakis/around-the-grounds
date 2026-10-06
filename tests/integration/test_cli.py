@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from around_the_grounds.main import (
+    _deploy_to_local_dir,
     _deploy_with_github_auth,
     format_events_output,
     main,
@@ -774,3 +775,68 @@ class TestDeployAgainstLocalGit:
         assert self._deploy(bare_repo, "linked", self._web_data()) is False
         assert list(outside.iterdir()) == []
         assert "outside the repository" in capsys.readouterr().out
+
+
+class TestDeployToLocalDir:
+    """LOCAL_DEPLOY_DIR staging deploys write the site without any git."""
+
+    @staticmethod
+    def _web_data(total_events: int = 0) -> Dict[str, Any]:
+        return {
+            "site_key": "test-site",
+            "site_name": "Test Site",
+            "timezone": "America/Los_Angeles",
+            "total_events": total_events,
+            "events": [],
+            "errors": [],
+            "haiku": None,
+        }
+
+    @staticmethod
+    def _deploy(tmp_path: Path, target: Path, web_data: Dict[str, Any]) -> bool:
+        template = tmp_path / "public_templates" / "food-trucks"
+        template.mkdir(parents=True, exist_ok=True)
+        (template / "index.html").write_text("<h1>staging</h1>")
+
+        original_cwd = Path.cwd()
+        try:
+            os.chdir(tmp_path)
+            return _deploy_to_local_dir(web_data, str(target), "food-trucks")
+        finally:
+            os.chdir(original_cwd)
+
+    def test_writes_full_site_into_new_directory(self, tmp_path: Path) -> None:
+        target = tmp_path / "staging" / "site"
+
+        assert self._deploy(tmp_path, target, self._web_data()) is True
+
+        assert (target / "index.html").read_text() == "<h1>staging</h1>"
+        assert json.loads((target / "data.json").read_text())["site_key"] == (
+            "test-site"
+        )
+        assert (target / "events.ics").read_bytes().startswith(b"BEGIN:VCALENDAR")
+
+    def test_updates_existing_directory_in_place(self, tmp_path: Path) -> None:
+        """The target is usually a served bind mount, so it must not be recreated."""
+        target = tmp_path / "site"
+        target.mkdir()
+        (target / "keep.txt").write_text("served by nginx")
+        (target / "data.json").write_text("{}")
+
+        assert self._deploy(tmp_path, target, self._web_data(total_events=3)) is True
+
+        assert (target / "keep.txt").exists()
+        assert json.loads((target / "data.json").read_text())["total_events"] == 3
+
+    def test_missing_template_returns_false(self, tmp_path: Path) -> None:
+        original_cwd = Path.cwd()
+        try:
+            os.chdir(tmp_path)
+            result = _deploy_to_local_dir(
+                self._web_data(), str(tmp_path / "site"), "no-such-template"
+            )
+        finally:
+            os.chdir(original_cwd)
+
+        assert result is False
+        assert not (tmp_path / "site").exists()
