@@ -20,3 +20,8 @@ public/
 .amazonq/
 .github/copilot/
 .kittify/.dashboard
+
+# Staging deploy output (docker-compose.staging.yml)
+# (directory is committed so it isn't created root-owned by Docker)
+staging/site/*
+!staging/site/.gitkeep

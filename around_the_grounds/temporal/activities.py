@@ -161,10 +161,17 @@ class DeploymentActivities:
         deploy_subdir modes (root-mode init+force-push and subdir-mode
         clone+scoped-add+push), the no-op short-circuit, the bot identity, and
         the authenticated clone URL.
+
+        When ``LOCAL_DEPLOY_DIR`` is set (staging workers), the site is written
+        to that directory via main.py:_deploy_to_local_dir instead, and the
+        site's target repo is never touched.
         """
         # Local import to avoid any chance of a module-load circular import
         # when the worker boots and registers activities.
-        from around_the_grounds.main import _deploy_with_github_auth
+        from around_the_grounds.main import (
+            _deploy_to_local_dir,
+            _deploy_with_github_auth,
+        )
 
         web_data = params["web_data"]
         site_dict = params.get("site")
@@ -176,37 +183,44 @@ class DeploymentActivities:
             )
 
         site = site_from_dict(site_dict)
+        local_dir = os.environ.get("LOCAL_DEPLOY_DIR")
+        destination = local_dir or site.target_repo
 
         activity.logger.info(
             f"Starting deployment for site '{site.key}' "
             f"({web_data.get('total_events', 0)} events) "
-            f"to {site.target_repo} (deploy_subdir={site.deploy_subdir!r})"
+            f"to {destination} (deploy_subdir={site.deploy_subdir!r})"
         )
 
         try:
-            # _deploy_with_github_auth is sync and uses blocking subprocess.run.
-            # Hand it to the executor so the asyncio loop in this activity stays
-            # responsive (the activity itself is registered against the worker's
-            # ThreadPoolExecutor; this is belt-and-braces).
+            # Both deploy functions are sync (git uses blocking subprocess.run).
+            # Hand them to the executor so the asyncio loop in this activity
+            # stays responsive (the activity itself is registered against the
+            # worker's ThreadPoolExecutor; this is belt-and-braces).
             loop = asyncio.get_event_loop()
-            success = await loop.run_in_executor(
-                None,
-                _deploy_with_github_auth,
-                web_data,
-                site.target_repo,
-                site.template,
-                site.deploy_subdir,
-            )
-
-            if success:
-                activity.logger.info(
-                    f"Deployed site '{site.key}' to {site.target_repo}"
+            if local_dir:
+                success = await loop.run_in_executor(
+                    None,
+                    _deploy_to_local_dir,
+                    web_data,
+                    local_dir,
+                    site.template,
                 )
             else:
-                activity.logger.error(f"Deployment of site '{site.key}' returned False")
-                raise ValueError(
-                    f"Failed to deploy site '{site.key}' to {site.target_repo}"
+                success = await loop.run_in_executor(
+                    None,
+                    _deploy_with_github_auth,
+                    web_data,
+                    site.target_repo,
+                    site.template,
+                    site.deploy_subdir,
                 )
+
+            if success:
+                activity.logger.info(f"Deployed site '{site.key}' to {destination}")
+            else:
+                activity.logger.error(f"Deployment of site '{site.key}' returned False")
+                raise ValueError(f"Failed to deploy site '{site.key}' to {destination}")
 
             return success
 

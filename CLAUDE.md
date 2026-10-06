@@ -129,6 +129,9 @@ uv run around-the-grounds --deploy --git-repo https://github.com/username/repo.g
 ### Deployment
 See [DEPLOYMENT.MD](./DEPLOYMENT.MD)
 
+### Staging
+See [STAGING.md](./STAGING.md). A staging worker (`docker-compose.staging.yml`) runs this checkout on its own task queue with `LOCAL_DEPLOY_DIR` set, so `deploy_to_git` writes the site to `staging/site/` (served on :8090) instead of pushing. Its schedule `hourly-scrape-staging` stays paused; trigger it to refresh.
+
 ### Temporal Schedule Management
 See [SCHEDULES.md](./SCHEDULES.md)
 
