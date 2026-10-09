@@ -265,21 +265,44 @@
 
         .subscribe-panel p { margin: 0 0 12px; }
         .subscribe-panel .subscribe-help { color: #4b5563; font-size: 0.8rem; }
+        /* Options are underlined like every other link on the site, and each
+           note sits directly under its option (tighter than the gap between
+           options) so it's clear which option it describes. */
+        .subscribe-options {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin: 16px 0;
+        }
+        .subscribe-options li { display: flex; flex-direction: column; gap: 2px; }
         .subscribe-panel button {
-            display: block;
-            width: 100%;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            align-self: flex-start;
             font: inherit;
             text-align: left;
             color: #111827;
-            background: white;
+            background: none;
             border: 0;
-            border-radius: 3px;
-            padding: 10px 8px;
+            padding: 2px 0;
+            text-decoration: underline;
+            text-underline-offset: 3px;
             cursor: pointer;
         }
-        .subscribe-panel button:hover { background: #f1f5f9; }
+        .subscribe-panel button:hover { text-decoration-thickness: 2px; }
+        .subscribe-panel button svg { width: 12px; height: 12px; flex: none; }
+        .subscribe-note { color: #4b5563; font-size: 0.8rem; }
+        .subscribe-note strong { color: #111827; }
+        .subscribe-copy { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
         .subscribe :focus-visible { outline: 2px solid #111827; outline-offset: 3px; }
-        .subscribe-status { display: block; font-size: 0.8rem; min-height: 1.5em; }
+        .subscribe-status { font-size: 0.8rem; color: #166534; }
+        .subscribe-panel .subscribe-foot {
+            margin: 0;
+            padding-top: 12px;
+            border-top: 1px solid #e5e7eb;
+        }
 
         .ai-info {
             color: #4b5563;
@@ -390,14 +413,29 @@
                     <summary>Subscribe to calendar</summary>
                     <div class="subscribe-panel">
                         <p><strong>All trucks, in your calendar.</strong></p>
-                        <p class="subscribe-help">This week's schedule in a separate calendar you can hide or unsubscribe from. Updates automatically; refresh times vary by app.</p>
-                        <button type="button" data-calendar="google">Google Calendar</button>
-                        <button type="button" data-calendar="apple">Apple Calendar</button>
-                        <p class="subscribe-help">Turn off 'Event Alerts' when subscribing in Apple Calendar</p>
-                        <button type="button" data-calendar="outlook">Outlook</button>
-                        <button type="button" data-calendar="copy">Copy calendar link</button>
-                        <span id="subStatus" class="subscribe-status" role="status"></span>
-                        <p class="subscribe-help">For the latest changes, check back here before heading out.</p>
+                        <p class="subscribe-help">Adds a separate calendar you can hide or remove anytime. Updates automatically, on your app's schedule.</p>
+                        <ul class="subscribe-options">
+                            <li>
+                                <button type="button" data-calendar="google">Google Calendar <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h7v7"/><path d="M13 3 4 12"/></svg></button>
+                                <span class="subscribe-note">Opens in a new tab</span>
+                            </li>
+                            <li>
+                                <button type="button" data-calendar="apple">Apple Calendar <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h7v7"/><path d="M13 3 4 12"/></svg></button>
+                                <span class="subscribe-note">Opens the Calendar app. Turn off <strong>Event Alerts</strong> so every truck doesn't ping you.</span>
+                            </li>
+                            <li>
+                                <button type="button" data-calendar="outlook">Outlook <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h7v7"/><path d="M13 3 4 12"/></svg></button>
+                                <span class="subscribe-note">Opens Outlook on the web</span>
+                            </li>
+                            <li>
+                                <span class="subscribe-copy">
+                                    <button type="button" data-calendar="copy">Copy calendar link</button>
+                                    <span id="subStatus" class="subscribe-status" role="status"></span>
+                                </span>
+                                <span class="subscribe-note">For any other calendar app</span>
+                            </li>
+                        </ul>
+                        <p class="subscribe-help subscribe-foot">Plans change. Check this page before heading out.</p>
                     </div>
                 </details>
             </div>
